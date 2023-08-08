@@ -1,2 +1,1 @@
-# javelin-python
-Python client for Javelin
+Javelin: An enterprise scale, fast LLM gateway and router
