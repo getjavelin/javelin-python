@@ -50,7 +50,7 @@ class JavelinClientError(Exception):
         return f"{self.message}: {self.response_data}"
 
 
-class ConnectionError(JavelinClientError):
+class NetworkError(JavelinClientError):
     def __init__(self, response: Optional[Response] = None, message: str = "Connection error") -> None:
         super().__init__(message=message, response=response)
 
@@ -81,4 +81,8 @@ class MethodNotAllowedError(JavelinClientError):
 
 class UnauthorizedError(JavelinClientError):
     def __init__(self, response: Optional[Response] = None, message: str = "Forbidden") -> None:
+        super().__init__(message=message, response=response)
+
+class ValidationError(JavelinClientError):
+    def __init__(self, response: Optional[Response] = None, message: str = "Validation error") -> None:
         super().__init__(message=message, response=response)
