@@ -54,6 +54,7 @@ class JavelinClientError(Exception):
     def __str__(self):
         return f"{self.message}: {self.response_data}"
 
+
 class NetworkError(JavelinClientError):
     def __init__(
         self, response: Optional[Response] = None, message: str = "Connection error"

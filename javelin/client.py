@@ -17,11 +17,13 @@ from javelin.models import QueryResponse, Route, Routes
 API_BASE_PATH = "/api/v1"
 API_TIMEOUT = 10
 
+
 class HttpMethod(Enum):
     GET = auto()
     POST = auto()
     PUT = auto()
     DELETE = auto()
+
 
 class JavelinClient:
     def __init__(self, base_url: str, api_key: Optional[str] = None) -> None:
@@ -168,7 +170,7 @@ class JavelinClient:
 
     def _process_response_ok(self, response: httpx.Response) -> str:
         """
-        Process a successful response from the Javelin API.        
+        Process a successful response from the Javelin API.
         """
         self._handle_response(response)
         return response.text
@@ -176,16 +178,16 @@ class JavelinClient:
     def _process_response_json(self, response: httpx.Response) -> QueryResponse:
         """
         Process a successful response from the Javelin API.
-        Parse body into a QueryResponse object and return it. 
+        Parse body into a QueryResponse object and return it.
         This is for Query() requests.
         """
         self._handle_response(response)
         return QueryResponse(**response.json())
-    
+
     def _process_response_route(self, response: httpx.Response) -> Route:
         """
         Process a successful response from the Javelin API.
-        Parse body into a Route object and return it. 
+        Parse body into a Route object and return it.
         This is for Get() requests.
         """
         self._handle_response(response)
@@ -227,7 +229,7 @@ class JavelinClient:
             url_parts.append("query")
         return "/".join(url_parts)
 
-    def get_route(self, route_name: str) -> QueryResponse:
+    def get_route(self, route_name: str) -> Route:
         """
         Retrieve details of a specific route.
 
@@ -238,7 +240,7 @@ class JavelinClient:
         response = self._send_request_sync(HttpMethod.GET, route_name)
         return self._process_response_route(response)
 
-    async def aget_route(self, route_name: str) -> QueryResponse:
+    async def aget_route(self, route_name: str) -> Route:
         """
         Asynchronously retrieve details of a specific route.
 
