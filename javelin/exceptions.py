@@ -1,5 +1,7 @@
 from typing import Any, Dict, Optional
+
 from httpx import Response
+
 
 class JavelinClientError(Exception):
     """
@@ -25,7 +27,9 @@ class JavelinClientError(Exception):
         self.message = message
         self.response_data = self._extract_response_data(response)
 
-    def _extract_response_data(self, response: Optional[Response]) -> Optional[Dict[str, Any]]:
+    def _extract_response_data(
+        self, response: Optional[Response]
+    ) -> Optional[Dict[str, Any]]:
         """
         Extract response data from a httpx.Response object.
 
@@ -37,7 +41,8 @@ class JavelinClientError(Exception):
         Returns
         -------
         Optional[Dict[str, Any]]
-            A dictionary containing details about the response, or None if response is None.
+            A dictionary containing details about the response, or None
+            if response is None.
         """
         if response is not None:
             return {
@@ -51,38 +56,58 @@ class JavelinClientError(Exception):
 
 
 class NetworkError(JavelinClientError):
-    def __init__(self, response: Optional[Response] = None, message: str = "Connection error") -> None:
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Connection error"
+    ) -> None:
         super().__init__(message=message, response=response)
 
+
 class RouteNotFoundError(JavelinClientError):
-    def __init__(self, response: Optional[Response] = None, message: str = "Route not found") -> None:
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Route not found"
+    ) -> None:
         super().__init__(message=message, response=response)
 
 
 class RateLimitExceededError(JavelinClientError):
-    def __init__(self, response: Optional[Response] = None, message: str = "Rate limit exceeded") -> None:
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Rate limit exceeded"
+    ) -> None:
         super().__init__(message=message, response=response)
 
 
 class RouteAlreadyExistsError(JavelinClientError):
-    def __init__(self, response: Optional[Response] = None, message: str = "Route already exists") -> None:
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Route already exists"
+    ) -> None:
         super().__init__(message=message, response=response)
 
 
 class InternalServerError(JavelinClientError):
-    def __init__(self, response: Optional[Response] = None, message: str = "Internal server error") -> None:
+    def __init__(
+        self,
+        response: Optional[Response] = None,
+        message: str = "Internal server error",
+    ) -> None:
         super().__init__(message=message, response=response)
 
 
 class MethodNotAllowedError(JavelinClientError):
-    def __init__(self, response: Optional[Response] = None, message: str = "Method not allowed") -> None:
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Method not allowed"
+    ) -> None:
         super().__init__(message=message, response=response)
 
 
 class UnauthorizedError(JavelinClientError):
-    def __init__(self, response: Optional[Response] = None, message: str = "Forbidden") -> None:
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Forbidden"
+    ) -> None:
         super().__init__(message=message, response=response)
 
+
 class ValidationError(JavelinClientError):
-    def __init__(self, response: Optional[Response] = None, message: str = "Validation error") -> None:
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Validation error"
+    ) -> None:
         super().__init__(message=message, response=response)

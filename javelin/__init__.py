@@ -1,10 +1,24 @@
-from javelin.exceptions import ConnectionError, RouteNotFoundError, RouteAlreadyExistsError, UnauthorizedError, InternalServerError, RateLimitExceededError, ValidationError
-from javelin.models import Route, Routes, QueryBody
 from javelin.client import JavelinClient
+from javelin.exceptions import (
+    InternalServerError,
+    NetworkError,
+    RateLimitExceededError,
+    RouteAlreadyExistsError,
+    RouteNotFoundError,
+    UnauthorizedError,
+    ValidationError,
+)
+from javelin.models import (
+    QueryResponse,
+    ResponseMetaData,
+    Route,
+    Routes,
+)
 
 __all__ = [
-    "ConnectionError",
-    "ValidationError"
+    "NetworkError",
+    "RouteNotFoundError",
+    "ValidationError",
     "RouteNotFoundError",
     "RouteAlreadyExistsError",
     "UnauthorizedError",
@@ -13,5 +27,7 @@ __all__ = [
     "Route",
     "Routes",
     "QueryBody",
+    "ResponseMetaData",
+    "QueryResponse",
     "JavelinClient",
 ]

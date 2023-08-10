@@ -1,16 +1,31 @@
-from typing import Dict, Optional, Any
-import httpx
+from enum import Enum, auto
+from typing import Any, Dict, Optional
 from urllib.parse import urljoin
 
-from javelin.models import Route, Routes, QueryBody, Response
-from javelin.exceptions import (NetworkError, RouteNotFoundError, RouteAlreadyExistsError, UnauthorizedError,
-                                InternalServerError, RateLimitExceededError, ValidationError)
+import httpx
+
+from javelin.exceptions import (
+    InternalServerError,
+    NetworkError,
+    RateLimitExceededError,
+    RouteAlreadyExistsError,
+    RouteNotFoundError,
+    UnauthorizedError,
+)
+from javelin.models import QueryResponse, Route, Routes
 
 API_BASE_PATH = "/api/v1"
 API_TIMEOUT = 10
 
-class JavelinClient:
 
+class HttpMethod(Enum):
+    GET = auto()
+    POST = auto()
+    PUT = auto()
+    DELETE = auto()
+
+
+class JavelinClient:
     def __init__(self, base_url: str, api_key: Optional[str] = None) -> None:
         """
         Initialize the JavelinClient.
@@ -21,7 +36,7 @@ class JavelinClient:
         headers = {}
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
-        
+
         self.base_url = urljoin(base_url, API_BASE_PATH)
         self._headers = headers
         self._client = None
@@ -30,15 +45,19 @@ class JavelinClient:
     @property
     def client(self):
         if self._client is None:
-            self._client = httpx.Client(base_url=self.base_url, headers=self._headers, timeout=API_TIMEOUT)
+            self._client = httpx.Client(
+                base_url=self.base_url, headers=self._headers, timeout=API_TIMEOUT
+            )
         return self._client
 
     @property
     def aclient(self):
         if self._aclient is None:
-            self._aclient = httpx.AsyncClient(base_url=self.base_url, headers=self._headers, timeout=API_TIMEOUT)
+            self._aclient = httpx.AsyncClient(
+                base_url=self.base_url, headers=self._headers, timeout=API_TIMEOUT
+            )
         return self._aclient
-        
+
     async def __aenter__(self) -> "JavelinClient":
         return self
 
@@ -59,9 +78,74 @@ class JavelinClient:
         if self._client:
             self._client.close()
 
+    def _send_request_sync(
+        self,
+        method: HttpMethod,
+        route_name: Optional[str] = "",
+        is_query: bool = False,
+        data: Optional[Dict[str, Any]] = None,
+    ) -> httpx.Response:
+        url = self._construct_url(route_name, query=is_query)
+        client = self.client
+
+        try:
+            if method == HttpMethod.GET:
+                response = client.get(url)
+            elif method == HttpMethod.POST:
+                response = client.post(url, json=data)
+            elif method == HttpMethod.PUT:
+                response = client.put(url, json=data)
+            elif method == HttpMethod.DELETE:
+                response = client.delete(url)
+            else:
+                raise ValueError(f"Unsupported HTTP method: {method}")
+
+            return response
+        except httpx.NetworkError as e:
+            raise NetworkError(message=str(e))
+
+    async def _send_request_async(
+        self,
+        method: HttpMethod,
+        route_name: Optional[str] = "",
+        is_query: bool = False,
+        data: Optional[Dict[str, Any]] = None,
+    ) -> httpx.Response:
+        url = self._construct_url(route_name, query=is_query)
+        aclient = self.aclient
+
+        try:
+            if method == HttpMethod.GET:
+                response = await aclient.get(url)
+            elif method == HttpMethod.POST:
+                response = await aclient.post(url, json=data)
+            elif method == HttpMethod.PUT:
+                response = await aclient.put(url, json=data)
+            elif method == HttpMethod.DELETE:
+                response = await aclient.delete(url)
+            else:
+                raise ValueError(f"Unsupported HTTP method: {method}")
+
+            return response
+        except httpx.NetworkError as e:
+            raise NetworkError(message=str(e))
+
+    def _process_response_ok(self, response: httpx.Response) -> str:
+        self._handle_response(response)
+        return response.text
+
+    def _process_response_json(self, response: httpx.Response) -> QueryResponse:
+        self._handle_response(response)
+        return QueryResponse(**response.json())
+    
+    def _process_response_route(self, response: httpx.Response) -> Route:
+        self._handle_response(response)
+        return Route(**response.json())
+
     def _handle_response(self, response: httpx.Response) -> None:
         """
-        Handle the API response by raising appropriate exceptions based on the response status code.
+        Handle the API response by raising appropriate exceptions based on the
+        response status code.
 
         :param response: The API response to handle.
         """
@@ -75,8 +159,10 @@ class JavelinClient:
             raise RateLimitExceededError(response)
         elif response.status_code != 200:
             raise InternalServerError(response)
-    
-    def _construct_url(self, route_name: Optional[str] = "", query: bool = False) -> str:
+
+    def _construct_url(
+        self, route_name: Optional[str] = "", query: bool = False
+    ) -> str:
         """
         Construct the complete URL for a given route name and action.
 
@@ -85,14 +171,14 @@ class JavelinClient:
         :return: Constructed URL.
         """
         url_parts = [self.base_url]
+        url_parts.append("routes")
         if route_name:
             url_parts.append(route_name)
         if query:
             url_parts.append("query")
         return "/".join(url_parts)
 
-
-    def get_route(self, route_name: str) -> Response:
+    def get_route(self, route_name: str) -> QueryResponse:
         """
         Retrieve details of a specific route.
 
@@ -100,16 +186,10 @@ class JavelinClient:
         :return: Response object containing route details.
         """
         self._validate_route_name(route_name)
-        url = self._construct_url(route_name)
+        response = self._send_request_sync(HttpMethod.GET, route_name)
+        return self._process_response_route(response)
 
-        try:
-            response = self.client.get(url)
-            self._handle_response(response)
-            return Response(**response.json())
-        except httpx.NetworkError as e:
-            raise NetworkError(str(e))
-
-    async def aget_route(self, route_name: str) -> Response:
+    async def aget_route(self, route_name: str) -> QueryResponse:
         """
         Asynchronously retrieve details of a specific route.
 
@@ -117,15 +197,9 @@ class JavelinClient:
         :return: Response object containing route details.
         """
         self._validate_route_name(route_name)
-        url = self._construct_url(route_name)
+        response = await self._send_request_async(HttpMethod.GET, route_name)
+        return self._process_response_route(response)
 
-        try:
-            response = await self.aclient.get(url)
-            self._handle_response(response)
-            return Response(**response.json())
-        except httpx.NetworkError as e:
-            raise NetworkError(str(e))
-        
     # create a route
     def create_route(self, route: Route) -> str:
         """
@@ -135,16 +209,11 @@ class JavelinClient:
         :return: Response text indicating the success status (e.g., "OK").
         """
         self._validate_route_name(route.name)
-        url = self._construct_url(route.name)
+        response = self._send_request_sync(
+            HttpMethod.POST, route.name, data=route.dict()
+        )
+        return self._process_response_ok(response)
 
-        try:    
-            response = self.client.post(url, json=route.json())
-        except httpx.NetworkError as e:
-            raise NetworkError(str(e))
-
-        self._handle_response(response)
-        return response.text
-    
     # async create a route
     async def acreate_route(self, route: Route) -> str:
         """
@@ -154,36 +223,26 @@ class JavelinClient:
         :return: Response text indicating the success status (e.g., "OK").
         """
         self._validate_route_name(route.name)
-        url = self._construct_url(route.name)
-
-        try:    
-            response = await self.aclient.post(url, json=route.json())
-        except httpx.NetworkError as e:
-            raise NetworkError(str(e))
-
-        self._handle_response(response)
-        return response.text
+        response = await self._send_request_async(
+            HttpMethod.POST, route.name, data=route.dict()
+        )
+        return self._process_response_ok(response)
 
     # update a route
-    def update_route(self, route_name: str, route: Route) -> str:
+    def update_route(self, route: Route) -> str:
         """
         Update an existing route.
 
         :param route_name: Name of the route to update.
         :param route: Route object containing updated route details.
         :return: Response text indicating the success status (e.g., "OK").
-        """    
-        self._validate_route_name(route_name)
-        url = self._construct_url(route_name)
+        """
+        self._validate_route_name(route.name)
+        response = self._send_request_sync(
+            HttpMethod.PUT, route.name, data=route.dict()
+        )
+        return self._process_response_ok(response)
 
-        try:
-            response = self.client.put(url, json=route.json())
-        except httpx.NetworkError as e:
-            raise NetworkError(str(e))
-
-        self._handle_response(response)
-        return response.text
-    
     # async update a route
     async def aupdate_route(self, route_name: str, route: Route) -> str:
         """
@@ -194,15 +253,10 @@ class JavelinClient:
         :return: Response text indicating the success status (e.g., "OK").
         """
         self._validate_route_name(route_name)
-        url = self._construct_url(route_name)
-
-        try:
-            response = await self.aclient.put(url, json=route.json())
-        except httpx.NetworkError as e:
-            raise NetworkError(str(e))
-
-        self._handle_response(response)
-        return response.text
+        response = await self._send_request_async(
+            HttpMethod.PUT, route_name, data=route.dict()
+        )
+        return self._process_response_ok(response)
 
     # list routes
     def list_routes(self) -> Routes:
@@ -211,19 +265,9 @@ class JavelinClient:
 
         :return: Routes object containing a list of all routes.
         """
-        url = f"{self.base_url}/"
+        response = self._send_request_sync(HttpMethod.GET, "")
+        return Routes(routes=response.json())
 
-        try:
-            response = self.client.get(url)
-        except httpx.NetworkError as e:
-            raise NetworkError(str(e))
-        
-        self._handle_response(response)
-        try:
-                return Routes(**response.json())
-        except ValidationError as e:
-            raise ValueError(f"Unable to parse response into Routes object: {str(e)}")
-    
     # async list routes
     async def alist_routes(self) -> Routes:
         """
@@ -231,22 +275,11 @@ class JavelinClient:
 
         :return: Routes object containing a list of all routes.
         """
-        url = f"{self.base_url}/"
-
-        try:
-            response = await self.aclient.get(url)
-        except httpx.NetworkError as e:
-            raise NetworkError(str(e))
-        
-        self._handle_response(response)
-
-        try:
-                return Routes(**response.json())
-        except ValidationError as e:
-            raise ValueError(f"Unable to parse response into Routes object: {str(e)}")
+        response = await self._send_request_async(HttpMethod.GET, "")
+        return Routes(routes=response.json())
 
     # query an LLM through a route
-    def query_route(self, route_name: str, query_body: QueryBody) -> Response:
+    def query_route(self, route_name: str, query_body: Dict[str, Any]) -> QueryResponse:
         """
         Query an LLM through a specific route.
 
@@ -255,20 +288,15 @@ class JavelinClient:
         :return: Response object containing query results.
         """
         self._validate_route_name(route_name)
-        url = self._construct_url(route_name, query=True)
+        response = self._send_request_sync(
+            HttpMethod.POST, route_name, is_query=True, data=query_body
+        )
+        return self._process_response_json(response)
 
-        try:
-            response = self.client.post(url, json=query_body.json())
-        except httpx.NetworkError as e:
-            raise NetworkError(str(e))
-
-        self._handle_response(response)
-        response_data = response.json()
-        return Response(**response_data)
-
-    
     # async query an LLM through a route
-    async def aquery_route(self, route_name: str, query_body: QueryBody) -> Response:
+    async def aquery_route(
+        self, route_name: str, query_body: Dict[str, Any]
+    ) -> QueryResponse:
         """
         Asynchronously query an LLM through a specific route.
 
@@ -277,16 +305,10 @@ class JavelinClient:
         :return: Response object containing query results.
         """
         self._validate_route_name(route_name)
-        url = self._construct_url(route_name, query=True)
-        
-        try:
-            response = await self.aclient.post(url,json=query_body.json())
-        except httpx.NetworkError as e:
-            raise NetworkError(str(e))
-        
-        self._handle_response(response)
-        response_data = response.json()
-        return Response(**response_data)
+        response = await self._send_request_async(
+            HttpMethod.POST, route_name, is_query=True, data=query_body
+        )
+        return self._process_response_json(response)
 
     # delete a route
     def delete_route(self, route_name: str) -> str:
@@ -297,16 +319,9 @@ class JavelinClient:
         :return: Response text indicating the success status (e.g., "OK").
         """
         self._validate_route_name(route_name)
-        url = self._construct_url(route_name)
+        response = self._send_request_sync(HttpMethod.DELETE, route_name)
+        return self._process_response_ok(response)
 
-        try:
-            response = self.client.delete(url)
-        except httpx.NetworkError as e:
-            raise NetworkError(str(e))
-
-        self._handle_response(response)
-        return response.text
-    
     # async delete a route
     async def adelete_route(self, route_name: str) -> str:
         """
@@ -316,16 +331,8 @@ class JavelinClient:
         :return: Response text indicating the success status (e.g., "OK").
         """
         self._validate_route_name(route_name)
-        url = self._construct_url(route_name)
-
-        try:
-            response = await self.aclient.delete(url)
-        except httpx.NetworkError as e:
-            raise NetworkError(str(e))
-
-        self._handle_response(response)
-        return response.text
-
+        response = await self._send_request_async(HttpMethod.DELETE, route_name)
+        return self._process_response_ok(response)
 
     @staticmethod
     def _validate_route_name(route_name: str):
