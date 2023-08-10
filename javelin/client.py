@@ -244,7 +244,7 @@ class JavelinClient:
         return self._process_response_ok(response)
 
     # async update a route
-    async def aupdate_route(self, route_name: str, route: Route) -> str:
+    async def aupdate_route(self, route: Route) -> str:
         """
         Asynchronously update an existing route.
 
@@ -252,9 +252,9 @@ class JavelinClient:
         :param route: Route object containing updated route details.
         :return: Response text indicating the success status (e.g., "OK").
         """
-        self._validate_route_name(route_name)
+        self._validate_route_name(route.name)
         response = await self._send_request_async(
-            HttpMethod.PUT, route_name, data=route.dict()
+            HttpMethod.PUT, route.name, data=route.dict()
         )
         return self._process_response_ok(response)
 

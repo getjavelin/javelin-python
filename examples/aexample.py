@@ -1,18 +1,16 @@
-import httpx
+import asyncio
+
 from javelin import (
     JavelinClient,
     Route,
     NetworkError,
     RouteNotFoundError,
     UnauthorizedError,
-    QueryResponse,
 )
 
 
-def main():
-    print("Javelin Example Code")
-    print("Starting the script...")
-
+async def main():
+    print("Javelin Asynchronous Example Code")
     '''
     Create a JavelinClient object. This object is used to interact
     with the Javelin API. The base_url parameter is the URL of the Javelin API. 
@@ -30,7 +28,7 @@ def main():
     '''
     print("Start clean (by deleting pre-existing routes): ", "test_route_1")
     try:
-        client.delete_route("test_route_1")
+        await client.adelete_route("test_route_1")
     except UnauthorizedError as e:
         print("Failed to delete route: Unauthorized")
     except NetworkError as e:
@@ -60,7 +58,7 @@ def main():
     route = Route.parse_obj(route_data)
     print("Creating route: ", route.name)
     try:
-        client.create_route(route)
+        await client.acreate_route(route)
     except UnauthorizedError as e:
         print("Failed to create route: Unauthorized")
     except NetworkError as e:
@@ -83,7 +81,7 @@ def main():
 
     print("Querying route: ", route.name)
     try:
-        response = client.query_route("test_route_1", query_data)
+        response = await client.aquery_route("test_route_1", query_data)
         print(response)
     except UnauthorizedError as e:
         print("Failed to query route: Unauthorized")
@@ -97,7 +95,7 @@ def main():
     '''
     print("Listing routes")
     try:
-        print(client.list_routes())
+        print(await client.alist_routes())
     except UnauthorizedError as e:
         print("Failed to list routes: Unauthorized")
     except NetworkError as e:
@@ -105,7 +103,7 @@ def main():
 
     print("Get Route: ", route.name)
     try:
-        print(client.get_route(route.name))
+        print(await client.aget_route(route.name))
     except UnauthorizedError as e:
         print("Failed to get route: Unauthorized")
     except NetworkError as e:
@@ -120,7 +118,7 @@ def main():
     print("Updating Route: ", route.name)
     try:
         route.config.retries = 5
-        client.update_route(route)
+        await client.aupdate_route(route)
     except UnauthorizedError as e:
         print("Failed to update route: Unauthorized")
     except NetworkError as e:
@@ -133,7 +131,7 @@ def main():
     '''
     print("Get Route: ", route.name)
     try:
-        print(client.get_route(route.name))
+        print(await client.aget_route(route.name))
     except UnauthorizedError as e:
         print("Failed to get route: Unauthorized")
     except NetworkError as e:
@@ -147,7 +145,7 @@ def main():
     '''
     print("Deleting Route: ", route.name)
     try:
-        client.delete_route(route.name)
+        await client.adelete_route(route.name)
     except UnauthorizedError as e:
         print("Failed to delete route: Unauthorized")
     except NetworkError as e:
@@ -157,4 +155,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
