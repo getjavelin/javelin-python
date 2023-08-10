@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
-
 class RouteConfig(BaseModel):
     rate_limit: Optional[int] = Field(optional=True, default=None)
     owner: Optional[str] = Field(optional=True, default=None)
@@ -10,27 +9,22 @@ class RouteConfig(BaseModel):
     retries: Optional[int] = Field(optional=True, default=0)
     budget: Optional[int] = Field(optional=True, default=0)
 
-
 class Model(BaseModel):
     name: str = Field(optional=False, default=None)
     provider: str = Field(optional=False, default=None)
     suffix: str = Field(optional=False, default=None)
-
 
 class Route(BaseModel):
     name: str = Field(optional=False, default=None)
     model: Model = Field(optional=False, default=None)
     config: RouteConfig = Field(optional=False, default=None)
 
-
 class Routes(BaseModel):
     routes: List[Route]
-
 
 class Message(BaseModel):
     role: str = Field(optional=False, default=None)
     content: str = Field(optional=False, default=None)
-
 
 class ResponseMetaData(BaseModel):
     route_name: str = Field(None, description="Name of the route")
@@ -44,7 +38,6 @@ class ResponseMetaData(BaseModel):
     throttled: Optional[bool] = Field(
         None, description="Request was throttled by gateway"
     )
-
 
 class QueryResponse(BaseModel):
     llm_response: Dict[str, Any]

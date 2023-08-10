@@ -17,13 +17,11 @@ from javelin.models import QueryResponse, Route, Routes
 API_BASE_PATH = "/api/v1"
 API_TIMEOUT = 10
 
-
 class HttpMethod(Enum):
     GET = auto()
     POST = auto()
     PUT = auto()
     DELETE = auto()
-
 
 class JavelinClient:
     def __init__(self, base_url: str, api_key: Optional[str] = None) -> None:
@@ -85,6 +83,25 @@ class JavelinClient:
         is_query: bool = False,
         data: Optional[Dict[str, Any]] = None,
     ) -> httpx.Response:
+        """
+        Send a request to the Javelin API.
+
+        :param method: HTTP method to use.
+        :param route_name: Name of the route to send the request to.
+        :param is_query: Whether the route is a query route.
+        :param data: Data to send with the request.
+        :return: Response from the Javelin API.
+
+        :raises ValueError: If an unsupported HTTP method is used.
+        :raises NetworkError: If a network error occurs.
+
+        :raises InternalServerError: If the Javelin API returns a 500 error.
+        :raises RateLimitExceededError: If the Javelin API returns a 429 error.
+        :raises RouteAlreadyExistsError: If the Javelin API returns a 409 error.
+        :raises RouteNotFoundError: If the Javelin API returns a 404 error.
+        :raises UnauthorizedError: If the Javelin API returns a 401 error.
+
+        """
         url = self._construct_url(route_name, query=is_query)
         client = self.client
 
@@ -111,6 +128,25 @@ class JavelinClient:
         is_query: bool = False,
         data: Optional[Dict[str, Any]] = None,
     ) -> httpx.Response:
+        """
+        Send a request asynchronously to the Javelin API.
+
+        :param method: HTTP method to use.
+        :param route_name: Name of the route to send the request to.
+        :param is_query: Whether the route is a query route.
+        :param data: Data to send with the request.
+        :return: Response from the Javelin API.
+
+        :raises ValueError: If an unsupported HTTP method is used.
+        :raises NetworkError: If a network error occurs.
+
+        :raises InternalServerError: If the Javelin API returns a 500 error.
+        :raises RateLimitExceededError: If the Javelin API returns a 429 error.
+        :raises RouteAlreadyExistsError: If the Javelin API returns a 409 error.
+        :raises RouteNotFoundError: If the Javelin API returns a 404 error.
+        :raises UnauthorizedError: If the Javelin API returns a 401 error.
+
+        """
         url = self._construct_url(route_name, query=is_query)
         aclient = self.aclient
 
@@ -131,14 +167,27 @@ class JavelinClient:
             raise NetworkError(message=str(e))
 
     def _process_response_ok(self, response: httpx.Response) -> str:
+        """
+        Process a successful response from the Javelin API.        
+        """
         self._handle_response(response)
         return response.text
 
     def _process_response_json(self, response: httpx.Response) -> QueryResponse:
+        """
+        Process a successful response from the Javelin API.
+        Parse body into a QueryResponse object and return it. 
+        This is for Query() requests.
+        """
         self._handle_response(response)
         return QueryResponse(**response.json())
     
     def _process_response_route(self, response: httpx.Response) -> Route:
+        """
+        Process a successful response from the Javelin API.
+        Parse body into a Route object and return it. 
+        This is for Get() requests.
+        """
         self._handle_response(response)
         return Route(**response.json())
 
