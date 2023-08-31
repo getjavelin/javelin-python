@@ -1,5 +1,8 @@
-Javelin: An enterprise-scale, fast LLM gateway and router
+## Javelin: an enterprise-scale, fast LLM gateway 
 
-For more information visit: https://getjavelin.io
+This is the Python client package for Javelin. 
 
+For more information about Javelin, see https://getjavelin.io
+
+Javelin Documentation: https://docs.getjavelin.io
 
