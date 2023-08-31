@@ -1,4 +1,4 @@
-from javelin import (
+from javelin_sdk import (
     JavelinClient,
     Route,
     NetworkError,
@@ -8,14 +8,16 @@ from javelin import (
 
 import json
 
+
 def pretty_print(obj):
     """
     Pretty-prints an object that has a JSON representation.
     """
     if hasattr(obj, "dict"):
         obj = obj.dict()
-    
+
     print(json.dumps(obj, indent=4))
+
 
 def main():
     print("Javelin Synchronous Example Code")

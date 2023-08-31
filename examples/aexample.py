@@ -1,7 +1,7 @@
 import asyncio
 import json
 
-from javelin import (
+from javelin_sdk import (
     JavelinClient,
     Route,
     NetworkError,
@@ -9,14 +9,16 @@ from javelin import (
     UnauthorizedError,
 )
 
+
 def pretty_print(obj):
     """
     Pretty-prints an object that has a JSON representation.
     """
     if hasattr(obj, "dict"):
         obj = obj.dict()
-    
+
     print(json.dumps(obj, indent=4))
+
 
 async def main():
     print("Javelin Asynchronous Example Code")

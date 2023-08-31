@@ -4,7 +4,7 @@ from urllib.parse import urljoin
 
 import httpx
 
-from javelin.exceptions import (
+from javelin_sdk.exceptions import (
     InternalServerError,
     NetworkError,
     RateLimitExceededError,
@@ -12,7 +12,7 @@ from javelin.exceptions import (
     RouteNotFoundError,
     UnauthorizedError,
 )
-from javelin.models import QueryResponse, Route, Routes
+from javelin_sdk.models import QueryResponse, Route, Routes
 
 API_BASE_PATH = "/api/v1"
 API_TIMEOUT = 10

@@ -3,8 +3,8 @@
 .vscode
 venv
 .venv
-mypy_cache
-.ruff_cache
+mypycacheInstance
+.ruffcacheInstance
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -56,7 +56,7 @@ coverage.xml
 *.cover
 *.py,cover
 .hypothesis/
-.pytest_cache/
+.pytestcacheInstance/
 cover/
 
 # Translations
@@ -147,7 +147,7 @@ venv.bak/
 /site
 
 # mypy
-.mypy_cache/
+.mypycacheInstance/
 .dmypy.json
 dmypy.json
 

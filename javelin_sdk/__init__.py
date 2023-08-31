@@ -1,5 +1,5 @@
-from javelin.client import JavelinClient
-from javelin.exceptions import (
+from javelin_sdk.client import JavelinClient
+from javelin_sdk.exceptions import (
     InternalServerError,
     NetworkError,
     RateLimitExceededError,
@@ -8,7 +8,7 @@ from javelin.exceptions import (
     UnauthorizedError,
     ValidationError,
 )
-from javelin.models import (
+from javelin_sdk.models import (
     QueryResponse,
     ResponseMetaData,
     Route,
