@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "javelin-sdk"
-version = "0.1.6"
+version = "0.1.7"
 description = "Python client for Javelin"
 authors = ["Sharath Rajasekar <sharath@getjavelin.io>"]
 readme = "README.md"
