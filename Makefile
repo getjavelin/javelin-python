@@ -13,9 +13,9 @@ format:
 	poetry run ruff --select I --fix .
 
 lint:
-	poetry run mypy --exclude tests javelin/
+	poetry run mypy --exclude tests javelin_sdk/
 	poetry run black . --check
-	poetry run ruff javelin/
+	poetry run ruff javelin_sdk/
 
 test:
 	poetry run pytest tests
