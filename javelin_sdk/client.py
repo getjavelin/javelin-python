@@ -11,6 +11,7 @@ from javelin_sdk.exceptions import (
     RouteAlreadyExistsError,
     RouteNotFoundError,
     UnauthorizedError,
+    BadRequest,
 )
 from javelin_sdk.models import QueryResponse, Route, Routes
 
@@ -201,6 +202,8 @@ class JavelinClient:
         :param response: The API response to handle.
         """
         if response.status_code == 400:
+            raise BadRequest(response)
+        elif response.status_code == 409:
             raise RouteAlreadyExistsError(response)
         elif response.status_code == 401:
             raise UnauthorizedError(response)
