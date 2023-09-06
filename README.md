@@ -20,7 +20,7 @@ Javelin Documentation: https://docs.getjavelin.io
     UnauthorizedError,
   )
 
-  # create a route
+  # create a route object
   query_data = {
         "model": "gpt-3.5-turbo",
         "messages": [
