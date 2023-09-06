@@ -1,4 +1,5 @@
 ## Javelin: an Enterprise-Scale, Fast LLM Gateway 
+[![Upload Python Package](https://github.com/getjavelin/javelin-python/actions/workflows/python-publish.yml/badge.svg?branch=main)](https://github.com/getjavelin/javelin-python/actions/workflows/python-publish.yml)
 
 This is the Python client package for Javelin. 
 
