@@ -62,6 +62,13 @@ class NetworkError(JavelinClientError):
         super().__init__(message=message, response=response)
 
 
+class BadRequest(JavelinClientError):
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Bad Request"
+    ) -> None:
+        super().__init__(message=message, response=response)
+
+
 class RouteNotFoundError(JavelinClientError):
     def __init__(
         self, response: Optional[Response] = None, message: str = "Route not found"

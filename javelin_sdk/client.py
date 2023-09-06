@@ -206,6 +206,8 @@ class JavelinClient:
             raise UnauthorizedError(response)
         elif response.status_code == 404:
             raise RouteNotFoundError(response)
+        elif response.status_code == 409:
+            raise RouteAlreadyExistsError(response)
         elif response.status_code == 429:
             raise RateLimitExceededError(response)
         elif response.status_code != 200:
