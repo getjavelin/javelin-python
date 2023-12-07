@@ -15,9 +15,8 @@ from javelin_sdk.exceptions import (
 )
 from javelin_sdk.models import QueryResponse, Route, Routes
 
-API_BASE_PATH = "/api/v1"
+API_BASE_PATH = "/v1"
 API_TIMEOUT = 10
-
 
 class HttpMethod(Enum):
     GET = auto()
@@ -25,9 +24,13 @@ class HttpMethod(Enum):
     PUT = auto()
     DELETE = auto()
 
-
 class JavelinClient:
-    def __init__(self, base_url: str, api_key: Optional[str] = None) -> None:
+    def __init__(self, 
+                 base_url: str, 
+                 javelin_api_key: str, 
+                 javelin_virtualapikey: Optional[str] = None,
+                 llm_api_key: Optional[str] = None, 
+                 ) -> None:
         """
         Initialize the JavelinClient.
 
@@ -35,8 +38,14 @@ class JavelinClient:
         :param api_key: API key for authorization (if required).
         """
         headers = {}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
+        if javelin_api_key:
+            headers["x-api-key"] = javelin_api_key
+
+        if javelin_virtualapikey:
+            headers["x-javelin-virtualapikey"] = javelin_virtualapikey
+
+        if llm_api_key:
+            headers["Authorization"] = f"Bearer {llm_api_key}"
 
         self.base_url = urljoin(base_url, API_BASE_PATH)
         self._headers = headers
@@ -227,11 +236,15 @@ class JavelinClient:
         :return: Constructed URL.
         """
         url_parts = [self.base_url]
-        url_parts.append("routes")
-        if route_name:
-            url_parts.append(route_name)
         if query:
             url_parts.append("query")
+        elif route_name:
+            url_parts.append("admin")
+            url_parts.append("routes")
+            url_parts.append(route_name)
+        else:
+            url_parts.append("admin")
+            url_parts.append("routes")
         return "/".join(url_parts)
 
     def get_route(self, route_name: str) -> Route:

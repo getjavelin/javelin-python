@@ -6,8 +6,13 @@ from javelin_sdk import (
     UnauthorizedError,
 )
 
+import os
 import json
 
+# Retrieve environment variables
+javelin_api_key = os.getenv('JAVELIN_API_KEY')
+javelin_virtualapikey = os.getenv('JAVELIN_VIRTUALAPIKEY')
+llm_api_key = os.getenv('LLM_API_KEY')
 
 def pretty_print(obj):
     """
@@ -23,11 +28,15 @@ def main():
     print("Javelin Synchronous Example Code")
     """
     Create a JavelinClient object. This object is used to interact
-    with the Javelin API. The base_url parameter is the URL of the Javelin API. 
-    This is usually http://localhost:8000 if you are running Javelin locally.
+    with the Javelin API. The base_url parameter is the URL of the Javelin API.
     """
     try:
-        client = JavelinClient(base_url="http://localhost:8000")
+        client = JavelinClient(
+            base_url='https://api.javelin.live',
+            javelin_api_key=javelin_api_key,
+            javelin_virtualapikey=javelin_virtualapikey,
+            llm_api_key=llm_api_key
+        )
     except NetworkError as e:
         print("Failed to create client: Network Error")
         return
@@ -53,16 +62,30 @@ def main():
     route_data = {
         "name": "test_route_1",
         "type": "chat",
-        "model": {
-            "name": "gpt-3.5-turbo",
-            "provider": "openai",
-            "suffix": "/chat/completions",
-        },
+        "enabled": True,
+        "models": [
+            {
+                "name": "gpt-3.5-turbo",
+                "provider": "openai",
+                "suffix": "/chat/completions",
+            }
+        ],
         "config": {
-            "archive": True,
             "organization": "myusers",
-            "retries": 3,
             "rate_limit": 7,
+            "retries": 3,
+            "archive": True,
+            "retention": 7,
+            "budget": {
+                "enabled": True,
+                "annual": 100000,
+                "currency": "USD",
+            },
+            "dlp": {
+                "enabled": True, 
+                "strategy": "Inspect", 
+                "action": "notify"
+            },
         },
     }
     route = Route.parse_obj(route_data)

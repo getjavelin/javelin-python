@@ -10,7 +10,6 @@ from javelin_sdk.exceptions import (
 )
 from javelin_sdk.models import (
     QueryResponse,
-    ResponseMetaData,
     Route,
     Routes,
 )
@@ -27,7 +26,6 @@ __all__ = [
     "Route",
     "Routes",
     "QueryBody",
-    "ResponseMetaData",
     "QueryResponse",
     "JavelinClient",
 ]
