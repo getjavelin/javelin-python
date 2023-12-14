@@ -18,11 +18,15 @@ def pretty_print(obj):
     """
     Pretty-prints an object that has a JSON representation.
     """
+    # If the object has a `dict` method, call it to get its dictionary representation.
     if hasattr(obj, "dict"):
         obj = obj.dict()
 
-    print(json.dumps(obj, indent=4))
-
+    # Use the `json` module to print the dictionary as a string.
+    try:
+        print(json.dumps(obj, indent=4))
+    except TypeError:
+        print(obj)
 
 def main():
     print("Javelin Synchronous Example Code")
@@ -90,12 +94,12 @@ def main():
     }
     route = Route.parse_obj(route_data)
     print("2. Creating route: ", route.name)
-    try:
-        client.create_route(route)
-    except UnauthorizedError as e:
-        print("Failed to create route: Unauthorized")
-    except NetworkError as e:
-        print("Failed to create route: Network Error")
+    # try:
+    #     client.create_route(route)
+    #except UnauthorizedError as e:
+    #    print("Failed to create route: Unauthorized")
+    #except NetworkError as e:
+    #    print("Failed to create route: Network Error")
 
     """
     Query the route. This is done by calling the query_route method of the JavelinClient
@@ -106,15 +110,14 @@ def main():
     query_data = {
         "model": "gpt-3.5-turbo",
         "messages": [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": "Hello!"},
+            {"role": "user", "content": "You are a helpful assistant. What is the capital of India"},
         ],
         "temperature": 0.8,
     }
 
-    print("3. Querying route: ", route.name)
+    print("3. Querying route: ", "myusers")
     try:
-        response = client.query_route("test_route_1", query_data)
+        response = client.query_route("myusers", query_data)
         pretty_print(response)
     except UnauthorizedError as e:
         print("Failed to query route: Unauthorized")
@@ -127,12 +130,12 @@ def main():
     List routes. This is done by calling the list_routes method of the JavelinClient object.
     """
     print("4. Listing routes")
-    try:
-        pretty_print(client.list_routes())
-    except UnauthorizedError as e:
-        print("Failed to list routes: Unauthorized")
-    except NetworkError as e:
-        print("Failed to list routes: Network Error")
+#    try:
+#        pretty_print(client.list_routes())
+#    except UnauthorizedError as e:
+#        print("Failed to list routes: Unauthorized")
+#    except NetworkError as e:
+#        print("Failed to list routes: Network Error")
 
     print("5. Get Route: ", route.name)
     try:
@@ -149,15 +152,15 @@ def main():
     object. The route object is passed as an argument.
     """
     print("6. Updating Route: ", route.name)
-    try:
-        route.config.retries = 5
-        client.update_route(route)
-    except UnauthorizedError as e:
-        print("Failed to update route: Unauthorized")
-    except NetworkError as e:
-        print("Failed to update route: Network Error")
-    except RouteNotFoundError as e:
-        print("Failed to update route: Route Not Found")
+#    try:
+#        route.config.retries = 5
+#       client.update_route(route)
+#    except UnauthorizedError as e:
+#        print("Failed to update route: Unauthorized")
+#    except NetworkError as e:
+#        print("Failed to update route: Network Error")
+#    except RouteNotFoundError as e:
+#        print("Failed to update route: Route Not Found")
 
     """
     Get the route. This is done by calling the get_route method of the JavelinClient object.
