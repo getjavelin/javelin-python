@@ -15,6 +15,7 @@ from javelin_sdk.exceptions import (
 )
 from javelin_sdk.models import QueryResponse, Route, Routes
 
+API_BASEURL = "https://api.javelin.cloud"
 API_BASE_PATH = "/v1"
 API_TIMEOUT = 10
 
@@ -26,8 +27,8 @@ class HttpMethod(Enum):
 
 class JavelinClient:
     def __init__(self, 
-                 base_url: str, 
                  javelin_api_key: str, 
+                 base_url: str = API_BASEURL, 
                  javelin_virtualapikey: Optional[str] = None,
                  llm_api_key: Optional[str] = None, 
                  ) -> None:
@@ -94,6 +95,7 @@ class JavelinClient:
         route_name: Optional[str] = "",
         is_query: bool = False,
         data: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,  
     ) -> httpx.Response:
         """
         Send a request to the Javelin API.
@@ -102,6 +104,7 @@ class JavelinClient:
         :param route_name: Name of the route to send the request to.
         :param is_query: Whether the route is a query route.
         :param data: Data to send with the request.
+        :param headers: Additional headers to send with the request.
         :return: Response from the Javelin API.
 
         :raises ValueError: If an unsupported HTTP method is used.
@@ -117,15 +120,20 @@ class JavelinClient:
         url = self._construct_url(route_name, query=is_query)
         client = self.client
 
+        # Merging additional headers with default headers
+        request_headers = {**self._headers, **(headers or {})}
+        if route_name:
+            request_headers["x-javelin-route"] = route_name
+
         try:
             if method == HttpMethod.GET:
-                response = client.get(url)
+                response = client.get(url, headers=request_headers)
             elif method == HttpMethod.POST:
-                response = client.post(url, json=data)
+                response = client.post(url, json=data, headers=request_headers)
             elif method == HttpMethod.PUT:
-                response = client.put(url, json=data)
+                response = client.put(url, json=data, headers=request_headers)
             elif method == HttpMethod.DELETE:
-                response = client.delete(url)
+                response = client.delete(url, headers=request_headers)
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
 
@@ -139,6 +147,7 @@ class JavelinClient:
         route_name: Optional[str] = "",
         is_query: bool = False,
         data: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
     ) -> httpx.Response:
         """
         Send a request asynchronously to the Javelin API.
@@ -147,6 +156,7 @@ class JavelinClient:
         :param route_name: Name of the route to send the request to.
         :param is_query: Whether the route is a query route.
         :param data: Data to send with the request.
+        :param headers: Additional headers to send with the request.
         :return: Response from the Javelin API.
 
         :raises ValueError: If an unsupported HTTP method is used.
@@ -161,16 +171,21 @@ class JavelinClient:
         """
         url = self._construct_url(route_name, query=is_query)
         aclient = self.aclient
+        
+        # Merging additional headers with default headers
+        request_headers = {**self._headers, **(headers or {})}
+        if route_name:
+            request_headers["x-javelin-route"] = route_name        
 
         try:
             if method == HttpMethod.GET:
-                response = await aclient.get(url)
+                response = await aclient.get(url, headers=request_headers)
             elif method == HttpMethod.POST:
-                response = await aclient.post(url, json=data)
+                response = await aclient.post(url, json=data, headers=request_headers)
             elif method == HttpMethod.PUT:
-                response = await aclient.put(url, json=data)
+                response = await aclient.put(url, json=data, headers=request_headers)
             elif method == HttpMethod.DELETE:
-                response = await aclient.delete(url)
+                response = await aclient.delete(url, headers=request_headers)
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
 
@@ -238,6 +253,7 @@ class JavelinClient:
         url_parts = [self.base_url]
         if query:
             url_parts.append("query")
+            url_parts.append(route_name)
         elif route_name:
             url_parts.append("admin")
             url_parts.append("routes")
