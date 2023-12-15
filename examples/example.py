@@ -10,9 +10,8 @@ import os
 import json
 
 # Retrieve environment variables
-javelin_api_key = os.getenv('JAVELIN_API_KEY')
-javelin_virtualapikey = os.getenv('JAVELIN_VIRTUALAPIKEY')
-llm_api_key = os.getenv('LLM_API_KEY')
+javelin_api_key = os.getenv("JAVELIN_API_KEY")
+javelin_virtualapikey = os.getenv("JAVELIN_VIRTUALAPIKEY")
 
 def pretty_print(obj):
     """
@@ -28,6 +27,7 @@ def pretty_print(obj):
     except TypeError:
         print(obj)
 
+
 def main():
     print("Javelin Synchronous Example Code")
     """
@@ -36,13 +36,14 @@ def main():
     """
     try:
         client = JavelinClient(
-            base_url='https://api.javelin.live',
             javelin_api_key=javelin_api_key,
             javelin_virtualapikey=javelin_virtualapikey,
-            llm_api_key=llm_api_key
         )
     except NetworkError as e:
-        print("Failed to create client: Network Error")
+        print(e.message)
+        return
+    except UnauthorizedError as e:
+        print(e.message)
         return
 
     """
@@ -52,12 +53,8 @@ def main():
     print("1. Start clean (by deleting pre-existing routes): ", "test_route_1")
     try:
         client.delete_route("test_route_1")
-    except UnauthorizedError as e:
-        print("Failed to delete route: Unauthorized")
-    except NetworkError as e:
-        print("Failed to delete route: Network Error")
     except RouteNotFoundError as e:
-        print("Failed to delete route: Route Not Found")
+        print(e.message)
 
     """
     Create a route. This is done by creating a Route object and passing it to the
@@ -85,20 +82,16 @@ def main():
                 "annual": 100000,
                 "currency": "USD",
             },
-            "dlp": {
-                "enabled": True, 
-                "strategy": "Inspect", 
-                "action": "notify"
-            },
+            "dlp": {"enabled": True, "strategy": "Inspect", "action": "notify"},
         },
     }
     route = Route.parse_obj(route_data)
     print("2. Creating route: ", route.name)
     # try:
     #     client.create_route(route)
-    #except UnauthorizedError as e:
+    # except UnauthorizedError as e:
     #    print("Failed to create route: Unauthorized")
-    #except NetworkError as e:
+    # except NetworkError as e:
     #    print("Failed to create route: Network Error")
 
     """
@@ -110,7 +103,10 @@ def main():
     query_data = {
         "model": "gpt-3.5-turbo",
         "messages": [
-            {"role": "user", "content": "You are a helpful assistant. What is the capital of India"},
+            {
+                "role": "user",
+                "content": "You are a helpful assistant. What is the capital of India",
+            },
         ],
         "temperature": 0.8,
     }
@@ -120,47 +116,40 @@ def main():
         response = client.query_route("myusers", query_data)
         pretty_print(response)
     except UnauthorizedError as e:
-        print("Failed to query route: Unauthorized")
-    except NetworkError as e:
-        print("Failed to query route: Network Error")
-    except RouteNotFoundError as e:
-        print("Failed to query route: Route Not Found")
+        print("Failed to query route: Unauthorized"+e.message)
+    
 
     """
     List routes. This is done by calling the list_routes method of the JavelinClient object.
     """
     print("4. Listing routes")
-#    try:
-#        pretty_print(client.list_routes())
-#    except UnauthorizedError as e:
-#        print("Failed to list routes: Unauthorized")
-#    except NetworkError as e:
-#        print("Failed to list routes: Network Error")
+    #    try:
+    #        pretty_print(client.list_routes())
+    #    except UnauthorizedError as e:
+    #        print("Failed to list routes: Unauthorized")
+    #    except NetworkError as e:
+    #        print("Failed to list routes: Network Error")
 
     print("5. Get Route: ", route.name)
     try:
         pretty_print(client.get_route(route.name))
-    except UnauthorizedError as e:
-        print("Failed to get route: Unauthorized")
-    except NetworkError as e:
-        print("Failed to get route: Network Error")
     except RouteNotFoundError as e:
-        print("Failed to get route: Route Not Found")
+        print(e.message)
 
     """
     Update the route. This is done by calling the update_route method of the JavelinClient
     object. The route object is passed as an argument.
     """
     print("6. Updating Route: ", route.name)
-#    try:
-#        route.config.retries = 5
-#       client.update_route(route)
-#    except UnauthorizedError as e:
-#        print("Failed to update route: Unauthorized")
-#    except NetworkError as e:
-#        print("Failed to update route: Network Error")
-#    except RouteNotFoundError as e:
-#        print("Failed to update route: Route Not Found")
+    #    try:
+    #        route.config.retries = 5
+    #       client.update_route(route)
+    #    except UnauthorizedError as e:
+    #        print("Failed to update route: Unauthorized")
+    #    except NetworkError as e:
+    #        print("Failed to update route: Network Error")
+    #    except RouteNotFoundError as e:
+    #        print("Failed to update route: Route Not Found")
 
     """
     Get the route. This is done by calling the get_route method of the JavelinClient object.
@@ -168,12 +157,8 @@ def main():
     print("7. Get Route: ", route.name)
     try:
         pretty_print(client.get_route(route.name))
-    except UnauthorizedError as e:
-        print("Failed to get route: Unauthorized")
-    except NetworkError as e:
-        print("Failed to get route: Network Error")
     except RouteNotFoundError as e:
-        print("Failed to get route: Route Not Found")
+        print(e.message)
 
     """
     Delete the route. This is done by calling the delete_route method of the JavelinClient
@@ -182,12 +167,8 @@ def main():
     print("8. Deleting Route: ", route.name)
     try:
         client.delete_route(route.name)
-    except UnauthorizedError as e:
-        print("Failed to delete route: Unauthorized")
-    except NetworkError as e:
-        print("Failed to delete route: Network Error")
     except RouteNotFoundError as e:
-        print("Failed to delete route: Route Not Found")
+        print(e.message)
 
 
 if __name__ == "__main__":

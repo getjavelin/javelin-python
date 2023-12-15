@@ -15,9 +15,20 @@ from javelin_sdk.exceptions import (
 )
 from javelin_sdk.models import QueryResponse, Route, Routes
 
-API_BASEURL = "https://api.javelin.cloud"
+API_BASEURL = "https://api.javelin.live"
 API_BASE_PATH = "/v1"
 API_TIMEOUT = 10
+
+def log_request(request):
+    print(f"Request URL: {request.url}")
+    print(f"Request Method: {request.method}")
+    print(f"Request Headers: {request.headers}")
+    if request.content:
+        print(f"Request Body: {request.content.decode()}")
+
+def log_response(response):
+    print(f"Response Status Code: {response.status_code}")
+    print(f"Response Headers: {response.headers}")
 
 class HttpMethod(Enum):
     GET = auto()
@@ -25,13 +36,15 @@ class HttpMethod(Enum):
     PUT = auto()
     DELETE = auto()
 
+
 class JavelinClient:
-    def __init__(self, 
-                 javelin_api_key: str, 
-                 base_url: str = API_BASEURL, 
-                 javelin_virtualapikey: Optional[str] = None,
-                 llm_api_key: Optional[str] = None, 
-                 ) -> None:
+    def __init__(
+        self,
+        javelin_api_key: str,
+        base_url: str = API_BASEURL,
+        javelin_virtualapikey: Optional[str] = None,
+        llm_api_key: Optional[str] = None,
+    ) -> None:
         """
         Initialize the JavelinClient.
 
@@ -39,8 +52,12 @@ class JavelinClient:
         :param api_key: API key for authorization (if required).
         """
         headers = {}
-        if javelin_api_key:
-            headers["x-api-key"] = javelin_api_key
+        if not javelin_api_key:
+            raise UnauthorizedError("Please provide a valid Javelin API Key. "+
+                                    "When you sign into Javelin, you can find your API Key in the "+
+                                    "Account->Developer settings")
+
+        headers["x-api-key"] = javelin_api_key
 
         if javelin_virtualapikey:
             headers["x-javelin-virtualapikey"] = javelin_virtualapikey
@@ -57,7 +74,8 @@ class JavelinClient:
     def client(self):
         if self._client is None:
             self._client = httpx.Client(
-                base_url=self.base_url, headers=self._headers, timeout=API_TIMEOUT
+#                base_url=self.base_url, headers=self._headers, timeout=API_TIMEOUT
+                event_hooks={"request": [log_request], "response": [log_response]}, base_url=self.base_url, headers=self._headers, timeout=API_TIMEOUT
             )
         return self._client
 
@@ -95,7 +113,7 @@ class JavelinClient:
         route_name: Optional[str] = "",
         is_query: bool = False,
         data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,  
+        headers: Optional[Dict[str, str]] = None,
     ) -> httpx.Response:
         """
         Send a request to the Javelin API.
@@ -122,7 +140,7 @@ class JavelinClient:
 
         # Merging additional headers with default headers
         request_headers = {**self._headers, **(headers or {})}
-        if route_name:
+        if is_query and route_name:
             request_headers["x-javelin-route"] = route_name
 
         try:
@@ -171,11 +189,11 @@ class JavelinClient:
         """
         url = self._construct_url(route_name, query=is_query)
         aclient = self.aclient
-        
+
         # Merging additional headers with default headers
         request_headers = {**self._headers, **(headers or {})}
-        if route_name:
-            request_headers["x-javelin-route"] = route_name        
+        if is_query and route_name:
+            request_headers["x-javelin-route"] = route_name
 
         try:
             if method == HttpMethod.GET:
@@ -226,19 +244,21 @@ class JavelinClient:
         :param response: The API response to handle.
         """
         if response.status_code == 400:
-            raise BadRequest(response)
+            raise BadRequest(response=response)
         elif response.status_code == 409:
-            raise RouteAlreadyExistsError(response)
+            raise RouteAlreadyExistsError(response=response)
         elif response.status_code == 401:
-            raise UnauthorizedError(response)
+            raise UnauthorizedError(response=response)
+        elif response.status_code == 403:
+            raise UnauthorizedError(response=response)   
         elif response.status_code == 404:
-            raise RouteNotFoundError(response)
+            raise RouteNotFoundError(response=response)
         elif response.status_code == 409:
-            raise RouteAlreadyExistsError(response)
+            raise RouteAlreadyExistsError(response=response)
         elif response.status_code == 429:
-            raise RateLimitExceededError(response)
+            raise RateLimitExceededError(response=response)
         elif response.status_code != 200:
-            raise InternalServerError(response)
+            raise InternalServerError(response=response)
 
     def _construct_url(
         self, route_name: Optional[str] = "", query: bool = False
@@ -253,7 +273,8 @@ class JavelinClient:
         url_parts = [self.base_url]
         if query:
             url_parts.append("query")
-            url_parts.append(route_name)
+            if route_name is not None:  # Check if route_name is not None
+                url_parts.append(route_name)
         elif route_name:
             url_parts.append("admin")
             url_parts.append("routes")
@@ -364,34 +385,44 @@ class JavelinClient:
         return Routes(routes=response.json())
 
     # query an LLM through a route
-    def query_route(self, route_name: str, query_body: Dict[str, Any]) -> QueryResponse:
+    def query_route(
+        self,
+        route_name: str,
+        query_body: Dict[str, Any],
+        headers: Optional[Dict[str, str]] = None,
+    ) -> QueryResponse:
         """
         Query an LLM through a specific route.
 
         :param route_name: Name of the route to query.
         :param query_body: QueryBody object containing the query details.
+        :param headers: Additional headers to send with the request.
         :return: Response object containing query results.
         """
         self._validate_route_name(route_name)
         response = self._send_request_sync(
-            HttpMethod.POST, route_name, is_query=True, data=query_body
+            HttpMethod.POST, route_name, is_query=True, data=query_body, headers=headers
         )
         return self._process_response_json(response)
 
     # async query an LLM through a route
     async def aquery_route(
-        self, route_name: str, query_body: Dict[str, Any]
+        self,
+        route_name: str,
+        query_body: Dict[str, Any],
+        headers: Optional[Dict[str, str]] = None,
     ) -> QueryResponse:
         """
         Asynchronously query an LLM through a specific route.
 
         :param route_name: Name of the route to query.
         :param query_body: QueryBody object containing the query details.
+        :param headers: Additional headers to send with the request.
         :return: Response object containing query results.
         """
         self._validate_route_name(route_name)
         response = await self._send_request_async(
-            HttpMethod.POST, route_name, is_query=True, data=query_body
+            HttpMethod.POST, route_name, is_query=True, data=query_body, headers=headers
         )
         return self._process_response_json(response)
 

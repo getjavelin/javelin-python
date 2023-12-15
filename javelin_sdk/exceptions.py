@@ -44,13 +44,15 @@ class JavelinClientError(Exception):
             A dictionary containing details about the response, or None
             if response is None.
         """
-        if response is not None:
+        if response is None:
+            return {"status_code": None, "response_text": "No response data available"}
+        else:
+            # Extract and customize the response data specifically for validation errors
             return {
                 "status_code": response.status_code,
-                "response_text": response.text,
+                "response_text": response.text or "The provided data did not pass validation checks.",
             }
-        return None
-
+        
     def __str__(self):
         return f"{self.message}: {self.response_data}"
 
@@ -108,10 +110,9 @@ class MethodNotAllowedError(JavelinClientError):
 
 class UnauthorizedError(JavelinClientError):
     def __init__(
-        self, response: Optional[Response] = None, message: str = "Forbidden"
+        self, message: str = "Forbidden", response: Optional[Response] = None
     ) -> None:
         super().__init__(message=message, response=response)
-
 
 class ValidationError(JavelinClientError):
     def __init__(

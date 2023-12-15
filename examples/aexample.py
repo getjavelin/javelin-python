@@ -11,9 +11,10 @@ import os
 import json
 
 # Retrieve environment variables
-javelin_api_key = os.getenv('JAVELIN_API_KEY')
-javelin_virtualapikey = os.getenv('JAVELIN_VIRTUALAPIKEY')
-llm_api_key = os.getenv('LLM_API_KEY')
+javelin_api_key = os.getenv("JAVELIN_API_KEY")
+javelin_virtualapikey = os.getenv("JAVELIN_VIRTUALAPIKEY")
+llm_api_key = os.getenv("LLM_API_KEY")
+
 
 def pretty_print(obj):
     """
@@ -31,13 +32,13 @@ async def main():
     Create a JavelinClient object. This object is used to interact
     with the Javelin API. The base_url parameter is the URL of the Javelin API.
     """
-    
+
     try:
         client = JavelinClient(
-            base_url='https://api.javelin.live',
+            base_url="https://api.javelin.live",
             javelin_api_key=javelin_api_key,
             javelin_virtualapikey=javelin_virtualapikey,
-            llm_api_key=llm_api_key
+            llm_api_key=llm_api_key,
         )
     except NetworkError as e:
         print("Failed to create client: Network Error")
@@ -83,11 +84,7 @@ async def main():
                 "annual": 100000,
                 "currency": "USD",
             },
-            "dlp": {
-                "enabled": True, 
-                "strategy": "Inspect", 
-                "action": "notify"
-            },
+            "dlp": {"enabled": True, "strategy": "Inspect", "action": "notify"},
         },
     }
     route = Route.parse_obj(route_data)
@@ -187,6 +184,7 @@ async def main():
         print("Failed to delete route: Network Error")
     except RouteNotFoundError as e:
         print("Failed to delete route: Route Not Found")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
