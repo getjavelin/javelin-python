@@ -50,9 +50,10 @@ class JavelinClientError(Exception):
             # Extract and customize the response data specifically for validation errors
             return {
                 "status_code": response.status_code,
-                "response_text": response.text or "The provided data did not pass validation checks.",
+                "response_text": response.text
+                or "The provided data did not pass validation checks.",
             }
-        
+
     def __str__(self):
         return f"{self.message}: {self.response_data}"
 
@@ -94,9 +95,7 @@ class RouteAlreadyExistsError(JavelinClientError):
 
 class InternalServerError(JavelinClientError):
     def __init__(
-        self,
-        response: Optional[Response] = None,
-        message: str = "Internal server error",
+        self, response: Optional[Response] = None, message: str = "Internal server error",
     ) -> None:
         super().__init__(message=message, response=response)
 
@@ -110,9 +109,10 @@ class MethodNotAllowedError(JavelinClientError):
 
 class UnauthorizedError(JavelinClientError):
     def __init__(
-        self, message: str = "Forbidden", response: Optional[Response] = None
+        self, response: Optional[Response] = None, message: str = "Invalid API key"
     ) -> None:
         super().__init__(message=message, response=response)
+
 
 class ValidationError(JavelinClientError):
     def __init__(

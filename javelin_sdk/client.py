@@ -19,6 +19,7 @@ API_BASEURL = "https://api.javelin.live"
 API_BASE_PATH = "/v1"
 API_TIMEOUT = 10
 
+
 def log_request(request):
     print(f"Request URL: {request.url}")
     print(f"Request Method: {request.method}")
@@ -26,9 +27,16 @@ def log_request(request):
     if request.content:
         print(f"Request Body: {request.content.decode()}")
 
+
 def log_response(response):
+    # Ensure the response content is read for streaming responses
+    if hasattr(response, 'is_stream_consumed') and not response.is_stream_consumed:
+        response.read()
+
     print(f"Response Status Code: {response.status_code}")
     print(f"Response Headers: {response.headers}")
+    if response.content:
+        print(f"Response Body: {response.content.decode()}")
 
 class HttpMethod(Enum):
     GET = auto()
@@ -53,9 +61,11 @@ class JavelinClient:
         """
         headers = {}
         if not javelin_api_key:
-            raise UnauthorizedError("Please provide a valid Javelin API Key. "+
-                                    "When you sign into Javelin, you can find your API Key in the "+
-                                    "Account->Developer settings")
+            raise UnauthorizedError(
+                "Please provide a valid Javelin API Key. "
+                + "When you sign into Javelin, you can find your API Key in the "
+                + "Account->Developer settings"
+            )
 
         headers["x-api-key"] = javelin_api_key
 
@@ -74,8 +84,11 @@ class JavelinClient:
     def client(self):
         if self._client is None:
             self._client = httpx.Client(
-#                base_url=self.base_url, headers=self._headers, timeout=API_TIMEOUT
-                event_hooks={"request": [log_request], "response": [log_response]}, base_url=self.base_url, headers=self._headers, timeout=API_TIMEOUT
+                #               base_url=self.base_url, headers=self._headers, timeout=API_TIMEOUT,
+                # event_hooks={"request": [log_request], "response": [log_response]},
+                base_url=self.base_url,
+                headers=self._headers,
+                timeout=API_TIMEOUT,
             )
         return self._client
 
@@ -250,7 +263,7 @@ class JavelinClient:
         elif response.status_code == 401:
             raise UnauthorizedError(response=response)
         elif response.status_code == 403:
-            raise UnauthorizedError(response=response)   
+            raise UnauthorizedError(response=response)
         elif response.status_code == 404:
             raise RouteNotFoundError(response=response)
         elif response.status_code == 409:

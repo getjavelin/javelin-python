@@ -12,6 +12,8 @@ import json
 # Retrieve environment variables
 javelin_api_key = os.getenv("JAVELIN_API_KEY")
 javelin_virtualapikey = os.getenv("JAVELIN_VIRTUALAPIKEY")
+llm_api_key = os.getenv("LLM_API_KEY")
+
 
 def pretty_print(obj):
     """
@@ -38,12 +40,13 @@ def main():
         client = JavelinClient(
             javelin_api_key=javelin_api_key,
             javelin_virtualapikey=javelin_virtualapikey,
+            llm_api_key=llm_api_key,
         )
     except NetworkError as e:
-        print(e.message)
+        print(e.message, e.response_data)
         return
     except UnauthorizedError as e:
-        print(e.message)
+        print(e.message, e.response_data)
         return
 
     """
@@ -54,7 +57,7 @@ def main():
     try:
         client.delete_route("test_route_1")
     except RouteNotFoundError as e:
-        print(e.message)
+        print(e.message, e.response_data)
 
     """
     Create a route. This is done by creating a Route object and passing it to the
@@ -116,8 +119,7 @@ def main():
         response = client.query_route("myusers", query_data)
         pretty_print(response)
     except UnauthorizedError as e:
-        print("Failed to query route: Unauthorized"+e.message)
-    
+        print("Failed to query route: Unauthorized" + e.message, e.response_data)
 
     """
     List routes. This is done by calling the list_routes method of the JavelinClient object.
@@ -134,7 +136,7 @@ def main():
     try:
         pretty_print(client.get_route(route.name))
     except RouteNotFoundError as e:
-        print(e.message)
+        print(e.message, e.response_data)
 
     """
     Update the route. This is done by calling the update_route method of the JavelinClient
@@ -158,7 +160,7 @@ def main():
     try:
         pretty_print(client.get_route(route.name))
     except RouteNotFoundError as e:
-        print(e.message)
+        print(e.message, e.response_data)
 
     """
     Delete the route. This is done by calling the delete_route method of the JavelinClient
@@ -168,7 +170,7 @@ def main():
     try:
         client.delete_route(route.name)
     except RouteNotFoundError as e:
-        print(e.message)
+        print(e.message, e.response_data)
 
 
 if __name__ == "__main__":
