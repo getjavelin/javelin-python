@@ -109,7 +109,7 @@ class MethodNotAllowedError(JavelinClientError):
 
 class UnauthorizedError(JavelinClientError):
     def __init__(
-        self, response: Optional[Response] = None, message: str = "Invalid API key"
+        self, response: Optional[Response] = None, message: str = "Access denied"
     ) -> None:
         super().__init__(message=message, response=response)
 
