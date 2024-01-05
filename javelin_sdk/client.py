@@ -60,8 +60,9 @@ class JavelinClient:
         :param api_key: API key for authorization (if required).
         """
         headers = {}
-        if not javelin_api_key:
+        if not javelin_api_key or javelin_api_key == "":
             raise UnauthorizedError(
+                response=None, message=
                 "Please provide a valid Javelin API Key. "
                 + "When you sign into Javelin, you can find your API Key in the "
                 + "Account->Developer settings"
