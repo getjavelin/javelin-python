@@ -57,34 +57,11 @@ class JavelinClientError(Exception):
     def __str__(self):
         return f"{self.message}: {self.response_data}"
 
-
-class NetworkError(JavelinClientError):
-    def __init__(
-        self, response: Optional[Response] = None, message: str = "Connection error"
-    ) -> None:
-        super().__init__(message=message, response=response)
-
-
-class BadRequest(JavelinClientError):
-    def __init__(
-        self, response: Optional[Response] = None, message: str = "Bad Request"
-    ) -> None:
-        super().__init__(message=message, response=response)
-
-
 class RouteNotFoundError(JavelinClientError):
     def __init__(
         self, response: Optional[Response] = None, message: str = "Route not found"
     ) -> None:
         super().__init__(message=message, response=response)
-
-
-class RateLimitExceededError(JavelinClientError):
-    def __init__(
-        self, response: Optional[Response] = None, message: str = "Rate limit exceeded"
-    ) -> None:
-        super().__init__(message=message, response=response)
-
 
 class RouteAlreadyExistsError(JavelinClientError):
     def __init__(
@@ -92,6 +69,59 @@ class RouteAlreadyExistsError(JavelinClientError):
     ) -> None:
         super().__init__(message=message, response=response)
 
+class ProviderNotFoundError(JavelinClientError):
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Provider not found"
+    ) -> None:
+        super().__init__(message=message, response=response)
+
+class ProviderAlreadyExistsError(JavelinClientError):
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Provider already exists"
+    ) -> None:
+        super().__init__(message=message, response=response)
+
+class TemplateNotFoundError(JavelinClientError):
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Template not found"
+    ) -> None:
+        super().__init__(message=message, response=response)
+
+class TemplateAlreadyExistsError(JavelinClientError):
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Template already exists"
+    ) -> None:
+        super().__init__(message=message, response=response)
+
+class SecretNotFoundError(JavelinClientError):
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Secret not found"
+    ) -> None:
+        super().__init__(message=message, response=response)
+
+class SecretAlreadyExistsError(JavelinClientError):
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Secret already exists"
+    ) -> None:
+        super().__init__(message=message, response=response)
+
+class NetworkError(JavelinClientError):
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Connection error"
+    ) -> None:
+        super().__init__(message=message, response=response)
+
+class BadRequest(JavelinClientError):
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Bad Request"
+    ) -> None:
+        super().__init__(message=message, response=response)
+
+class RateLimitExceededError(JavelinClientError):
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Rate limit exceeded"
+    ) -> None:
+        super().__init__(message=message, response=response)
 
 class InternalServerError(JavelinClientError):
     def __init__(
@@ -99,13 +129,11 @@ class InternalServerError(JavelinClientError):
     ) -> None:
         super().__init__(message=message, response=response)
 
-
 class MethodNotAllowedError(JavelinClientError):
     def __init__(
         self, response: Optional[Response] = None, message: str = "Method not allowed"
     ) -> None:
         super().__init__(message=message, response=response)
-
 
 class UnauthorizedError(JavelinClientError):
     def __init__(
@@ -113,9 +141,9 @@ class UnauthorizedError(JavelinClientError):
     ) -> None:
         super().__init__(message=message, response=response)
 
-
 class ValidationError(JavelinClientError):
     def __init__(
         self, response: Optional[Response] = None, message: str = "Validation error"
     ) -> None:
         super().__init__(message=message, response=response)
+
