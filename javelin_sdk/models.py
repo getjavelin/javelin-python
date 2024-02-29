@@ -3,9 +3,7 @@ from pydantic import BaseModel, Field
 
 
 class Budget(BaseModel):
-    enabled: Optional[bool] = Field(
-        default=None, description="Whether the budget feature is enabled"
-    )
+    enabled: Optional[bool] = Field(default=None, description="Whether the budget feature is enabled")
     annual: Optional[int] = Field(default=None, description="Annual budget limit")
     monthly: Optional[int] = Field(default=None, description="Monthly budget limit")
     weekly: Optional[int] = Field(default=None, description="Weekly budget limit")
@@ -17,19 +15,11 @@ class Dlp(BaseModel):
     action: Optional[str] = Field(default=None, description="DLP action to take")
 
 class RouteConfig(BaseModel):
-    organization: Optional[str] = Field(
-        default=None, description="Name of the organization"
-    )
+    organization: Optional[str] = Field(default=None, description="Name of the organization")
     owner: Optional[str] = Field(default=None, description="Owner of the route")
-    rate_limit: Optional[int] = Field(
-        default=None, description="Rate limit for the route"
-    )
-    retries: Optional[int] = Field(
-        default=None, description="Number of retries for the route"
-    )
-    archive: Optional[bool] = Field(
-        default=None, description="Whether archiving is enabled"
-    )
+    rate_limit: Optional[int] = Field(default=None, description="Rate limit for the route")
+    retries: Optional[int] = Field(default=None, description="Number of retries for the route")
+    archive: Optional[bool] = Field(default=None, description="Whether archiving is enabled")
     retention: Optional[int] = Field(default=None, description="Data retention period")
     budget: Optional[Budget] = Field(default=None, description="Budget configuration")
     dlp: Optional[Dlp] = Field(default=None, description="DLP configuration")
@@ -42,10 +32,8 @@ class Model(BaseModel):
 
 class Route(BaseModel):
     name: str = Field(default=None, description="Name of the route")
-    type: str = Field(default=None, description="Type of the route")
-    enabled: Optional[bool] = Field(
-        default=True, description="Whether the route is enabled"
-    )
+    type: str = Field(default=None, description="Type of the route chat, completion, etc")
+    enabled: Optional[bool] = Field(default=True, description="Whether the route is enabled")
     models: List[Model] = Field(default=[], description="List of models for the route")
     config: RouteConfig = Field(default=None, description="Configuration for the route")
 
@@ -54,28 +42,16 @@ class Routes(BaseModel):
 
 class ProviderConfig(BaseModel):
     api_base: str = Field(default=None, description="Base URL of the API")
-    api_type: Optional[str] = Field(
-        default=None, description="Type of the API"
-    )
-    api_version: Optional[str] = Field(
-        default=None, description="Version of the API"
-    )
-    deployment_name: Optional[str] = Field(
-        default=None, description="Name of the deployment"
-    )
-    organization: Optional[str] = Field(
-        default=None, description="Name of the organization"
-    )
+    api_type: Optional[str] = Field(default=None, description="Type of the API")
+    api_version: Optional[str] = Field(default=None, description="Version of the API")
+    deployment_name: Optional[str] = Field(default=None, description="Name of the deployment")
+    organization: Optional[str] = Field(default=None, description="Name of the organization")
     
 class Provider(BaseModel):
     name: str = Field(default=None, description="Name of the Provider")
     type: str = Field(default=None, description="Type of the Provider")
-    enabled: Optional[bool] = Field(
-        default=True, description="Whether the provider is enabled"
-    )
-    vault_enabled: Optional[bool] = Field(
-        default=True, description="Whether the secrets vault is enabled"
-    )
+    enabled: Optional[bool] = Field(default=True, description="Whether the provider is enabled")
+    vault_enabled: Optional[bool] = Field(default=True, description="Whether the secrets vault is enabled")
     config: ProviderConfig = Field(default=None, description="Configuration for the provider")
 
 class Providers(BaseModel):
@@ -130,9 +106,7 @@ class Message(BaseModel):
     role: str = Field(..., description="Role in the message")
 
 class Usage(BaseModel):
-    completion_tokens: int = Field(
-        ..., description="Number of tokens used in the completion"
-    )
+    completion_tokens: int = Field(..., description="Number of tokens used in the completion")
     prompt_tokens: int = Field(..., description="Number of tokens used in the prompt")
     total_tokens: int = Field(..., description="Total number of tokens used")
 
@@ -147,7 +121,5 @@ class QueryResponse(BaseModel):
     id: str = Field(..., description="Unique identifier of the response")
     model: str = Field(..., description="Model identifier")
     object: str = Field(..., description="Object type")
-    system_fingerprint: Optional[str] = Field(
-        None, description="System fingerprint if available"
-    )
+    system_fingerprint: Optional[str] = Field(None, description="System fingerprint if available")
     usage: Usage = Field(..., description="Usage details")
