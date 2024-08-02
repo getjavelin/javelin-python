@@ -5,15 +5,25 @@ from urllib.parse import urljoin
 import httpx
 
 from javelin_sdk.exceptions import (
-    InternalServerError,
-    NetworkError,
-    RateLimitExceededError,
-    RouteAlreadyExistsError,
     RouteNotFoundError,
-    UnauthorizedError,
+    RouteAlreadyExistsError,
+    ProviderNotFoundError,
+    ProviderAlreadyExistsError,
+    TemplateNotFoundError,
+    TemplateAlreadyExistsError,
+    SecretNotFoundError,
+    SecretAlreadyExistsError,
+    NetworkError,
     BadRequest,
+    RateLimitExceededError,
+    InternalServerError,
+    MethodNotAllowedError,
+    UnauthorizedError,
+    ValidationError,
 )
-from javelin_sdk.models import QueryResponse, Route, Routes
+from javelin_sdk.models import QueryResponse
+from javelin_sdk.models import Route, Routes
+from javelin_sdk.models import Provider, Providers
 
 API_BASEURL = "https://api.javelin.live"
 API_BASE_PATH = "/v1"
@@ -483,3 +493,44 @@ class JavelinClient:
         """
         if not body:
             raise ValueError("Body cannot be empty.")
+        
+    def get_provider(self, provider_name: str) -> Provider:
+        """
+        Retrieve details of a specific provider.
+
+        :param provider_name: Name of the provider to retrieve.
+        :return: Response object containing provider details.
+        """
+        self._validate_provider_name(provider_name)
+        response = self._send_request_sync(HttpMethod.GET, provider_name)
+        return self._process_response_provider(response)
+
+    async def aget_provider(self, provider_name: str) -> Provider:
+        """
+        Asynchronously retrieve details of a specific provider.
+
+        :param provider_name: Name of the provider to retrieve.
+        :return: Response object containing provider details.
+        """
+        self._validate_provider_name(provider_name)
+        response = await self._send_request_async(HttpMethod.GET, provider_name)
+        return self._process_response_provider(response)
+    
+    @staticmethod
+    def _validate_provider_name(provider_name: str):
+        """
+        Validate the route name. Raises a ValueError if the provider name is empty.
+
+        :param provider_name: Name of the provider to validate.
+        """
+        if not provider_name:
+            raise ValueError("Provider name cannot be empty.")
+        
+    def _process_response_provider(self, response: httpx.Response) -> Provider:
+        """
+        Process a successful response from the Javelin API.
+        Parse body into a Provider object and return it.
+        This is for Get() requests.
+        """
+        self._handle_response(response)
+        return Provider(**response.json())
