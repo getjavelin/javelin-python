@@ -1,6 +1,21 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
+class GatewayConfig(BaseModel):
+    buid: Optional[str] = Field(default=None, description="Business Unit ID (BUID) uniquely identifies the business unit associated with this gateway configuration")
+    base_url: Optional[str] = Field(default=None, description="The foundational URL where all API requests are directed. It acts as the root from which endpoint paths are extended")
+    api_key_value: Optional[str] = Field(default=None, description="The API key used for authenticating requests to the API endpoints specified by the base_url")
+    organization_id: Optional[str] = Field(default=None, description="Unique identifier of the organization")
+    system_namespace: Optional[str] = Field(default=None, description="A unique namespace within the system to prevent naming conflicts and to organize resources logically")
+
+class Gateway(BaseModel):
+    name: str = Field(default=None, description="Name of the gateway")
+    type: str = Field(default=None, description="The type development, staging, production of this gateway")
+    enabled: Optional[bool] = Field(default=True, description="Whether the gateway is enabled")
+    config: GatewayConfig = Field(default=None, description="Configuration for the gateway")
+
+class Gateways(BaseModel):
+    gateways: List[Gateway] = Field(default=[], description="List of gateways")
 
 class Budget(BaseModel):
     enabled: Optional[bool] = Field(default=None, description="Whether the budget feature is enabled")
