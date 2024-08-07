@@ -43,9 +43,9 @@ Javelin Documentation: https://docs.getjavelin.io
 
   route = Route.parse_obj(route_data)
   try:
-    client.create_route(route)
+       client.create_route(route)
   except NetworkError as e:
-    print("Failed to create route: Network Error")
+       print("Failed to create route: Network Error")
 
   query_data = {
         "model": "gpt-3.5-turbo",
