@@ -21,7 +21,32 @@ Javelin Documentation: https://docs.getjavelin.io
     UnauthorizedError,
   )
 
-  # create a route object
+  # Create a route object
+  route_data = {
+    "name": "test_route_1",
+    "type": "chat",
+    "models": [
+        {
+            "name": "gpt-3.5-turbo",
+            "enabled": True,
+            "provider": "openai",
+            "suffix": "/v1/chat/completions",
+        }
+    ],
+    "config": {
+        "archive": True,
+        "organization": "myusers",
+        "retries": 3,
+        "rate_limit": 7,
+    },
+  }
+
+  route = Route.parse_obj(route_data)
+  try:
+    client.create_route(route)
+  except NetworkError as e:
+    print("Failed to create route: Network Error")
+
   query_data = {
         "model": "gpt-3.5-turbo",
         "messages": [
