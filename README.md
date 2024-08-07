@@ -28,8 +28,8 @@ Javelin Documentation: https://docs.getjavelin.io
        llm_api_key = os.getenv("OPENAI_API_KEY")
 
        client = JavelinClient(base_url="https://api-dev.javelin.live",
-                           javelin_api_key=javelin_api_key,
-                           llm_api_key=llm_api_key)
+                              javelin_api_key=javelin_api_key,
+                              llm_api_key=llm_api_key)
 
        print('sucessfully connected to Javelin Client')
 
