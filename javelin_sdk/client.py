@@ -25,7 +25,7 @@ from javelin_sdk.models import QueryResponse
 from javelin_sdk.models import Route, Routes
 from javelin_sdk.models import Provider, Providers
 
-API_BASEURL = "https://api.javelin.live"
+API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
 API_TIMEOUT = 10
 
