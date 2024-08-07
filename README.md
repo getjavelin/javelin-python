@@ -21,6 +21,22 @@ Javelin Documentation: https://docs.getjavelin.io
     UnauthorizedError,
   )
 
+  import os, sys
+
+  try:
+       javelin_api_key = os.getenv('JAVELIN_API_KEY')
+       llm_api_key = os.getenv("OPENAI_API_KEY")
+
+       client = JavelinClient(base_url="https://api-dev.javelin.live",
+                           javelin_api_key=javelin_api_key,
+                           llm_api_key=llm_api_key)
+
+       print('sucessfully connected to Javelin Client')
+
+  except NetworkError as e:
+       print("Failed to create client: Network Error")
+       sys.exit()
+
   # Create a route object
   route_data = {
     "name": "test_route_1",
