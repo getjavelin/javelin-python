@@ -57,6 +57,18 @@ class JavelinClientError(Exception):
     def __str__(self):
         return f"{self.message}: {self.response_data}"
 
+class GatewayNotFoundError(JavelinClientError):
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Gateway not found"
+    ) -> None:
+        super().__init__(message=message, response=response)
+
+class GatewayAlreadyExistsError(JavelinClientError):
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Gateway already exists"
+    ) -> None:
+        super().__init__(message=message, response=response)
+
 class RouteNotFoundError(JavelinClientError):
     def __init__(
         self, response: Optional[Response] = None, message: str = "Route not found"

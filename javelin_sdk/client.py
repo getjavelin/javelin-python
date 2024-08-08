@@ -5,6 +5,8 @@ from urllib.parse import urljoin
 import httpx
 
 from javelin_sdk.exceptions import (
+    GatewayNotFoundError,
+    GatewayAlreadyExistsError,
     RouteNotFoundError,
     RouteAlreadyExistsError,
     ProviderNotFoundError,
@@ -22,6 +24,7 @@ from javelin_sdk.exceptions import (
     ValidationError,
 )
 from javelin_sdk.models import QueryResponse
+from javelin_sdk.models import Gateway, Gateways
 from javelin_sdk.models import Route, Routes
 from javelin_sdk.models import Provider, Providers
 
@@ -134,7 +137,9 @@ class JavelinClient:
     def _send_request_sync(
         self,
         method: HttpMethod,
-        route_name: Optional[str] = "",
+        gateway: Optional[str] = "",
+        provider: Optional[str] = "",
+        route: Optional[str] = "",
         is_query: bool = False,
         data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -143,7 +148,9 @@ class JavelinClient:
         Send a request to the Javelin API.
 
         :param method: HTTP method to use.
-        :param route_name: Name of the route to send the request to.
+        :param gateway: Name of the gateway to send the request to.
+        :param provider: Name of the provider to send the request to.
+        :param route: Name of the route to send the request to.
         :param is_query: Whether the route is a query route.
         :param data: Data to send with the request.
         :param headers: Additional headers to send with the request.
@@ -159,13 +166,16 @@ class JavelinClient:
         :raises UnauthorizedError: If the Javelin API returns a 401 error.
 
         """
-        url = self._construct_url(route_name, query=is_query)
+        url = self._construct_url(gateway_name=gateway, 
+                                  provider_name=provider,
+                                  route_name=route, 
+                                  query=is_query)
         client = self.client
 
         # Merging additional headers with default headers
         request_headers = {**self._headers, **(headers or {})}
-        if is_query and route_name:
-            request_headers["x-javelin-route"] = route_name
+        if is_query and route:
+            request_headers["x-javelin-route"] = route
 
         try:
             if method == HttpMethod.GET:
@@ -186,7 +196,9 @@ class JavelinClient:
     async def _send_request_async(
         self,
         method: HttpMethod,
-        route_name: Optional[str] = "",
+        gateway: Optional[str] = "",
+        provider: Optional[str] = "",
+        route: Optional[str] = "",
         is_query: bool = False,
         data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -195,7 +207,10 @@ class JavelinClient:
         Send a request asynchronously to the Javelin API.
 
         :param method: HTTP method to use.
-        :param route_name: Name of the route to send the request to.
+        
+        :param gateway: Name of the gateway to send the request to.
+        :param provider: Name of the provider to send the request to.
+        :param route: Name of the route to send the request to.
         :param is_query: Whether the route is a query route.
         :param data: Data to send with the request.
         :param headers: Additional headers to send with the request.
@@ -211,13 +226,16 @@ class JavelinClient:
         :raises UnauthorizedError: If the Javelin API returns a 401 error.
 
         """
-        url = self._construct_url(route_name, query=is_query)
+        url = self._construct_url(gateway_name=gateway,
+                                  provider_name=provider,
+                                  route_name=route, 
+                                  query=is_query)
         aclient = self.aclient
 
         # Merging additional headers with default headers
         request_headers = {**self._headers, **(headers or {})}
-        if is_query and route_name:
-            request_headers["x-javelin-route"] = route_name
+        if is_query and route:
+            request_headers["x-javelin-route"] = route
 
         try:
             if method == HttpMethod.GET:
@@ -235,32 +253,103 @@ class JavelinClient:
         except httpx.NetworkError as e:
             raise NetworkError(message=str(e))
 
-    def _process_response_ok(self, response: httpx.Response) -> str:
+    def _process_gateway_response_ok(self, response: httpx.Response) -> str:
         """
         Process a successful response from the Javelin API.
         """
-        self._handle_response(response)
+        self._handle_gateway_response(response)
         return response.text
 
-    def _process_response_json(self, response: httpx.Response) -> QueryResponse:
+    def _process_provider_response_ok(self, response: httpx.Response) -> str:
+        """
+        Process a successful response from the Javelin API.
+        """
+        self._handle_provider_response(response)
+        return response.text
+
+    def _process_route_response_ok(self, response: httpx.Response) -> str:
+        """
+        Process a successful response from the Javelin API.
+        """
+        self._handle_route_response(response)
+        return response.text
+
+    def _process_gateway_response_json(self, response: httpx.Response) -> QueryResponse:
         """
         Process a successful response from the Javelin API.
         Parse body into a QueryResponse object and return it.
         This is for Query() requests.
         """
-        self._handle_response(response)
+        self._handle_gateway_response(response)
         return QueryResponse(**response.json())
 
-    def _process_response_route(self, response: httpx.Response) -> Route:
+    def _process_provider_response_json(self, response: httpx.Response) -> QueryResponse:
         """
         Process a successful response from the Javelin API.
-        Parse body into a Route object and return it.
-        This is for Get() requests.
+        Parse body into a QueryResponse object and return it.
+        This is for Query() requests.
         """
-        self._handle_response(response)
-        return Route(**response.json())
+        self._handle_provider_response(response)
+        return QueryResponse(**response.json())
 
-    def _handle_response(self, response: httpx.Response) -> None:
+    def _process_route_response_json(self, response: httpx.Response) -> QueryResponse:
+        """
+        Process a successful response from the Javelin API.
+        Parse body into a QueryResponse object and return it.
+        This is for Query() requests.
+        """
+        self._handle_route_response(response)
+        return QueryResponse(**response.json())
+
+    def _handle_gateway_response(self, response: httpx.Response) -> None:
+        """
+        Handle the API response by raising appropriate exceptions based on the
+        response status code.
+
+        :param response: The API response to handle.
+        """
+        if response.status_code == 400:
+            raise BadRequest(response=response)
+        elif response.status_code == 409:
+            raise GatewayAlreadyExistsError(response=response)
+        elif response.status_code == 401:
+            raise UnauthorizedError(response=response)
+        elif response.status_code == 403:
+            raise UnauthorizedError(response=response)
+        elif response.status_code == 404:
+            raise GatewayNotFoundError(response=response)
+        elif response.status_code == 409:
+            raise GatewayAlreadyExistsError(response=response)
+        elif response.status_code == 429:
+            raise RateLimitExceededError(response=response)
+        elif response.status_code != 200:
+            raise InternalServerError(response=response)
+
+    def _handle_provider_response(self, response: httpx.Response) -> None:
+        """
+        Handle the API response by raising appropriate exceptions based on the
+        response status code.
+
+        :param response: The API response to handle.
+        """
+        if response.status_code == 400:
+            raise BadRequest(response=response)
+        elif response.status_code == 409:
+            raise ProviderAlreadyExistsError(response=response)
+        elif response.status_code == 401:
+            raise UnauthorizedError(response=response)
+        elif response.status_code == 403:
+            raise UnauthorizedError(response=response)
+        elif response.status_code == 404:
+            raise ProviderNotFoundError(response=response)
+        elif response.status_code == 409:
+            raise ProviderAlreadyExistsError(response=response)
+        elif response.status_code == 429:
+            raise RateLimitExceededError(response=response)
+        elif response.status_code != 200:
+            raise InternalServerError(response=response)
+
+    def _handle_route_response(self, response: httpx.Response) -> None:
         """
         Handle the API response by raising appropriate exceptions based on the
         response status code.
@@ -285,7 +374,11 @@ class JavelinClient:
             raise InternalServerError(response=response)
 
     def _construct_url(
-        self, route_name: Optional[str] = "", query: bool = False
+        self, 
+        gateway_name: Optional[str] = "", 
+        provider_name: Optional[str] = "", 
+        route_name: Optional[str] = "", 
+        query: bool = False
     ) -> str:
         """
         Construct the complete URL for a given route name and action.
@@ -299,6 +392,14 @@ class JavelinClient:
             url_parts.append("query")
             if route_name is not None:  # Check if route_name is not None
                 url_parts.append(route_name)
+        elif gateway_name:
+            url_parts.append("admin")
+            url_parts.append("gateways")
+            url_parts.append(gateway_name)
+        elif provider_name:
+            url_parts.append("admin")
+            url_parts.append("providers")
+            url_parts.append(provider_name)
         elif route_name:
             url_parts.append("admin")
             url_parts.append("routes")
@@ -316,7 +417,7 @@ class JavelinClient:
         :return: Response object containing route details.
         """
         self._validate_route_name(route_name)
-        response = self._send_request_sync(HttpMethod.GET, route_name)
+        response = self._send_request_sync(HttpMethod.GET, route=route_name)
         return self._process_response_route(response)
 
     async def aget_route(self, route_name: str) -> Route:
@@ -327,8 +428,17 @@ class JavelinClient:
         :return: Response object containing route details.
         """
         self._validate_route_name(route_name)
-        response = await self._send_request_async(HttpMethod.GET, route_name)
+        response = await self._send_request_async(HttpMethod.GET, route=route_name)
         return self._process_response_route(response)
+
+    def _process_response_route(self, response: httpx.Response) -> Route:
+        """
+        Process a successful response from the Javelin API.
+        Parse body into a Route object and return it.
+        This is for Get() requests.
+        """
+        self._handle_route_response(response)
+        return Route(**response.json())
 
     # create a route
     def create_route(self, route: Route) -> str:
@@ -340,9 +450,9 @@ class JavelinClient:
         """
         self._validate_route_name(route.name)
         response = self._send_request_sync(
-            HttpMethod.POST, route.name, data=route.dict()
+            HttpMethod.POST, route=route.name, data=route.dict()
         )
-        return self._process_response_ok(response)
+        return self._process_route_response_ok(response)
 
     # async create a route
     async def acreate_route(self, route: Route) -> str:
@@ -354,9 +464,9 @@ class JavelinClient:
         """
         self._validate_route_name(route.name)
         response = await self._send_request_async(
-            HttpMethod.POST, route.name, data=route.dict()
+            HttpMethod.POST, route=route.name, data=route.dict()
         )
-        return self._process_response_ok(response)
+        return self._process_route_response_ok(response)
 
     # update a route
     def update_route(self, route: Route) -> str:
@@ -369,9 +479,9 @@ class JavelinClient:
         """
         self._validate_route_name(route.name)
         response = self._send_request_sync(
-            HttpMethod.PUT, route.name, data=route.dict()
+            HttpMethod.PUT, route=route.name, data=route.dict()
         )
-        return self._process_response_ok(response)
+        return self._process_route_response_ok(response)
 
     # async update a route
     async def aupdate_route(self, route: Route) -> str:
@@ -384,9 +494,9 @@ class JavelinClient:
         """
         self._validate_route_name(route.name)
         response = await self._send_request_async(
-            HttpMethod.PUT, route.name, data=route.dict()
+            HttpMethod.PUT, route=route.name, data=route.dict()
         )
-        return self._process_response_ok(response)
+        return self._process_route_response_ok(response)
 
     # list routes
     def list_routes(self) -> Routes:
@@ -395,7 +505,7 @@ class JavelinClient:
 
         :return: Routes object containing a list of all routes.
         """
-        response = self._send_request_sync(HttpMethod.GET, "")
+        response = self._send_request_sync(HttpMethod.GET, route=route_name)
         return Routes(routes=response.json())
 
     # async list routes
@@ -405,7 +515,7 @@ class JavelinClient:
 
         :return: Routes object containing a list of all routes.
         """
-        response = await self._send_request_async(HttpMethod.GET, "")
+        response = await self._send_request_async(HttpMethod.GET, route=route_name)
         return Routes(routes=response.json())
 
     # query an LLM through a route
@@ -425,9 +535,9 @@ class JavelinClient:
         """
         self._validate_route_name(route_name)
         response = self._send_request_sync(
-            HttpMethod.POST, route_name, is_query=True, data=query_body, headers=headers
+            HttpMethod.POST, route=route_name, is_query=True, data=query_body, headers=headers
         )
-        return self._process_response_json(response)
+        return self._process_route_response_json(response)
 
     # async query an LLM through a route
     async def aquery_route(
@@ -446,9 +556,9 @@ class JavelinClient:
         """
         self._validate_route_name(route_name)
         response = await self._send_request_async(
-            HttpMethod.POST, route_name, is_query=True, data=query_body, headers=headers
+            HttpMethod.POST, route=route_name, is_query=True, data=query_body, headers=headers
         )
-        return self._process_response_json(response)
+        return self._process_route_response_json(response)
 
     # delete a route
     def delete_route(self, route_name: str) -> str:
@@ -459,8 +569,8 @@ class JavelinClient:
         :return: Response text indicating the success status (e.g., "OK").
         """
         self._validate_route_name(route_name)
-        response = self._send_request_sync(HttpMethod.DELETE, route_name)
-        return self._process_response_ok(response)
+        response = self._send_request_sync(HttpMethod.DELETE, route=route_name)
+        return self._process_route_response_ok(response)
 
     # async delete a route
     async def adelete_route(self, route_name: str) -> str:
@@ -471,8 +581,8 @@ class JavelinClient:
         :return: Response text indicating the success status (e.g., "OK").
         """
         self._validate_route_name(route_name)
-        response = await self._send_request_async(HttpMethod.DELETE, route_name)
-        return self._process_response_ok(response)
+        response = await self._send_request_async(HttpMethod.DELETE, route=route_name)
+        return self._process_route_response_ok(response)
 
     @staticmethod
     def _validate_route_name(route_name: str):
@@ -493,6 +603,149 @@ class JavelinClient:
         """
         if not body:
             raise ValueError("Body cannot be empty.")
+
+    def get_gateway(self, gateway_name: str) -> Gateway:
+        """
+        Retrieve details of a specific gateway.
+
+        :param gateway_name: Name of the gateway to retrieve.
+        :return: Response object containing gateway details.
+        """
+        self._validate_gateway_name(gateway_name)
+        response = self._send_request_sync(HttpMethod.GET, gateway=gateway_name)
+        return self._process_gateway_response_gateway(response)
+
+    async def aget_gateway(self, gateway_name: str) -> Gateway:
+        """
+        Asynchronously retrieve details of a specific gateway.
+
+        :param gateway_name: Name of the gateway to retrieve.
+        :return: Response object containing gateway details.
+        """
+        self._validate_gateway_name(gateway_name)
+        response = await self._send_request_async(HttpMethod.GET, gateway=gateway_name)
+        return self._process_gateway_response_gateway(response)
+
+    def _process_response_gateway(self, response: httpx.Response) -> Gateway:
+        """
+        Process a successful response from the Javelin API.
+        Parse body into a Gateway object and return it.
+        This is for Get() requests.
+        """
+        self._handle_gateway_response(response)
+        return Gateway(**response.json())
+
+    # create a gateway
+    def create_gateway(self, gateway: Gateway) -> str:
+        """
+        Create a new gateway.
+
+        :param gateway: Gateway object containing gateway details.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_gateway_name(gateway.name)
+        response = self._send_request_sync(
+            HttpMethod.POST, gateway=gateway.name, data=gateway.dict()
+        )
+        return self._process_gateway_response_ok(response)
+
+    # async create a gateway
+    async def acreate_gateway(self, gateway: Gateway) -> str:
+        """
+        Asynchronously create a new gateway.
+
+        :param gateway: Gateway object containing gateway details.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_gateway_name(gateway.name)
+        response = await self._send_request_async(
+            HttpMethod.POST, gateway=gateway.name, data=gateway.dict()
+        )
+        return self._process_gateway_response_ok(response)
+
+    # update a gateway
+    def update_gateway(self, gateway: Gateway) -> str:
+        """
+        Update an existing gateway.
+
+        :param gateway_name: Name of the gateway to update.
+        :param gateway: Gateway object containing updated gateway details.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_gateway_name(gateway.name)
+        response = self._send_request_sync(
+            HttpMethod.PUT, gateway=gateway.name, data=gateway.dict()
+        )
+        return self._process_gateway_response_ok(response)
+
+    # async update a gateway
+    async def update_gateway(self, gateway: Gateway) -> str:
+        """
+        Asynchronously update an existing gateway.
+
+        :param gateway_name: Name of the gateway to update.
+        :param gateway: Gateway object containing updated gateway details.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_gateway_name(gateway.name)
+        response = await self._send_request_async(
+            HttpMethod.PUT, gateway=gateway.name, data=gateway.dict()
+        )
+        return self._process_gateway_response_ok(response)
+
+    # list gateways
+    def list_gateways(self) -> Gateways:
+        """
+        Retrieve a list of all gateways.
+
+        :return: Gateways object containing a list of all gateways.
+        """
+        response = self._send_request_sync(HttpMethod.GET, gateway=gateway_name)
+        return Gateways(gateways=response.json())
+
+    # async list gateways
+    async def alist_gateways(self) -> Gateways:
+        """
+        Asynchronously retrieve a list of all gateways.
+
+        :return: Gateways object containing a list of all gateways.
+        """
+        response = await self._send_request_async(HttpMethod.GET, gateway=gateway_name)
+        return Gateways(gateways=response.json())
+
+    # delete a gateway
+    def delete_gateway(self, gateway_name: str) -> str:
+        """
+        Delete a specific gateway.
+
+        :param gateway_name: Name of the gateway to delete.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_gateway_name(gateway_name)
+        response = self._send_request_sync(HttpMethod.DELETE, gateway=gateway_name)
+        return self._process_gateway_response_ok(response)
+
+    # async delete a gateway
+    async def adelete_gateway(self, gateway_name: str) -> str:
+        """
+        Asynchronously delete a specific gateway.
+
+        :param gateway_name: Name of the provider to delete.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_gateway_name(gateway_name)
+        response = await self._send_request_async(HttpMethod.DELETE, gateway=gateway_name)
+        return self._process_gateway_response_ok(response)
+
+    @staticmethod
+    def _validate_gateway_name(gateway_name: str):
+        """
+        Validate the gateway name. Raises a ValueError if the gateway name is empty.
+
+        :param gateway_name: Name of the gateway to validate.
+        """
+        if not gateway_name:
+            raise ValueError("Gateway name cannot be empty.")
         
     def get_provider(self, provider_name: str) -> Provider:
         """
@@ -502,8 +755,8 @@ class JavelinClient:
         :return: Response object containing provider details.
         """
         self._validate_provider_name(provider_name)
-        response = self._send_request_sync(HttpMethod.GET, provider_name)
-        return self._process_response_provider(response)
+        response = self._send_request_sync(HttpMethod.GET, provider=provider_name)
+        return self._process_provider_response_provider(response)
 
     async def aget_provider(self, provider_name: str) -> Provider:
         """
@@ -513,24 +766,128 @@ class JavelinClient:
         :return: Response object containing provider details.
         """
         self._validate_provider_name(provider_name)
-        response = await self._send_request_async(HttpMethod.GET, provider_name)
+        response = await self._send_request_async(HttpMethod.GET, provider=provider_name)
         return self._process_response_provider(response)
-    
-    @staticmethod
-    def _validate_provider_name(provider_name: str):
-        """
-        Validate the route name. Raises a ValueError if the provider name is empty.
 
-        :param provider_name: Name of the provider to validate.
-        """
-        if not provider_name:
-            raise ValueError("Provider name cannot be empty.")
-        
     def _process_response_provider(self, response: httpx.Response) -> Provider:
         """
         Process a successful response from the Javelin API.
         Parse body into a Provider object and return it.
         This is for Get() requests.
         """
-        self._handle_response(response)
+        self._handle_provider_response(response)
         return Provider(**response.json())
+
+    # create a provider
+    def create_provider(self, provider: Provider) -> str:
+        """
+        Create a new provider.
+
+        :param provider: Provider object containing provider details.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_provider_name(provider.name)
+        response = self._send_request_sync(
+            HttpMethod.POST, provider=provider.name, data=provider.dict()
+        )
+        return self._process_provider_response_ok(response)
+
+    # async create a provider
+    async def acreate_provider(self, provider: Provider) -> str:
+        """
+        Asynchronously create a new provider.
+
+        :param provider: Provider object containing provider details.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_provider_name(provider.name)
+        response = await self._send_request_async(
+            HttpMethod.POST, provider=provider.name, data=provider.dict()
+        )
+        return self._process_provider_response_ok(response)
+
+    # update a provider
+    def update_provider(self, provider: Provider) -> str:
+        """
+        Update an existing provider.
+
+        :param provider_name: Name of the provider to update.
+        :param provider: Provider object containing updated provider details.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_provider_name(provider.name)
+        response = self._send_request_sync(
+            HttpMethod.PUT, provider=provider.name, data=provider.dict()
+        )
+        return self._process_provider_response_ok(response)
+
+    # async update a provider
+    async def update_provider(self, provider: Provider) -> str:
+        """
+        Asynchronously update an existing provider.
+
+        :param provider_name: Name of the provider to update.
+        :param provider: Provider object containing updated provider details.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_provider_name(provider.name)
+        response = await self._send_request_async(
+            HttpMethod.PUT, provider=provider.name, data=provider.dict()
+        )
+        return self._process_provider_response_ok(response)
+
+    # list providers
+    def list_providers(self) -> Providers:
+        """
+        Retrieve a list of all providers.
+
+        :return: Providers object containing a list of all providers.
+        """
+        response = self._send_request_sync(HttpMethod.GET, provider=provider_name)
+        return Providers(providers=response.json())
+
+    # async list providers
+    async def alist_providers(self) -> Providers:
+        """
+        Asynchronously retrieve a list of all providers.
+
+        :return: Providers object containing a list of all providers.
+        """
+        response = await self._send_request_async(HttpMethod.GET, provider=provider_name)
+        return Providers(providers=response.json())
+
+    # delete a provider
+    def delete_provider(self, provider_name: str) -> str:
+        """
+        Delete a specific provider.
+
+        :param provider_name: Name of the provider to delete.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_provider_name(provider_name)
+        response = self._send_request_sync(HttpMethod.DELETE, provider=provider_name)
+        return self._process_provider_response_ok(response)
+
+    # async delete a provider
+    async def adelete_provider(self, provider_name: str) -> str:
+        """
+        Asynchronously delete a specific provider.
+
+        :param provider_name: Name of the provider to delete.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_provider_name(provider_name)
+        response = await self._send_request_async(HttpMethod.DELETE, provider=provider_name)
+        return self._process_provider_response_ok(response)
+
+    @staticmethod
+    def _validate_provider_name(provider_name: str):
+        """
+        Validate the provider name. Raises a ValueError if the provider name is empty.
+
+        :param provider_name: Name of the provider to validate.
+        """
+        if not provider_name:
+            raise ValueError("Provider name cannot be empty.")
+        
+
