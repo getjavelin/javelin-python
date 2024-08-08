@@ -98,7 +98,7 @@ class JavelinClient:
     def client(self):
         if self._client is None:
             self._client = httpx.Client(
-                #               base_url=self.base_url, headers=self._headers, timeout=API_TIMEOUT,
+                # base_url=self.base_url, headers=self._headers, timeout=API_TIMEOUT,
                 # event_hooks={"request": [log_request], "response": [log_response]},
                 base_url=self.base_url,
                 headers=self._headers,
@@ -161,6 +161,10 @@ class JavelinClient:
 
         :raises InternalServerError: If the Javelin API returns a 500 error.
         :raises RateLimitExceededError: If the Javelin API returns a 429 error.
+        :raises GatewayAlreadyExistsError: If the Javelin API returns a 409 error.
+        :raises GatewayNotFoundError: If the Javelin API returns a 404 error.
+        :raises ProviderAlreadyExistsError: If the Javelin API returns a 409 error.
+        :raises ProviderNotFoundError: If the Javelin API returns a 404 error.
         :raises RouteAlreadyExistsError: If the Javelin API returns a 409 error.
         :raises RouteNotFoundError: If the Javelin API returns a 404 error.
         :raises UnauthorizedError: If the Javelin API returns a 401 error.
@@ -222,6 +226,10 @@ class JavelinClient:
         :raises InternalServerError: If the Javelin API returns a 500 error.
         :raises RateLimitExceededError: If the Javelin API returns a 429 error.
         :raises RouteAlreadyExistsError: If the Javelin API returns a 409 error.
+        :raises GatewayAlreadyExistsError: If the Javelin API returns a 409 error.
+        :raises GatewayNotFoundError: If the Javelin API returns a 404 error.
+        :raises ProviderAlreadyExistsError: If the Javelin API returns a 409 error.
+        :raises ProviderNotFoundError: If the Javelin API returns a 404 error.
         :raises RouteNotFoundError: If the Javelin API returns a 404 error.
         :raises UnauthorizedError: If the Javelin API returns a 401 error.
 
