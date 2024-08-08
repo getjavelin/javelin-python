@@ -48,6 +48,7 @@ def handle_gateway(client):
     Create a gateway. This is done by creating a Gateway object and passing it to the
     create_gateway method of the JavelinClient object.
     """
+    '''
     gateway_data = {
         "name": "test_sdk_gw_kensho_1",
         "type": "development",
@@ -68,6 +69,7 @@ def handle_gateway(client):
         print("Failed to create gateway: Unauthorized")
     except NetworkError as e:
         print("Failed to create gateway: Network Error")
+    '''
 
     """
     List gateways. This is done by calling the list_gateways method of the JavelinClient object.
@@ -91,6 +93,17 @@ def handle_provider(client):
     except ProviderNotFoundError as e:
         print(e.message, e.response_data)
 
+    """
+    List providers. This is done by calling the list_providers method of the JavelinClient object.
+    """
+    print("4. Listing providers")
+    try:
+        pretty_print(client.list_providers())
+    except UnauthorizedError as e:
+        print("Failed to list providers: Unauthorized")
+    except NetworkError as e:
+        print("Failed to list providers: Network Error")
+
 def handle_route(client):
     """
     Start the example by cleaning up any pre-existing routes. 
@@ -113,8 +126,8 @@ def handle_route(client):
         "models": [
             {
                 "name": "gpt-3.5-turbo",
-                "provider": "openai",
-                "suffix": "/chat/completions",
+                "provider": "OpenAI",
+                "suffix": "/v1/chat/completions",
             }
         ],
         "config": {
@@ -238,7 +251,7 @@ def main():
         return
 
     handle_gateway(client)
-    # handle_provider(client)
+    handle_provider(client)
     handle_route(client)
 
 if __name__ == "__main__":

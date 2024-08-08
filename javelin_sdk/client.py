@@ -403,15 +403,18 @@ class JavelinClient:
         elif gateway_name:
             url_parts.append("admin")
             url_parts.append("gateways")
-            url_parts.append(gateway_name)
+            if gateway_name != "###":
+                url_parts.append(gateway_name)
         elif provider_name:
             url_parts.append("admin")
             url_parts.append("providers")
-            url_parts.append(provider_name)
+            if provider_name != "###":
+                url_parts.append(provider_name)
         elif route_name:
             url_parts.append("admin")
             url_parts.append("routes")
-            url_parts.append(route_name)
+            if route_name != "###":
+                url_parts.append(route_name)
         else:
             url_parts.append("admin")
             url_parts.append("routes")
@@ -513,7 +516,7 @@ class JavelinClient:
 
         :return: Routes object containing a list of all routes.
         """
-        response = self._send_request_sync(HttpMethod.GET, route=route_name)
+        response = self._send_request_sync(HttpMethod.GET, gateway="", provider="", route="###")
         return Routes(routes=response.json())
 
     # async list routes
@@ -523,7 +526,7 @@ class JavelinClient:
 
         :return: Routes object containing a list of all routes.
         """
-        response = await self._send_request_async(HttpMethod.GET, route=route_name)
+        response = await self._send_request_async(HttpMethod.GET, gateway="", provider="", route="###")
         return Routes(routes=response.json())
 
     # query an LLM through a route
@@ -708,7 +711,7 @@ class JavelinClient:
 
         :return: Gateways object containing a list of all gateways.
         """
-        response = self._send_request_sync(HttpMethod.GET, gateway=gateway_name)
+        response = self._send_request_sync(HttpMethod.GET, gateway="###", provider="", route="")
         return Gateways(gateways=response.json())
 
     # async list gateways
@@ -718,7 +721,7 @@ class JavelinClient:
 
         :return: Gateways object containing a list of all gateways.
         """
-        response = await self._send_request_async(HttpMethod.GET, gateway=gateway_name)
+        response = await self._send_request_async(HttpMethod.GET, gateway="###", provider="", route="")
         return Gateways(gateways=response.json())
 
     # delete a gateway
@@ -851,7 +854,7 @@ class JavelinClient:
 
         :return: Providers object containing a list of all providers.
         """
-        response = self._send_request_sync(HttpMethod.GET, provider=provider_name)
+        response = self._send_request_sync(HttpMethod.GET, gateway="", provider="###", route="")
         return Providers(providers=response.json())
 
     # async list providers
@@ -861,7 +864,7 @@ class JavelinClient:
 
         :return: Providers object containing a list of all providers.
         """
-        response = await self._send_request_async(HttpMethod.GET, provider=provider_name)
+        response = await self._send_request_async(HttpMethod.GET, gateway="", provider="###", route="")
         return Providers(providers=response.json())
 
     # delete a provider
