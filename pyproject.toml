@@ -1,3 +1,6 @@
+[project.urls]
+"Homepage" = "https://getjavelin.io"
+
 [tool.poetry]
 name = "javelin-sdk"
 version = "0.2.6"
@@ -5,9 +8,13 @@ description = "Python client for Javelin"
 authors = ["Sharath Rajasekar <sharath@getjavelin.io>"]
 readme = "README.md"
 license = "Apache-2.0"
+packages = [
+    { include = "javelin" },
+    { include = "javelin_sdk" },
+]
 
-[project.urls]
-"Homepage" = "https://getjavelin.io"
+[tool.poetry.scripts]
+javelin = "javelin.cli:main"
 
 [tool.poetry.dependencies]
 python = "^3.8"
