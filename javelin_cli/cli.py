@@ -1,5 +1,5 @@
 import argparse
-from javelin._internal.commands import (
+from javelin_cli._internal.commands import (
     create_gateway, list_gateways, get_gateway, update_gateway, delete_gateway,
     create_provider, list_providers, get_provider, update_provider, delete_provider,
     create_route, list_routes, get_route, update_route, delete_route

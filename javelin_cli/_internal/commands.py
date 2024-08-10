@@ -238,6 +238,7 @@ def list_routes(args):
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
+        
         print(f"Network error: {e}")
 
 def get_route(args):
