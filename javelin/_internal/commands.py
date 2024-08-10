@@ -1,8 +1,26 @@
 import os
 import json
+from pydantic import ValidationError
 
 from javelin_sdk.client import JavelinClient
-from javelin_sdk.exceptions import NetworkError, UnauthorizedError, GatewayNotFoundError, ProviderNotFoundError, RouteNotFoundError
+from javelin_sdk.models import (
+    GatewayConfig,
+    Gateway,
+    ProviderConfig,
+    Provider,
+    RouteConfig,
+    Route,
+    Secret,
+    Template,
+    Templates,
+)
+from javelin_sdk.exceptions import (
+    NetworkError, 
+    UnauthorizedError, 
+    GatewayNotFoundError, 
+    ProviderNotFoundError, 
+    RouteNotFoundError
+)
 
 # Retrieve environment variables
 javelin_api_key = os.getenv("JAVELIN_API_KEY")
@@ -19,13 +37,22 @@ client = JavelinClient(
 
 def create_gateway(args):
     try:
-        # Example data to create a gateway
-        gateway_data = {
-            "name": args.name,
-            "config": args.config,
-        }
-        client.create_gateway(gateway_data)
-        print(f"Gateway '{args.name}' created successfully.")
+        # Parse the JSON input for GatewayConfig
+        config_data = json.loads(args.config)
+        config = GatewayConfig(**config_data)
+        
+        gateway = Gateway(
+            name=args.name,
+            type=args.type,
+            enabled=args.enabled,
+            config=config
+        )
+        
+        result = client.create_gateway(gateway)
+        print(result)
+
+    except ValidationError as e:
+        print(f"Validation error: {e}")
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
@@ -55,12 +82,19 @@ def read_gateway(args):
 
 def update_gateway(args):
     try:
-        gateway_data = {
-            "name": args.name,
-            "config": args.config,
-        }
+        config_data = json.loads(args.config)
+        config = GatewayConfig(**config_data)
+
+        gateway = Gateway(
+            name=args.name,
+            type=args.type,
+            enabled=args.enabled,
+            config=config
+        )
+        
         client.update_gateway(args.name, gateway_data)
         print(f"Gateway '{args.name}' updated successfully.")
+
     except GatewayNotFoundError as e:
         print(f"Gateway not found: {e}")
     except UnauthorizedError as e:

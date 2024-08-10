@@ -624,7 +624,7 @@ class JavelinClient:
         """
         self._validate_gateway_name(gateway_name)
         response = self._send_request_sync(HttpMethod.GET, gateway=gateway_name)
-        return self._process_gateway_response_gateway(response)
+        return self._process_response_gateway(response)
 
     async def aget_gateway(self, gateway_name: str) -> Gateway:
         """
@@ -635,7 +635,7 @@ class JavelinClient:
         """
         self._validate_gateway_name(gateway_name)
         response = await self._send_request_async(HttpMethod.GET, gateway=gateway_name)
-        return self._process_gateway_response_gateway(response)
+        return self._process_response_gateway(response)
 
     def _process_response_gateway(self, response: httpx.Response) -> Gateway:
         """
