@@ -69,7 +69,7 @@ def list_gateways(args):
     except NetworkError as e:
         print(f"Network error: {e}")
 
-def read_gateway(args):
+def get_gateway(args):
     try:
         gateway = client.get_gateway(args.name)
         print(f"Gateway details for '{args.name}':")
@@ -149,7 +149,7 @@ def list_providers(args):
     except NetworkError as e:
         print(f"Network error: {e}")
 
-def read_provider(args):
+def get_provider(args):
     try:
         provider = client.get_provider(args.name)
         print(f"Provider details for '{args.name}':")
@@ -240,7 +240,7 @@ def list_routes(args):
     except NetworkError as e:
         print(f"Network error: {e}")
 
-def read_route(args):
+def get_route(args):
     try:
         route = client.get_route(args.name)
         print(f"Route details for '{args.name}':")
@@ -287,7 +287,7 @@ def delete_route(args):
     try:
         client.delete_route(args.name)
         print(f"Route '{args.name}' deleted successfully.")
-        
+
     except RouteNotFoundError as e:
         print(f"Route not found: {e}")
     except UnauthorizedError as e:

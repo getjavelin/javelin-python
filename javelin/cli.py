@@ -1,8 +1,8 @@
 import argparse
 from javelin._internal.commands import (
-    create_gateway, list_gateways, read_gateway, update_gateway, delete_gateway,
-    create_provider, list_providers, read_provider, update_provider, delete_provider,
-    create_route, list_routes, read_route, update_route, delete_route
+    create_gateway, list_gateways, get_gateway, update_gateway, delete_gateway,
+    create_provider, list_providers, get_provider, update_provider, delete_provider,
+    create_route, list_routes, get_route, update_route, delete_route
 )
 
 def main():
@@ -23,9 +23,9 @@ def main():
     gateway_list = gateway_subparsers.add_parser('list', help='List gateways')
     gateway_list.set_defaults(func=list_gateways)
 
-    gateway_read = gateway_subparsers.add_parser('read', help='Read a gateway')
-    gateway_read.add_argument('--name', type=str, required=True, help='Name of the gateway to read')
-    gateway_read.set_defaults(func=read_gateway)
+    gateway_get = gateway_subparsers.add_parser('get', help='Read a gateway')
+    gateway_get.add_argument('--name', type=str, required=True, help='Name of the gateway to get')
+    gateway_get.set_defaults(func=get_gateway)
 
     gateway_update = gateway_subparsers.add_parser('update', help='Update a gateway')
     gateway_update.add_argument('--name', type=str, required=True, help='Name of the gateway to update')
@@ -53,9 +53,9 @@ def main():
     provider_list = provider_subparsers.add_parser('list', help='List providers')
     provider_list.set_defaults(func=list_providers)
 
-    provider_read = provider_subparsers.add_parser('read', help='Read a provider')
-    provider_read.add_argument('--name', type=str, required=True, help='Name of the provider to read')
-    provider_read.set_defaults(func=read_provider)
+    provider_get = provider_subparsers.add_parser('get', help='Read a provider')
+    provider_get.add_argument('--name', type=str, required=True, help='Name of the provider to get')
+    provider_get.set_defaults(func=get_provider)
 
     provider_update = provider_subparsers.add_parser('update', help='Update a provider')
     provider_update.add_argument('--name', type=str, required=True, help='Name of the provider to update')
@@ -84,9 +84,9 @@ def main():
     route_list = route_subparsers.add_parser('list', help='List routes')
     route_list.set_defaults(func=list_routes)
 
-    route_read = route_subparsers.add_parser('read', help='Read a route')
-    route_read.add_argument('--name', type=str, required=True, help='Name of the route to read')
-    route_read.set_defaults(func=read_route)
+    route_get = route_subparsers.add_parser('get', help='Read a route')
+    route_get.add_argument('--name', type=str, required=True, help='Name of the route to get')
+    route_get.set_defaults(func=get_route)
 
     route_update = route_subparsers.add_parser('update', help='Update a route')
     route_update.add_argument('--name', type=str, required=True, help='Name of the route to update')
