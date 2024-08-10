@@ -767,7 +767,7 @@ class JavelinClient:
         """
         self._validate_provider_name(provider_name)
         response = self._send_request_sync(HttpMethod.GET, provider=provider_name)
-        return self._process_provider_response_provider(response)
+        return self._process_response_provider(response)
 
     async def aget_provider(self, provider_name: str) -> Provider:
         """

@@ -63,6 +63,7 @@ def list_gateways(args):
         gateways = client.list_gateways()
         print("List of gateways:")
         print(json.dumps(gateways, indent=2, default=lambda o: o.__dict__))
+
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
@@ -72,7 +73,8 @@ def read_gateway(args):
     try:
         gateway = client.get_gateway(args.name)
         print(f"Gateway details for '{args.name}':")
-        print(gateway)
+        print(json.dumps(gateway, indent=2, default=lambda o: o.__dict__))
+
     except GatewayNotFoundError as e:
         print(f"Gateway not found: {e}")
     except UnauthorizedError as e:
@@ -91,7 +93,7 @@ def update_gateway(args):
             enabled=args.enabled,
             config=config
         )
-        
+
         client.update_gateway(args.name, gateway_data)
         print(f"Gateway '{args.name}' updated successfully.")
 
@@ -106,6 +108,7 @@ def delete_gateway(args):
     try:
         client.delete_gateway(args.name)
         print(f"Gateway '{args.name}' deleted successfully.")
+
     except GatewayNotFoundError as e:
         print(f"Gateway not found: {e}")
     except UnauthorizedError as e:
@@ -115,22 +118,32 @@ def delete_gateway(args):
 
 def create_provider(args):
     try:
+        config_data = json.loads(args.config)
+        config = ProviderConfig(**config_data)
+
         provider_data = {
             "name": args.name,
-            "config": args.config,
+            "type": args.type,
+            "enabled": args.enabled,
+            "vault_enabled": args.vault_enabled,
+            "config": config
         }
+
         client.create_provider(provider_data)
         print(f"Provider '{args.name}' created successfully.")
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
         print(f"Network error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 def list_providers(args):
     try:
         providers = client.list_providers()
         print("List of providers:")
         print(json.dumps(providers, indent=2, default=lambda o: o.__dict__))
+
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
@@ -140,58 +153,88 @@ def read_provider(args):
     try:
         provider = client.get_provider(args.name)
         print(f"Provider details for '{args.name}':")
-        print(provider)
+        print(json.dumps(provider, indent=2, default=lambda o: o.__dict__))
+
     except ProviderNotFoundError as e:
         print(f"Provider not found: {e}")
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
         print(f"Network error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 def update_provider(args):
     try:
+        config_data = json.loads(args.config)
+        config = ProviderConfig(**config_data)
+
         provider_data = {
             "name": args.name,
-            "config": args.config,
+            "type": args.type,
+            "enabled": args.enabled,
+            "vault_enabled": args.vault_enabled,
+            "config": config
         }
+
         client.update_provider(args.name, provider_data)
         print(f"Provider '{args.name}' updated successfully.")
+
     except ProviderNotFoundError as e:
         print(f"Provider not found: {e}")
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
         print(f"Network error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 def delete_provider(args):
     try:
         client.delete_provider(args.name)
         print(f"Provider '{args.name}' deleted successfully.")
+
     except ProviderNotFoundError as e:
         print(f"Provider not found: {e}")
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
         print(f"Network error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 def create_route(args):
     try:
+        config_data = json.loads(args.config)
+        config = RouteConfig(**config_data)
+        
+        models_data = json.loads(args.models)
+        models = [Model(**model) for model in models_data]
+        
         route_data = {
             "name": args.name,
-            "config": args.config,
+            "type": args.type,
+            "enabled": args.enabled,
+            "models": models,
+            "config": config
         }
+
         client.create_route(route_data)
         print(f"Route '{args.name}' created successfully.")
+
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
         print(f"Network error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 def list_routes(args):
     try:
         routes = client.list_routes()
         print("List of routes:")
         print(json.dumps(routes, indent=2, default=lambda o: o.__dict__))
+
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
@@ -201,36 +244,55 @@ def read_route(args):
     try:
         route = client.get_route(args.name)
         print(f"Route details for '{args.name}':")
-        print(route)
+        print(json.dumps(route, indent=2, default=lambda o: o.__dict__))
+
     except RouteNotFoundError as e:
         print(f"Route not found: {e}")
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
         print(f"Network error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 def update_route(args):
     try:
+        config_data = json.loads(args.config)
+        config = RouteConfig(**config_data)
+        
+        models_data = json.loads(args.models)
+        models = [Model(**model) for model in models_data]
+        
         route_data = {
             "name": args.name,
-            "config": args.config,
+            "type": args.type,
+            "enabled": args.enabled,
+            "models": models,
+            "config": config
         }
+
         client.update_route(args.name, route_data)
         print(f"Route '{args.name}' updated successfully.")
+
     except RouteNotFoundError as e:
         print(f"Route not found: {e}")
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
         print(f"Network error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 def delete_route(args):
     try:
         client.delete_route(args.name)
         print(f"Route '{args.name}' deleted successfully.")
+        
     except RouteNotFoundError as e:
         print(f"Route not found: {e}")
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
         print(f"Network error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
