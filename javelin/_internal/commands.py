@@ -35,7 +35,7 @@ def list_gateways(args):
     try:
         gateways = client.list_gateways()
         print("List of gateways:")
-        print(json.dumps(gateways, indent=4, default=lambda o: o.__dict__))
+        print(json.dumps(gateways, indent=2, default=lambda o: o.__dict__))
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
@@ -96,7 +96,7 @@ def list_providers(args):
     try:
         providers = client.list_providers()
         print("List of providers:")
-        print(json.dumps(providers, indent=4, default=lambda o: o.__dict__))
+        print(json.dumps(providers, indent=2, default=lambda o: o.__dict__))
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
@@ -157,7 +157,7 @@ def list_routes(args):
     try:
         routes = client.list_routes()
         print("List of routes:")
-        print(json.dumps(routes, indent=4, default=lambda o: o.__dict__))
+        print(json.dumps(routes, indent=2, default=lambda o: o.__dict__))
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
