@@ -23,17 +23,26 @@ from javelin_sdk.exceptions import (
 )
 
 # Retrieve environment variables
+base_url = os.getenv("JAVELIN_BASE_URL", "https://api-dev.javelin.live")
 javelin_api_key = os.getenv("JAVELIN_API_KEY")
 javelin_virtualapikey = os.getenv("JAVELIN_VIRTUALAPIKEY")
 llm_api_key = os.getenv("LLM_API_KEY")
 
 # Initialize the global JavelinClient
 client = JavelinClient(
-    base_url="https://api-dev.javelin.live",
+    base_url=base_url,
     javelin_api_key=javelin_api_key,
     javelin_virtualapikey=javelin_virtualapikey,
     llm_api_key=llm_api_key,
 )
+
+'''
+# Print all the relevant variables
+print(f"Base URL: {base_url}")
+print(f"Javelin API Key: {javelin_api_key}")
+print(f"Javelin Virtual API Key: {javelin_virtualapikey}")
+print(f"LLM API Key: {llm_api_key}")
+'''
 
 def create_gateway(args):
     try:
