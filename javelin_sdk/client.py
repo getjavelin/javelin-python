@@ -27,6 +27,7 @@ from javelin_sdk.models import QueryResponse
 from javelin_sdk.models import Gateway, Gateways
 from javelin_sdk.models import Route, Routes
 from javelin_sdk.models import Provider, Providers
+from javelin_sdk.models import Secret, Secrets
 
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
@@ -140,6 +141,7 @@ class JavelinClient:
         gateway: Optional[str] = "",
         provider: Optional[str] = "",
         route: Optional[str] = "",
+        secret: Optional[str] = "",
         is_query: bool = False,
         data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -172,7 +174,8 @@ class JavelinClient:
         """
         url = self._construct_url(gateway_name=gateway, 
                                   provider_name=provider,
-                                  route_name=route, 
+                                  route_name=route,
+                                  secret_name=secret,
                                   query=is_query)
         client = self.client
 
@@ -203,6 +206,7 @@ class JavelinClient:
         gateway: Optional[str] = "",
         provider: Optional[str] = "",
         route: Optional[str] = "",
+        secret: Optional[str] = "",
         is_query: bool = False,
         data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -237,6 +241,7 @@ class JavelinClient:
         url = self._construct_url(gateway_name=gateway,
                                   provider_name=provider,
                                   route_name=route, 
+                                  secret_name=secret,
                                   query=is_query)
         aclient = self.aclient
 
@@ -282,6 +287,13 @@ class JavelinClient:
         self._handle_route_response(response)
         return response.text
 
+    def _process_secret_response_ok(self, response: httpx.Response) -> str:
+        """
+        Process a successful response from the Javelin API.
+        """
+        self._handle_secret_response(response)
+        return response.text
+
     def _process_gateway_response_json(self, response: httpx.Response) -> QueryResponse:
         """
         Process a successful response from the Javelin API.
@@ -309,6 +321,15 @@ class JavelinClient:
         self._handle_route_response(response)
         return QueryResponse(**response.json())
 
+    def _process_secret_response_json(self, response: httpx.Response) -> QueryResponse:
+        """
+        Process a successful response from the Javelin API.
+        Parse body into a QueryResponse object and return it.
+        This is for Query() requests.
+        """
+        self._handle_secret_response(response)
+        return QueryResponse(**response.json())
+
     def _handle_gateway_response(self, response: httpx.Response) -> None:
         """
         Handle the API response by raising appropriate exceptions based on the
@@ -326,8 +347,6 @@ class JavelinClient:
             raise UnauthorizedError(response=response)
         elif response.status_code == 404:
             raise GatewayNotFoundError(response=response)
-        elif response.status_code == 409:
-            raise GatewayAlreadyExistsError(response=response)
         elif response.status_code == 429:
             raise RateLimitExceededError(response=response)
         elif response.status_code != 200:
@@ -350,8 +369,6 @@ class JavelinClient:
             raise UnauthorizedError(response=response)
         elif response.status_code == 404:
             raise ProviderNotFoundError(response=response)
-        elif response.status_code == 409:
-            raise ProviderAlreadyExistsError(response=response)
         elif response.status_code == 429:
             raise RateLimitExceededError(response=response)
         elif response.status_code != 200:
@@ -374,8 +391,28 @@ class JavelinClient:
             raise UnauthorizedError(response=response)
         elif response.status_code == 404:
             raise RouteNotFoundError(response=response)
+        elif response.status_code == 429:
+            raise RateLimitExceededError(response=response)
+        elif response.status_code != 200:
+            raise InternalServerError(response=response)
+
+    def _handle_secret_response(self, response: httpx.Response) -> None:
+        """
+        Handle the API response by raising appropriate exceptions based on the
+        response status code.
+
+        :param response: The API response to handle.
+        """
+        if response.status_code == 400:
+            raise BadRequest(response=response)
         elif response.status_code == 409:
-            raise RouteAlreadyExistsError(response=response)
+            raise SecretAlreadyExistsError(response=response)
+        elif response.status_code == 401:
+            raise UnauthorizedError(response=response)
+        elif response.status_code == 403:
+            raise UnauthorizedError(response=response)
+        elif response.status_code == 404:
+            raise SecretNotFoundError(response=response)
         elif response.status_code == 429:
             raise RateLimitExceededError(response=response)
         elif response.status_code != 200:
@@ -386,6 +423,7 @@ class JavelinClient:
         gateway_name: Optional[str] = "", 
         provider_name: Optional[str] = "", 
         route_name: Optional[str] = "", 
+        secret_name: Optional[str] = "", 
         query: bool = False
     ) -> str:
         """
@@ -396,6 +434,12 @@ class JavelinClient:
         :return: Constructed URL.
         """
         url_parts = [self.base_url]
+        '''
+        print(f"_construct_url gateway_name: {gateway_name}")
+        print(f"_construct_url provider_name: {provider_name}")
+        print(f"_construct_url route_name: {route_name}")
+        print(f"_construct_url secret_name: {secret_name}")
+        '''
         if query:
             url_parts.append("query")
             if route_name is not None:  # Check if route_name is not None
@@ -405,7 +449,7 @@ class JavelinClient:
             url_parts.append("gateways")
             if gateway_name != "###":
                 url_parts.append(gateway_name)
-        elif provider_name:
+        elif provider_name and not secret_name:
             url_parts.append("admin")
             url_parts.append("providers")
             if provider_name != "###":
@@ -415,6 +459,16 @@ class JavelinClient:
             url_parts.append("routes")
             if route_name != "###":
                 url_parts.append(route_name)
+        elif secret_name:
+            url_parts.append("admin")
+            url_parts.append("providers")
+            if provider_name != "###":
+                url_parts.append(provider_name)
+            url_parts.append("secrets")
+            if secret_name != "###":
+                url_parts.append(secret_name)
+            else:
+                url_parts.append("keys")
         else:
             url_parts.append("admin")
             url_parts.append("routes")
@@ -901,4 +955,169 @@ class JavelinClient:
         if not provider_name:
             raise ValueError("Provider name cannot be empty.")
         
+    def get_secret(self, secret_name: str) -> Secret:
+        """
+        Retrieve details of a specific secret.
 
+        :param secret_name: Name of the secret to retrieve.
+        :return: Response object containing secret details.
+        """
+        self._validate_secret_name(secret_name)
+        response = self._send_request_sync(HttpMethod.GET, secret=secret_name)
+        return self._process_response_secret(response)
+
+    async def aget_secret(self, secret_name: str) -> Secret:
+        """
+        Asynchronously retrieve details of a specific secret.
+
+        :param secret_name: Name of the secret to retrieve.
+        :return: Response object containing secret details.
+        """
+        self._validate_secret_name(secret_name)
+        response = await self._send_request_async(HttpMethod.GET, secret=secret_name)
+        return self._process_response_secret(response)
+
+    def _process_response_secret(self, response: httpx.Response) -> Secret:
+        """
+        Process a successful response from the Javelin API.
+        Parse body into a Secret object and return it.
+        This is for Get() requests.
+        """
+        self._handle_secret_response(response)
+        return Secret(**response.json())
+
+    # create a secret
+    def create_secret(self, secret: Secret) -> str:
+        """
+        Create a new secret.
+
+        :param secret: Secret object containing secret details.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_secret_name(secret.api_key)
+        response = self._send_request_sync(
+            HttpMethod.POST, provider=secret.provider_name, secret=secret.api_key, data=secret.dict()
+        )
+        return self._process_secret_response_ok(response)
+
+    # async create a secret
+    async def acreate_secret(self, secret: Secret) -> str:
+        """
+        Asynchronously create a new secret.
+
+        :param secret: Secret object containing secret details.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_secret_name(secret.api_key)
+        response = await self._send_request_async(
+            HttpMethod.POST, provider=secret.provider_name, secret=secret.api_key, data=secret.dict()
+        )
+        return self._process_secret_response_ok(response)
+
+    # update a secret
+    def update_secret(self, secret: Secret) -> str:
+        """
+        Update an existing secret.
+
+        :param secret_name: Name of the secret to update.
+        :param secret: Secret object containing updated secret details.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_secret_name(secret.api_key)
+        response = self._send_request_sync(
+            HttpMethod.PUT, provider=secret.provider_name, secret=secret.api_key, data=secret.dict()
+        )
+        return self._process_secret_response_ok(response)
+
+    # async update a secret
+    async def update_secret(self, secret: Secret) -> str:
+        """
+        Asynchronously update an existing secret.
+
+        :param secret_name: Name of the secret to update.
+        :param secret: Secret object containing updated secret details.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_secret_name(secret.api_key)
+        response = await self._send_request_async(
+            HttpMethod.PUT, provider=secret.provider_name, secret=secret.api_key, data=secret.dict()
+        )
+        return self._process_secret_response_ok(response)
+
+    # list all secrets
+    def list_secrets(self) -> Secrets:
+        """
+        Retrieve a list of all secrets.
+
+        :return: Secrets object containing a list of all secrets.
+        """
+        response = self._send_request_sync(HttpMethod.GET, gateway="", provider="###", route="", secret="###")
+        return Secrets(secrets=response.json())
+
+    # async list all secrets
+    async def alist_secrets(self) -> Secrets:
+        """
+        Asynchronously retrieve a list of all secrets.
+
+        :return: Secrets object containing a list of all secrets.
+        """
+        response = await self._send_request_async(HttpMethod.GET, gateway="", provider="###", route="", secret="###")
+        return Secrets(secrets=response.json())
+
+    # list all secrets
+    def list_provider_secrets(self, provider_name: str) -> Secrets:
+        """
+        Retrieve a list of all secrets of a provider.
+
+        :param provider_name: Name of the provider.
+        :return: Secrets object containing a list of all secrets.
+        """
+        response = self._send_request_sync(HttpMethod.GET, gateway="", provider=provider_name, route="", secret="###")
+        return Secrets(secrets=response.json())
+
+    # async list all secrets
+    async def alist_provider_secrets(self, provider_name: str) -> Secrets:
+        """
+        Asynchronously retrieve a list of all secrets of a provider.
+
+        :param provider_name: Name of the provider.
+        :return: Secrets object containing a list of all secrets.
+        """
+        response = await self._send_request_async(HttpMethod.GET, gateway="", provider=provider_name, route="", secret="###")
+        return Secrets(secrets=response.json())
+
+    # delete a secret
+    def delete_secret(self, provider_name: str, secret_name: str) -> str:
+        """
+        Delete a specific secret.
+
+        :param provider_name: Name of the provider secret to delete.
+        :param secret_name: Name of the secret to delete.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_secret_name(secret_name)
+        response = self._send_request_sync(HttpMethod.DELETE, provider=provider_name, secret=secret_name)
+        return self._process_provider_response_ok(response)
+
+    # async delete a secret
+    async def adelete_secret(self, provider_name: str, secret_name: str) -> str:
+        """
+        Asynchronously delete a specific secret.
+
+        :param provider_name: Name of the provider secret to delete.
+        :param secret_name: Name of the secret to delete.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_secret_name(secret_name)
+        response = await self._send_request_async(HttpMethod.DELETE, provider=provider_name, secret=secret_name)
+        return self._process_provider_response_ok(response)
+
+    @staticmethod
+    def _validate_secret_name(secret_name: str):
+        """
+        Validate the secret name. Raises a ValueError if the secret name is empty.
+
+        :param secret_name: Name of the secret to validate.
+        """
+        if not secret_name:
+            raise ValueError("Secret name cannot be empty.")

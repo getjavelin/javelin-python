@@ -2,7 +2,8 @@ import argparse
 from javelin_cli._internal.commands import (
     create_gateway, list_gateways, get_gateway, update_gateway, delete_gateway,
     create_provider, list_providers, get_provider, update_provider, delete_provider,
-    create_route, list_routes, get_route, update_route, delete_route
+    create_route, list_routes, get_route, update_route, delete_route,
+    create_secret, list_secrets, update_secret, delete_secret,
 )
 
 def main():
@@ -99,6 +100,38 @@ def main():
     route_delete = route_subparsers.add_parser('delete', help='Delete a route')
     route_delete.add_argument('--name', type=str, required=True, help='Name of the route to delete')
     route_delete.set_defaults(func=delete_route)
+
+     # Secret CRUD
+    secret_parser = subparsers.add_parser('secret', help='Handle secrets')
+    secret_subparsers = secret_parser.add_subparsers()
+
+    secret_create = secret_subparsers.add_parser('create', help='Create a secret')
+    secret_create.add_argument('--api_key', required=True, help='Key of the Secret')
+    secret_create.add_argument('--api_key_secret_name', required=True, help='Name of the Secret')
+    secret_create.add_argument('--api_key_secret_key', required=True, help='API Key of the Secret')
+    secret_create.add_argument('--provider_name', required=True, help='Provider Name of the Secret')
+    secret_create.add_argument('--query_param_key', help='Query Param Key of the Secret')
+    secret_create.add_argument('--header_key', help='Header Key of the Secret')
+    secret_create.add_argument('--group', help='Group of the Secret')
+    secret_create.add_argument('--enabled', type=bool, default=True, help='Whether the secret is enabled')
+    secret_create.set_defaults(func=create_secret)
+
+    secret_list = secret_subparsers.add_parser('list', help='List secrets')
+    secret_list.set_defaults(func=list_secrets)
+
+    secret_update = secret_subparsers.add_parser('update', help='Update a secret')
+    secret_update.add_argument('--api_key', required=True, help='Key of the Secret')
+    secret_update.add_argument('--api_key_secret_name', required=True, help='Name of the Secret')
+    secret_update.add_argument('--api_key_secret_key', help='New API Key of the Secret')
+    secret_update.add_argument('--query_param_key', help='New Query Param Key of the Secret')
+    secret_update.add_argument('--header_key', help='New Header Key of the Secret')
+    secret_update.add_argument('--group', help='New Group of the Secret')
+    secret_update.add_argument('--enabled', type=bool, help='Whether the secret is enabled')
+    secret_update.set_defaults(func=update_secret)
+
+    secret_delete = secret_subparsers.add_parser('delete', help='Delete a secret')
+    secret_delete.add_argument('--api_key', required=True, help='Name of the Secret')
+    secret_delete.set_defaults(func=delete_secret)
 
     args = parser.parse_args()
     if hasattr(args, 'func'):

@@ -306,3 +306,90 @@ def delete_route(args):
         print(f"Network error: {e}")
     except Exception as e:
         print(f"An error occurred: {e}")
+
+def create_secret(args):
+    try:                
+        secret_data = {
+            "api_key": args.api_key,
+            "api_key_secret_name": args.api_key_secret_name,
+            "api_key_secret_key": args.api_key_secret_key,
+            "provider_name": args.provider_name,
+            "query_param_key": args.query_param_key,
+            "header_key": args.header_key,
+            "group": args.group,
+            "enabled": args.enabled
+        }
+
+        client.create_secret(secret_data)
+        print(f"Secret '{args.name}' created successfully.")
+
+    except UnauthorizedError as e:
+        print(f"Unauthorized: {e}")
+    except NetworkError as e:
+        print(f"Network error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def list_secrets(args):
+    try:
+        secrets = client.list_secrets()
+        print("List of secrets:")
+        print(json.dumps(secrets, indent=2, default=lambda o: o.__dict__))
+
+    except UnauthorizedError as e:
+        print(f"Unauthorized: {e}")
+    except NetworkError as e:
+        
+        print(f"Network error: {e}")
+
+def get_secret(args):
+    try:
+        secret = client.get_secret(args.api_key)
+        print(f"Secret details for '{args.api_key}':")
+        print(json.dumps(secret, indent=2, default=lambda o: o.__dict__))
+
+    except SecretNotFoundError as e:
+        print(f"Secret not found: {e}")
+    except UnauthorizedError as e:
+        print(f"Unauthorized: {e}")
+    except NetworkError as e:
+        print(f"Network error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def update_secret(args):
+    try:
+        secret_data = {
+            "api_key_secret_name": args.api_key_secret_name,
+            "api_key_secret_key": args.api_key_secret_key,
+            "query_param_key": args.query_param_key,
+            "header_key": args.header_key,
+            "group": args.group,
+            "enabled": args.enabled
+        }
+
+        client.update_secret(args.api_key, secret_data)
+        print(f"Secret '{args.api_key}' updated successfully.")
+
+    except SecretNotFoundError as e:
+        print(f"Secret not found: {e}")
+    except UnauthorizedError as e:
+        print(f"Unauthorized: {e}")
+    except NetworkError as e:
+        print(f"Network error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def delete_secret(args):
+    try:
+        client.delete_secret(args.api_key)
+        print(f"Secret '{args.api_key}' deleted successfully.")
+
+    except SecretNotFoundError as e:
+        print(f"Secret not found: {e}")
+    except UnauthorizedError as e:
+        print(f"Unauthorized: {e}")
+    except NetworkError as e:
+        print(f"Network error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
