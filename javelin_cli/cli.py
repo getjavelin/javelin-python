@@ -101,7 +101,7 @@ def main():
     route_delete.add_argument('--name', type=str, required=True, help='Name of the route to delete')
     route_delete.set_defaults(func=delete_route)
 
-     # Secret CRUD
+    # Secret CRUD
     secret_parser = subparsers.add_parser('secret', help='Handle secrets')
     secret_subparsers = secret_parser.add_subparsers()
 
@@ -131,6 +131,7 @@ def main():
 
     secret_delete = secret_subparsers.add_parser('delete', help='Delete a secret')
     secret_delete.add_argument('--api_key', required=True, help='Name of the Secret')
+    secret_delete.add_argument('--provider_name', required=True, help='Provider Name of the Secret')
     secret_delete.set_defaults(func=delete_secret)
 
     args = parser.parse_args()
