@@ -568,20 +568,46 @@ class JavelinClient:
         """
         Retrieve a list of all routes.
 
-        :return: Routes object containing a list of all routes.
+        :return: Routes object containing a list of all routes, or an empty list if an error occurs or no routes are found.
         """
         response = self._send_request_sync(HttpMethod.GET, gateway="", provider="", route="###")
-        return Routes(routes=response.json())
+
+        try:
+            # Attempt to parse the response as JSON
+            response_json = response.json()
+            # Check if there's an error in the JSON response
+            if 'error' in response_json:
+                # print(f"Error retrieving routes: {response_json['error']}")
+                return Routes(routes=[])  # Return an empty list of routes if an error is found
+            else:
+                return Routes(routes=response_json)  # Return the list of routes
+        except ValueError:
+            # Handle cases where the response is not JSON (possibly a string)
+            # print("Response:", response.text)
+            return Routes(routes=[])  # Return an empty list of routes for non-JSON responses
 
     # async list routes
     async def alist_routes(self) -> Routes:
         """
         Asynchronously retrieve a list of all routes.
 
-        :return: Routes object containing a list of all routes.
+        :return: Routes object containing a list of all routes, or an empty list if an error occurs or no routes are found.
         """
         response = await self._send_request_async(HttpMethod.GET, gateway="", provider="", route="###")
-        return Routes(routes=response.json())
+
+        try:
+            # Attempt to parse the response as JSON
+            response_json = response.json()
+            # Check if there's an error in the JSON response
+            if 'error' in response_json:
+                # print(f"Error retrieving routes: {response_json['error']}")
+                return Routes(routes=[])  # Return an empty list of routes if an error is found
+            else:
+                return Routes(routes=response_json)  # Return the list of routes
+        except ValueError:
+            # Handle cases where the response is not JSON (possibly a string)
+            # print("Response:", response.text)
+            return Routes(routes=[])  # Return an empty list of routes for non-JSON responses
 
     # query an LLM through a route
     def query_route(
@@ -763,20 +789,46 @@ class JavelinClient:
         """
         Retrieve a list of all gateways.
 
-        :return: Gateways object containing a list of all gateways.
+        :return: Gateways object containing a list of all gateways, or an empty list if an error occurs or no gateways are found.
         """
         response = self._send_request_sync(HttpMethod.GET, gateway="###", provider="", route="")
-        return Gateways(gateways=response.json())
+
+        try:
+            # Attempt to parse the response as JSON
+            response_json = response.json()
+            # Check if there's an error in the JSON response
+            if 'error' in response_json:
+                # print("Error:", response_json['error'])
+                return Gateways(gateways=[])  # Return an empty list of gateways if an error is found
+            else:
+                return Gateways(gateways=response_json)  # Return the list of gateways
+        except ValueError:
+            # Handle cases where the response is not JSON (possibly a string)
+            # print("Response:", response.text)
+            return Gateways(gateways=[])  # Return an empty list of gateways for non-JSON responses
 
     # async list gateways
     async def alist_gateways(self) -> Gateways:
         """
         Asynchronously retrieve a list of all gateways.
 
-        :return: Gateways object containing a list of all gateways.
+        :return: Gateways object containing a list of all gateways, or an empty list if an error occurs or no gateways are found.
         """
         response = await self._send_request_async(HttpMethod.GET, gateway="###", provider="", route="")
-        return Gateways(gateways=response.json())
+
+        try:
+            # Attempt to parse the response as JSON
+            response_json = response.json()
+            # Check if there's an error in the JSON response
+            if 'error' in response_json:
+                # print("Error:", response_json['error'])
+                return Gateways(gateways=[])  # Return an empty list of gateways if an error is found
+            else:
+                return Gateways(gateways=response_json)  # Return the list of gateways
+        except ValueError:
+            # Handle cases where the response is not JSON (possibly a string)
+            # print("Response:", response.text)
+            return Gateways(gateways=[])  # Return an empty list of gateways for non-JSON responses
 
     # delete a gateway
     def delete_gateway(self, gateway_name: str) -> str:
@@ -909,17 +961,43 @@ class JavelinClient:
         :return: Providers object containing a list of all providers.
         """
         response = self._send_request_sync(HttpMethod.GET, gateway="", provider="###", route="")
-        return Providers(providers=response.json())
 
+        # Attempt to parse the response as JSON
+        try:
+            response_json = response.json()
+            # Check if there's an error in the JSON response
+            if 'error' in response_json:
+                # print("Error:", response_json['error'])
+                return Providers(providers=[])  # Return an empty list of providers if an error is found
+            else:
+                return Providers(providers=response_json)  # Return the list of providers
+        except ValueError:
+            # Handle cases where the response is not JSON (possibly a string)
+            # print("Response:", response.text)
+            return Providers(providers=[])  # Return an empty list of providers for non-JSON responses
+    
     # async list providers
     async def alist_providers(self) -> Providers:
         """
         Asynchronously retrieve a list of all providers.
 
-        :return: Providers object containing a list of all providers.
+        :return: Providers object containing a list of all providers, or an empty list if an error occurs or no providers are found.
         """
         response = await self._send_request_async(HttpMethod.GET, gateway="", provider="###", route="")
-        return Providers(providers=response.json())
+
+        try:
+            # Attempt to parse the response as JSON
+            response_json = response.json()
+            # Check if there's an error in the JSON response
+            if 'error' in response_json:
+                # print("Error:", response_json['error'])
+                return Providers(providers=[])  # Return an empty list of providers if an error is found
+            else:
+                return Providers(providers=response_json)  # Return the list of providers
+        except ValueError:
+            # Handle cases where the response is not JSON (possibly a string)
+            # print("Response:", response.text)
+            return Providers(providers=[])  # Return an empty list of providers for non-JSON responses
 
     # delete a provider
     def delete_provider(self, provider_name: str) -> str:
@@ -1049,42 +1127,94 @@ class JavelinClient:
         """
         Retrieve a list of all secrets.
 
-        :return: Secrets object containing a list of all secrets.
+        :return: Secrets object containing a list of all secrets, or an empty list if an error occurs or no secrets are found.
         """
         response = self._send_request_sync(HttpMethod.GET, gateway="", provider="###", route="", secret="###")
-        return Secrets(secrets=response.json())
+
+        try:
+            # Attempt to parse the response as JSON
+            response_json = response.json()
+            # Check if there's an error in the JSON response
+            if 'error' in response_json:
+                # print("Error:", response_json['error'])
+                return Secrets(secrets=[])  # Return an empty list of secrets if an error is found
+            else:
+                return Secrets(secrets=response_json)  # Return the list of secrets
+        except ValueError:
+            # Handle cases where the response is not JSON (possibly a string)
+            # print("Response:", response.text)
+            return Secrets(secrets=[])  # Return an empty list of secrets for non-JSON responses
 
     # async list all secrets
     async def alist_secrets(self) -> Secrets:
         """
         Asynchronously retrieve a list of all secrets.
 
-        :return: Secrets object containing a list of all secrets.
+        :return: Secrets object containing a list of all secrets, or an empty list if an error occurs or no secrets are found.
         """
         response = await self._send_request_async(HttpMethod.GET, gateway="", provider="###", route="", secret="###")
-        return Secrets(secrets=response.json())
 
-    # list all secrets
+        try:
+            # Attempt to parse the response as JSON
+            response_json = response.json()
+            # Check if there's an error in the JSON response
+            if 'error' in response_json:
+                # print("Error:", response_json['error'])
+                return Secrets(secrets=[])  # Return an empty list of secrets if an error is found
+            else:
+                return Secrets(secrets=response_json)  # Return the list of secrets
+        except ValueError:
+            # Handle cases where the response is not JSON (possibly a string)
+            # print("Response:", response.text)
+            return Secrets(secrets=[])  # Return an empty list of secrets for non-JSON responses
+
+    # list all secrets of a provider
     def list_provider_secrets(self, provider_name: str) -> Secrets:
         """
         Retrieve a list of all secrets of a provider.
 
         :param provider_name: Name of the provider.
-        :return: Secrets object containing a list of all secrets.
+        :return: Secrets object containing a list of all secrets, or an empty list if an error occurs or no secrets are found.
         """
         response = self._send_request_sync(HttpMethod.GET, gateway="", provider=provider_name, route="", secret="###")
-        return Secrets(secrets=response.json())
 
-    # async list all secrets
+        try:
+            # Attempt to parse the response as JSON
+            response_json = response.json()
+            # Check if there's an error in the JSON response
+            if 'error' in response_json:
+                # print(f"Error retrieving secrets for provider {provider_name}: {response_json['error']}")
+                return Secrets(secrets=[])  # Return an empty list of secrets if an error is found
+            else:
+                return Secrets(secrets=response_json)  # Return the list of secrets
+        except ValueError:
+            # Handle cases where the response is not JSON (possibly a string)
+            # print(f"Response from provider {provider_name}:", response.text)
+            return Secrets(secrets=[])  # Return an empty list of secrets for non-JSON responses
+
+    # async list all secrets of a provider
     async def alist_provider_secrets(self, provider_name: str) -> Secrets:
         """
         Asynchronously retrieve a list of all secrets of a provider.
 
         :param provider_name: Name of the provider.
-        :return: Secrets object containing a list of all secrets.
+        :return: Secrets object containing a list of all secrets, or an empty list if an error occurs or no secrets are found.
         """
         response = await self._send_request_async(HttpMethod.GET, gateway="", provider=provider_name, route="", secret="###")
-        return Secrets(secrets=response.json())
+
+        try:
+            # Attempt to parse the response as JSON
+            response_json = response.json()
+            # Check if there's an error in the JSON response
+            if 'error' in response_json:
+                # print(f"Error retrieving secrets for provider {provider_name}: {response_json['error']}")
+                return Secrets(secrets=[])  # Return an empty list of secrets if an error is found
+            else:
+                return Secrets(secrets=response_json)  # Return the list of secrets
+        except ValueError:
+            # Handle cases where the response is not JSON (possibly a string)
+            # print(f"Response from provider {provider_name}:", response.text)
+            return Secrets(secrets=[])  # Return an empty list of secrets for non-JSON responses
 
     # delete a secret
     def delete_secret(self, provider_name: str, secret_name: str) -> str:
