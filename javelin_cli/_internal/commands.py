@@ -9,6 +9,7 @@ from javelin_sdk.models import (
     ProviderConfig,
     Provider,
     RouteConfig,
+    Model,
     Route,
     Secret,
     Template,
@@ -127,23 +128,32 @@ def delete_gateway(args):
 
 def create_provider(args):
     try:
+        # Parse the JSON string from args.config to a dictionary
         config_data = json.loads(args.config)
+        # Create an instance of ProviderConfig using the parsed config_data
         config = ProviderConfig(**config_data)
 
-        provider_data = {
-            "name": args.name,
-            "type": args.type,
-            "enabled": args.enabled,
-            "vault_enabled": args.vault_enabled,
-            "config": config
-        }
+        # Create an instance of the Provider class
+        provider = Provider(
+            name=args.name,
+            type=args.type,
+            enabled=args.enabled if args.enabled is not None else True,  # Default to True if not provided
+            vault_enabled=args.vault_enabled if args.vault_enabled is not None else True,  # Default to True if not provided
+            config=config
+        )
 
-        client.create_provider(provider_data)
+        # Assuming client.create_provider accepts a Pydantic model and handles it internally
+        client.create_provider(provider)
         print(f"Provider '{args.name}' created successfully.")
+
+    except json.JSONDecodeError as e:
+        print(f"Error parsing configuration JSON: {e}")
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
         print(f"Network error: {e}")
+    except ValidationError as e:  # Pydantic's ValidationError
+        print(f"Validation error: {e}")
     except Exception as e:
         print(f"An error occurred: {e}")
 
@@ -175,18 +185,21 @@ def get_provider(args):
 
 def update_provider(args):
     try:
+        # Parse the JSON string for config
         config_data = json.loads(args.config)
+        # Create an instance of ProviderConfig using the parsed config_data
         config = ProviderConfig(**config_data)
 
-        provider_data = {
-            "name": args.name,
-            "type": args.type,
-            "enabled": args.enabled,
-            "vault_enabled": args.vault_enabled,
-            "config": config
-        }
+        # Create an instance of the Provider class
+        provider = Provider(
+            name=args.name,
+            type=args.type,
+            enabled=args.enabled if args.enabled is not None else None,
+            vault_enabled=args.vault_enabled if args.vault_enabled is not None else None,
+            config=config
+        )
 
-        client.update_provider(args.name, provider_data)
+        result = client.update_provider(provider)
         print(f"Provider '{args.name}' updated successfully.")
 
     except ProviderNotFoundError as e:
@@ -195,6 +208,10 @@ def update_provider(args):
         print(f"Unauthorized: {e}")
     except NetworkError as e:
         print(f"Network error: {e}")
+    except json.JSONDecodeError as e:
+        print(f"Error parsing configuration JSON: {e}")
+    except ValidationError as e:  # Pydantic's ValidationError
+        print(f"Validation error: {e}")
     except Exception as e:
         print(f"An error occurred: {e}")
 
@@ -214,27 +231,35 @@ def delete_provider(args):
 
 def create_route(args):
     try:
+        # Parse the JSON string for config and models
         config_data = json.loads(args.config)
-        config = RouteConfig(**config_data)
-        
         models_data = json.loads(args.models)
-        models = [Model(**model) for model in models_data]
-        
-        route_data = {
-            "name": args.name,
-            "type": args.type,
-            "enabled": args.enabled,
-            "models": models,
-            "config": config
-        }
 
-        client.create_route(route_data)
+        # Create instances of RouteConfig and Model using the parsed data
+        config = RouteConfig(**config_data)
+        models = [Model(**model) for model in models_data]
+
+        # Create an instance of the Route class
+        route = Route(
+            name=args.name,
+            type=args.type,
+            enabled=args.enabled if args.enabled is not None else True,  # Default to True if not provided
+            models=models,
+            config=config
+        )
+
+        # Assuming client.create_route accepts a Pydantic model and handles it internally
+        client.create_route(route)
         print(f"Route '{args.name}' created successfully.")
 
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON: {e}")
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:
         print(f"Network error: {e}")
+    except ValidationError as e:  # Pydantic's ValidationError
+        print(f"Validation error: {e}")
     except Exception as e:
         print(f"An error occurred: {e}")
 
@@ -267,21 +292,24 @@ def get_route(args):
 
 def update_route(args):
     try:
+        # Parse the JSON string for config and models
         config_data = json.loads(args.config)
-        config = RouteConfig(**config_data)
-        
         models_data = json.loads(args.models)
-        models = [Model(**model) for model in models_data]
-        
-        route_data = {
-            "name": args.name,
-            "type": args.type,
-            "enabled": args.enabled,
-            "models": models,
-            "config": config
-        }
 
-        client.update_route(args.name, route_data)
+        # Create instances of RouteConfig and Model using the parsed data
+        config = RouteConfig(**config_data)
+        models = [Model(**model) for model in models_data]
+
+        # Create an instance of the Route class
+        route = Route(
+            name=args.name,
+            type=args.type,
+            enabled=args.enabled if args.enabled is not None else None,
+            models=models,
+            config=config
+        )
+
+        result = client.update_route(route)
         print(f"Route '{args.name}' updated successfully.")
 
     except RouteNotFoundError as e:
@@ -290,6 +318,10 @@ def update_route(args):
         print(f"Unauthorized: {e}")
     except NetworkError as e:
         print(f"Network error: {e}")
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON: {e}")
+    except ValidationError as e:  # Pydantic's ValidationError
+        print(f"Validation error: {e}")
     except Exception as e:
         print(f"An error occurred: {e}")
 
@@ -370,16 +402,18 @@ def get_secret(args):
 
 def update_secret(args):
     try:
-        secret_data = {
-            "api_key_secret_name": args.api_key_secret_name,
-            "api_key_secret_key": args.api_key_secret_key,
-            "query_param_key": args.query_param_key,
-            "header_key": args.header_key,
-            "group": args.group,
-            "enabled": args.enabled
-        }
+        # Create an instance of the Secret class
+        secret = Secret(
+            api_key=args.api_key,
+            api_key_secret_name=args.api_key_secret_name if args.api_key_secret_name else None,
+            api_key_secret_key=args.api_key_secret_key if args.api_key_secret_key else None,
+            query_param_key=args.query_param_key if args.query_param_key else None,
+            header_key=args.header_key if args.header_key else None,
+            group=args.group if args.group else None,
+            enabled=args.enabled if args.enabled is not None else None
+        )
 
-        client.update_secret(args.api_key, secret_data)
+        result = client.update_secret(secret)
         print(f"Secret '{args.api_key}' updated successfully.")
 
     except SecretNotFoundError as e:
@@ -388,6 +422,8 @@ def update_secret(args):
         print(f"Unauthorized: {e}")
     except NetworkError as e:
         print(f"Network error: {e}")
+    except ValidationError as e:  # Pydantic's ValidationError
+        print(f"Validation error: {e}")
     except Exception as e:
         print(f"An error occurred: {e}")
 
