@@ -20,7 +20,8 @@ from javelin_sdk.exceptions import (
     UnauthorizedError, 
     GatewayNotFoundError, 
     ProviderNotFoundError, 
-    RouteNotFoundError
+    RouteNotFoundError,
+    TemplateNotFoundError
 )
 
 # Retrieve environment variables
@@ -434,6 +435,116 @@ def delete_secret(args):
 
     except SecretNotFoundError as e:
         print(f"Secret not found: {e}")
+    except UnauthorizedError as e:
+        print(f"Unauthorized: {e}")
+    except NetworkError as e:
+        print(f"Network error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def create_template(args):
+    try:
+        # Parse the JSON string for config and models
+        config_data = json.loads(args.config)
+        models_data = json.loads(args.models)
+
+        # Create instances of TemplateConfig and Model using the parsed data
+        config = TemplateConfig(**config_data)
+        models = [Model(**model) for model in models_data]
+
+        # Create an instance of the Template class
+        template = Template(
+            name=args.name,
+            description=args.description,
+            type=args.type,
+            enabled=args.enabled if args.enabled is not None else True,  # Default to True if not provided
+            models=models,
+            config=config
+        )
+
+        result = client.create_template(template)
+        print(f"Template '{args.name}' created successfully.")
+
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON: {e}")
+    except UnauthorizedError as e:
+        print(f"Unauthorized: {e}")
+    except NetworkError as e:
+        print(f"Network error: {e}")
+    except ValidationError as e:  # Pydantic's ValidationError
+        print(f"Validation error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def list_templates(args):
+    try:
+        templates = client.list_templates()
+        print("List of templates:")
+        print(json.dumps(templates, indent=2, default=lambda o: o.__dict__))
+
+    except UnauthorizedError as e:
+        print(f"Unauthorized: {e}")
+    except NetworkError as e:
+        print(f"Network error: {e}")
+
+def get_template(args):
+    try:
+        template = client.get_template(args.name)
+        print(f"Template details for '{args.name}':")
+        print(json.dumps(template, indent=2, default=lambda o: o.__dict__))
+
+    except TemplateNotFoundError as e:
+        print(f"Template not found: {e}")
+    except UnauthorizedError as e:
+        print(f"Unauthorized: {e}")
+    except NetworkError as e:
+        print(f"Network error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def update_template(args):
+    try:
+        # Parse the JSON string for config and models
+        config_data = json.loads(args.config)
+        models_data = json.loads(args.models)
+
+        # Create instances of TemplateConfig and Model using the parsed data
+        config = TemplateConfig(**config_data)
+        models = [Model(**model) for model in models_data]
+
+        # Create an instance of the Template class
+        template = Template(
+            name=args.name,
+            description=args.description if args.description else None,
+            type=args.type if args.type else None,
+            enabled=args.enabled if args.enabled is not None else None,
+            models=models,
+            config=config
+        )
+
+        result = client.update_template(template)
+        print(f"Template '{args.name}' updated successfully.")
+
+    except TemplateNotFoundError as e:
+        print(f"Template not found: {e}")
+    except UnauthorizedError as e:
+        print(f"Unauthorized: {e}")
+    except NetworkError as e:
+        print(f"Network error: {e}")
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON: {e}")
+    except ValidationError as e:  # Pydantic's ValidationError
+        print(f"Validation error: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def delete_template(args):
+    try:
+        client.delete_template(args.name)
+        print(f"Template '{args.name}' deleted successfully.")
+
+    except TemplateNotFoundError as e:
+        print(f"Template not found: {e}")
     except UnauthorizedError as e:
         print(f"Unauthorized: {e}")
     except NetworkError as e:

@@ -101,6 +101,11 @@ class TemplateConfig(BaseModel):
     reject_prompt: Optional[str] = Field(default=None, description="Prompt to be used for the route")
     risk_analysis: Optional[str] = Field(default=None, description="Risk analysis configuration")
 
+class TemplateModel(BaseModel):
+    name: str = Field(default=None, description="Name of the model")
+    provider: str = Field(default=None, description="Provider of the model")
+    suffix: str = Field(default=None, description="Suffix for the model")
+
 class Template(BaseModel):
     name: str = Field(default=None, description="Name of the Template")
     description: str = Field(default=None, description="Description of the Template")
@@ -108,7 +113,7 @@ class Template(BaseModel):
     enabled: Optional[bool] = Field(
         default=True, description="Whether the template is enabled"
     )
-    models: List[Model] = Field(default=[], description="List of models for the template")
+    models: List[TemplateModel] = Field(default=[], description="List of models for the template")
     config: TemplateConfig = Field(default=None, description="Configuration for the template")
 
 class Templates(BaseModel):

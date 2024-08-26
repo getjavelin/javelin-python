@@ -28,6 +28,7 @@ from javelin_sdk.models import Gateway, Gateways
 from javelin_sdk.models import Route, Routes
 from javelin_sdk.models import Provider, Providers
 from javelin_sdk.models import Secret, Secrets
+from javelin_sdk.models import Template, Templates
 
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
@@ -142,6 +143,7 @@ class JavelinClient:
         provider: Optional[str] = "",
         route: Optional[str] = "",
         secret: Optional[str] = "",
+        template: Optional[str] = "",
         is_query: bool = False,
         data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -176,6 +178,7 @@ class JavelinClient:
                                   provider_name=provider,
                                   route_name=route,
                                   secret_name=secret,
+                                  template_name=template,
                                   query=is_query)
         client = self.client
 
@@ -207,6 +210,7 @@ class JavelinClient:
         provider: Optional[str] = "",
         route: Optional[str] = "",
         secret: Optional[str] = "",
+        template: Optional[str] = "",
         is_query: bool = False,
         data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -242,6 +246,7 @@ class JavelinClient:
                                   provider_name=provider,
                                   route_name=route, 
                                   secret_name=secret,
+                                  template_name=template,
                                   query=is_query)
         aclient = self.aclient
 
@@ -294,6 +299,13 @@ class JavelinClient:
         self._handle_secret_response(response)
         return response.text
 
+    def _process_template_response_ok(self, response: httpx.Response) -> str:
+        """
+        Process a successful response from the Javelin API.
+        """
+        self._handle_template_response(response)
+        return response.text
+
     def _process_gateway_response_json(self, response: httpx.Response) -> QueryResponse:
         """
         Process a successful response from the Javelin API.
@@ -328,6 +340,15 @@ class JavelinClient:
         This is for Query() requests.
         """
         self._handle_secret_response(response)
+        return QueryResponse(**response.json())
+
+    def _process_template_response_json(self, response: httpx.Response) -> QueryResponse:
+        """
+        Process a successful response from the Javelin API.
+        Parse body into a QueryResponse object and return it.
+        This is for Query() requests.
+        """
+        self._handle_template_response(response)
         return QueryResponse(**response.json())
 
     def _handle_gateway_response(self, response: httpx.Response) -> None:
@@ -418,12 +439,35 @@ class JavelinClient:
         elif response.status_code != 200:
             raise InternalServerError(response=response)
 
+    def _handle_template_response(self, response: httpx.Response) -> None:
+        """
+        Handle the API response by raising appropriate exceptions based on the
+        response status code.
+
+        :param response: The API response to handle.
+        """
+        if response.status_code == 400:
+            raise BadRequest(response=response)
+        elif response.status_code == 409:
+            raise TemplateAlreadyExistsError(response=response)
+        elif response.status_code == 401:
+            raise UnauthorizedError(response=response)
+        elif response.status_code == 403:
+            raise UnauthorizedError(response=response)
+        elif response.status_code == 404:
+            raise TemplateNotFoundError(response=response)
+        elif response.status_code == 429:
+            raise RateLimitExceededError(response=response)
+        elif response.status_code != 200:
+            raise InternalServerError(response=response)
+
     def _construct_url(
         self, 
         gateway_name: Optional[str] = "", 
         provider_name: Optional[str] = "", 
         route_name: Optional[str] = "", 
         secret_name: Optional[str] = "", 
+        template_name: Optional[str] = "", 
         query: bool = False
     ) -> str:
         """
@@ -434,6 +478,7 @@ class JavelinClient:
         :return: Constructed URL.
         """
         url_parts = [self.base_url]
+        
         '''
         print(f"_construct_url gateway_name: {gateway_name}")
         print(f"_construct_url provider_name: {provider_name}")
@@ -469,6 +514,13 @@ class JavelinClient:
                 url_parts.append(secret_name)
             else:
                 url_parts.append("keys")
+        elif template_name:
+            url_parts.append("admin")
+            url_parts.append("processors")
+            url_parts.append("dp")
+            url_parts.append("templates")
+            if template_name != "###":
+                url_parts.append(template_name)
         else:
             url_parts.append("admin")
             url_parts.append("routes")
@@ -1251,3 +1303,170 @@ class JavelinClient:
         """
         if not secret_name:
             raise ValueError("Secret name cannot be empty.")
+
+    def get_template(self, template_name: str) -> Template:
+        """
+        Retrieve details of a specific template.
+
+        :param template_name: Name of the template to retrieve.
+        :return: Response object containing template details.
+        """
+        self._validate_template_name(template_name)
+        response = self._send_request_sync(HttpMethod.GET, template=template_name)
+        return self._process_response_template(response)
+
+    async def aget_template(self, template_name: str) -> Template:
+        """
+        Asynchronously retrieve details of a specific template.
+
+        :param template_name: Name of the template to retrieve.
+        :return: Response object containing template details.
+        """
+        self._validate_template_name(template_name)
+        response = await self._send_request_async(HttpMethod.GET, template=template_name)
+        return self._process_response_template(response)
+
+    def _process_response_template(self, response: httpx.Response) -> Template:
+        """
+        Process a successful response from the Javelin API.
+        Parse body into a Template object and return it.
+        This is for Get() requests.
+        """
+        self._handle_template_response(response)
+        return Template(**response.json())
+
+    # create a template
+    def create_template(self, template: Template) -> str:
+        """
+        Create a new template.
+
+        :param template: Template object containing template details.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_template_name(template.name)
+        response = self._send_request_sync(
+            HttpMethod.POST, template=template.name, data=template.dict()
+        )
+        return self._process_template_response_ok(response)
+
+    # async create a template
+    async def acreate_template(self, template: Template) -> str:
+        """
+        Asynchronously create a new template.
+
+        :param secret: Template object containing template details.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_template_name(template.name)
+        response = await self._send_request_async(
+            HttpMethod.POST, template=template.name, data=template.dict()
+        )
+        return self._process_template_response_ok(response)
+
+    # update a template
+    def update_template(self, template: Template) -> str:
+        """
+        Update an existing template.
+
+        :param template: Secret object containing updated template details.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_template_name(template.name)
+        response = self._send_request_sync(
+            HttpMethod.PUT, template=template.name, data=template.dict()
+        )
+        return self._process_template_response_ok(response)
+
+    # async update a template
+    async def update_template(self, template: Template) -> str:
+        """
+        Asynchronously update an existing template.
+
+        :param template: Secret object containing updated template details.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_template_name(template.name)
+        response = await self._send_request_async(
+            HttpMethod.PUT, template=template.name, data=template.dict()
+        )
+        return self._process_template_response_ok(response)
+
+    # list all templates
+    def list_templates(self) -> Templates:
+        """
+        Retrieve a list of all templates.
+
+        :return: Templates object containing a list of all templates, or an empty list if an error occurs or no templates are found.
+        """
+        response = self._send_request_sync(HttpMethod.GET, template="###")
+
+        try:
+            # Attempt to parse the response as JSON
+            response_json = response.json()
+            # Check if there's an error in the JSON response
+            if 'error' in response_json:
+                # print("Error:", response_json['error'])
+                return Templates(templates=[])  # Return an empty list of templates if an error is found
+            else:
+                return Templates(templates=response_json)  # Return the list of templates
+        except ValueError:
+            # Handle cases where the response is not JSON (possibly a string)
+            # print("Response:", response.text)
+            return Templates(templates=[])  # Return an empty list of templates for non-JSON responses
+
+    # async list all templates
+    async def alist_templates(self) -> Templates:
+        """
+        Asynchronously retrieve a list of all templates.
+
+        :return: Templates object containing a list of all templates, or an empty list if an error occurs or no templates are found.
+        """
+        response = await self._send_request_async(HttpMethod.GET, template="###")
+
+        try:
+            # Attempt to parse the response as JSON
+            response_json = response.json()
+            # Check if there's an error in the JSON response
+            if 'error' in response_json:
+                # print("Error:", response_json['error'])
+                return Templates(templates=[])  # Return an empty list of secrets if an error is found
+            else:
+                return Templates(templates=response_json)  # Return the list of secrets
+        except ValueError:
+            # Handle cases where the response is not JSON (possibly a string)
+            # print("Response:", response.text)
+            return Templates(templates=[])  # Return an empty list of secrets for non-JSON responses
+
+    # delete a template
+    def delete_secret(self, template_name: str) -> str:
+        """
+        Delete a specific template.
+
+        :param template_name: Name of the template to delete.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_template_name(template_name)
+        response = self._send_request_sync(HttpMethod.DELETE, template=template_name)
+        return self._process_template_response_ok(response)
+
+    # async delete a template
+    async def adelete_secret(self, template_name: str) -> str:
+        """
+        Asynchronously delete a specific template.
+
+        :param template_name: Name of the template to delete.
+        :return: Response text indicating the success status (e.g., "OK").
+        """
+        self._validate_template_name(template_name)
+        response = await self._send_request_async(HttpMethod.DELETE, template=template_name)
+        return self._process_template_response_ok(response)
+
+    @staticmethod
+    def _validate_template_name(template_name: str):
+        """
+        Validate the template name. Raises a ValueError if the template name is empty.
+
+        :param template_name: Name of the template to validate.
+        """
+        if not template_name:
+            raise ValueError("Template name cannot be empty.")

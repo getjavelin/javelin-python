@@ -4,6 +4,7 @@ from javelin_cli._internal.commands import (
     create_provider, list_providers, get_provider, update_provider, delete_provider,
     create_route, list_routes, get_route, update_route, delete_route,
     create_secret, list_secrets, update_secret, delete_secret,
+    create_template, list_templates, get_template, update_template, delete_template,
 )
 
 def main():
@@ -133,6 +134,39 @@ def main():
     secret_delete.add_argument('--api_key', required=True, help='Name of the Secret')
     secret_delete.add_argument('--provider_name', required=True, help='Provider Name of the Secret')
     secret_delete.set_defaults(func=delete_secret)
+
+    # Template CRUD
+    template_parser = subparsers.add_parser('template', help='Handle templates')
+    template_subparsers = template_parser.add_subparsers()
+
+    template_create = template_subparsers.add_parser('create', help='Create a template')
+    template_create.add_argument('--name', type=str, required=True, help='Name of the template')
+    template_create.add_argument('--description', type=str, required=True, help='Description of the template')
+    template_create.add_argument('--type', type=str, required=True, help='Type of the template')
+    template_create.add_argument('--enabled', type=bool, default=True, help='Whether the template is enabled')
+    template_create.add_argument('--models', type=str, required=True, help='JSON string of the models')
+    template_create.add_argument('--config', type=str, required=True, help='JSON string of the TemplateConfig')
+    template_create.set_defaults(func=create_template)
+
+    template_list = template_subparsers.add_parser('list', help='List templates')
+    template_list.set_defaults(func=list_templates)
+
+    template_get = template_subparsers.add_parser('get', help='Read a template')
+    template_get.add_argument('--name', type=str, required=True, help='Name of the template to get')
+    template_get.set_defaults(func=get_template)
+
+    template_update = template_subparsers.add_parser('update', help='Update a template')
+    template_update.add_argument('--name', type=str, required=True, help='Name of the template to update')
+    template_update.add_argument('--description', type=str, help='New description of the template')
+    template_update.add_argument('--type', type=str, help='New type of the template')
+    template_update.add_argument('--enabled', type=bool, help='Whether the template is enabled')
+    template_update.add_argument('--models', type=str, help='New JSON string of the models')
+    template_update.add_argument('--config', type=str, help='New JSON string of the TemplateConfig')
+    template_update.set_defaults(func=update_template)
+
+    template_delete = template_subparsers.add_parser('delete', help='Delete a template')
+    template_delete.add_argument('--name', type=str, required=True, help='Name of the template to delete')
+    template_delete.set_defaults(func=delete_template)
 
     args = parser.parse_args()
     if hasattr(args, 'func'):
