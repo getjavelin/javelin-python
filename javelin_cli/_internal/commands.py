@@ -16,11 +16,13 @@ from javelin_sdk.models import (
     Templates,
 )
 from javelin_sdk.exceptions import (
+    BadRequest,
     NetworkError, 
     UnauthorizedError, 
     GatewayNotFoundError, 
     ProviderNotFoundError, 
     RouteNotFoundError,
+    SecretNotFoundError,
     TemplateNotFoundError
 )
 
@@ -62,12 +64,10 @@ def create_gateway(args):
         result = client.create_gateway(gateway)
         print(result)
 
-    except ValidationError as e:
-        print(f"Validation error: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
+    except Exception as e:
+        print(f"{e}")
 
 def list_gateways(args):
     try:
@@ -75,10 +75,10 @@ def list_gateways(args):
         print("List of gateways:")
         print(json.dumps(gateways, indent=2, default=lambda o: o.__dict__))
 
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
+    except Exception as e:
+        print(f"{e}")
 
 def get_gateway(args):
     try:
@@ -86,12 +86,10 @@ def get_gateway(args):
         print(f"Gateway details for '{args.name}':")
         print(json.dumps(gateway, indent=2, default=lambda o: o.__dict__))
 
-    except GatewayNotFoundError as e:
-        print(f"Gateway not found: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
+    except Exception as e:
+        print(f"{e}")
 
 def update_gateway(args):
     try:
@@ -108,24 +106,20 @@ def update_gateway(args):
         client.update_gateway(args.name, gateway_data)
         print(f"Gateway '{args.name}' updated successfully.")
 
-    except GatewayNotFoundError as e:
-        print(f"Gateway not found: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
+    except Exception as e:
+        print(f"{e}")
 
 def delete_gateway(args):
     try:
         client.delete_gateway(args.name)
         print(f"Gateway '{args.name}' deleted successfully.")
 
-    except GatewayNotFoundError as e:
-        print(f"Gateway not found: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
+    except Exception as e:
+        print(f"{e}")
 
 def create_provider(args):
     try:
@@ -149,14 +143,10 @@ def create_provider(args):
 
     except json.JSONDecodeError as e:
         print(f"Error parsing configuration JSON: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
-    except ValidationError as e:  # Pydantic's ValidationError
-        print(f"Validation error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{e}")
 
 def list_providers(args):
     try:
@@ -164,10 +154,10 @@ def list_providers(args):
         print("List of providers:")
         print(json.dumps(providers, indent=2, default=lambda o: o.__dict__))
 
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
+    except Exception as e:
+        print(f"{e}")
 
 def get_provider(args):
     try:
@@ -175,14 +165,10 @@ def get_provider(args):
         print(f"Provider details for '{args.name}':")
         print(json.dumps(provider, indent=2, default=lambda o: o.__dict__))
 
-    except ProviderNotFoundError as e:
-        print(f"Provider not found: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{e}")
 
 def update_provider(args):
     try:
@@ -203,32 +189,22 @@ def update_provider(args):
         result = client.update_provider(provider)
         print(f"Provider '{args.name}' updated successfully.")
 
-    except ProviderNotFoundError as e:
-        print(f"Provider not found: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
     except json.JSONDecodeError as e:
         print(f"Error parsing configuration JSON: {e}")
-    except ValidationError as e:  # Pydantic's ValidationError
-        print(f"Validation error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{e}")
 
 def delete_provider(args):
     try:
         client.delete_provider(args.name)
         print(f"Provider '{args.name}' deleted successfully.")
 
-    except ProviderNotFoundError as e:
-        print(f"Provider not found: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{e}")
 
 def create_route(args):
     try:
@@ -255,14 +231,10 @@ def create_route(args):
 
     except json.JSONDecodeError as e:
         print(f"Error parsing JSON: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
-    except ValidationError as e:  # Pydantic's ValidationError
-        print(f"Validation error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{e}")
 
 def list_routes(args):
     try:
@@ -271,10 +243,10 @@ def list_routes(args):
         print(json.dumps(routes, indent=2, default=lambda o: o.__dict__))
 
     except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
+        print(f"{e}")
     except NetworkError as e:
         
-        print(f"Network error: {e}")
+        print(f"{e}")
 
 def get_route(args):
     try:
@@ -282,14 +254,10 @@ def get_route(args):
         print(f"Route details for '{args.name}':")
         print(json.dumps(route, indent=2, default=lambda o: o.__dict__))
 
-    except RouteNotFoundError as e:
-        print(f"Route not found: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{e}")
 
 def update_route(args):
     try:
@@ -313,32 +281,22 @@ def update_route(args):
         result = client.update_route(route)
         print(f"Route '{args.name}' updated successfully.")
 
-    except RouteNotFoundError as e:
-        print(f"Route not found: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
     except json.JSONDecodeError as e:
         print(f"Error parsing JSON: {e}")
-    except ValidationError as e:  # Pydantic's ValidationError
-        print(f"Validation error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{e}")
 
 def delete_route(args):
     try:
         client.delete_route(args.name)
         print(f"Route '{args.name}' deleted successfully.")
 
-    except RouteNotFoundError as e:
-        print(f"Route not found: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{e}")
 
 from collections import namedtuple
 
@@ -365,14 +323,10 @@ def create_secret(args):
         result = client.create_secret(secret)
         print(result)
 
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
-    except ValueError as e:
-        print(f"Validation error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{e}")
 
 def list_secrets(args):
     try:
@@ -380,11 +334,10 @@ def list_secrets(args):
         print("List of secrets:")
         print(json.dumps(secrets, indent=2, default=lambda o: o.__dict__))
 
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        
-        print(f"Network error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
+    except Exception as e:
+        print(f"{e}")
 
 def get_secret(args):
     try:
@@ -392,14 +345,10 @@ def get_secret(args):
         print(f"Secret details for '{args.api_key}':")
         print(json.dumps(secret, indent=2, default=lambda o: o.__dict__))
 
-    except SecretNotFoundError as e:
-        print(f"Secret not found: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{e}")
 
 def update_secret(args):
     try:
@@ -417,30 +366,20 @@ def update_secret(args):
         result = client.update_secret(secret)
         print(f"Secret '{args.api_key}' updated successfully.")
 
-    except SecretNotFoundError as e:
-        print(f"Secret not found: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
-    except ValidationError as e:  # Pydantic's ValidationError
-        print(f"Validation error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{e}")
 
 def delete_secret(args):
     try:
         client.delete_secret(args.provider_name, args.api_key)
         print(f"Secret '{args.api_key}' deleted successfully.")
 
-    except SecretNotFoundError as e:
-        print(f"Secret not found: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{e}")
 
 def create_template(args):
     try:
@@ -467,14 +406,10 @@ def create_template(args):
 
     except json.JSONDecodeError as e:
         print(f"Error parsing JSON: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
-    except ValidationError as e:  # Pydantic's ValidationError
-        print(f"Validation error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{e}")
 
 def list_templates(args):
     try:
@@ -482,10 +417,10 @@ def list_templates(args):
         print("List of templates:")
         print(json.dumps(templates, indent=2, default=lambda o: o.__dict__))
 
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
+    except Exception as e:
+        print(f"{e}")
 
 def get_template(args):
     try:
@@ -493,14 +428,10 @@ def get_template(args):
         print(f"Template details for '{args.name}':")
         print(json.dumps(template, indent=2, default=lambda o: o.__dict__))
 
-    except TemplateNotFoundError as e:
-        print(f"Template not found: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{e}")
 
 def update_template(args):
     try:
@@ -525,29 +456,19 @@ def update_template(args):
         result = client.update_template(template)
         print(f"Template '{args.name}' updated successfully.")
 
-    except TemplateNotFoundError as e:
-        print(f"Template not found: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
     except json.JSONDecodeError as e:
         print(f"Error parsing JSON: {e}")
-    except ValidationError as e:  # Pydantic's ValidationError
-        print(f"Validation error: {e}")
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{e}")
 
 def delete_template(args):
     try:
         client.delete_template(args.name)
         print(f"Template '{args.name}' deleted successfully.")
-
-    except TemplateNotFoundError as e:
-        print(f"Template not found: {e}")
-    except UnauthorizedError as e:
-        print(f"Unauthorized: {e}")
-    except NetworkError as e:
-        print(f"Network error: {e}")
+    
+    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
+        print(f"{e}")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{e}")
