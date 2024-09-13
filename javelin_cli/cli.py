@@ -1,4 +1,12 @@
 import argparse
+import webbrowser
+import os
+import toml
+from pathlib import Path
+import importlib.metadata
+import requests
+from bs4 import BeautifulSoup
+
 from javelin_cli._internal.commands import (
     create_gateway, list_gateways, get_gateway, update_gateway, delete_gateway,
     create_provider, list_providers, get_provider, update_provider, delete_provider,
@@ -8,11 +16,30 @@ from javelin_cli._internal.commands import (
 )
 
 def main():
-    parser = argparse.ArgumentParser(description="Javelin CLI for interacting with the SDK")
-    subparsers = parser.add_subparsers()
+    # Fetch the version dynamically from the package
+    package_version = importlib.metadata.version('javelin-sdk')  # Replace with your package name
+
+    parser = argparse.ArgumentParser(
+        description="The CLI for Javelin.",
+        formatter_class=argparse.RawTextHelpFormatter,
+        epilog="See https://docs.getjavelin.io/docs/javelin-python/cli for more detailed documentation."
+    )
+    parser.add_argument('--version', action='version', version=f'Javelin CLI v{package_version}')
+    
+    subparsers = parser.add_subparsers(title='commands', metavar='')
+
+    # Auth command
+    auth_parser = subparsers.add_parser(
+        'auth',
+        help='Authenticate with Javelin.'
+    )
+    auth_parser.set_defaults(func=authenticate)
 
     # Gateway CRUD
-    gateway_parser = subparsers.add_parser('gateway', help='Handle gateways')
+    gateway_parser = subparsers.add_parser(
+        'gateway',
+        help='Manage gateways: create, list, update, and delete gateways for routing requests.'
+    )
     gateway_subparsers = gateway_parser.add_subparsers()
 
     gateway_create = gateway_subparsers.add_parser('create', help='Create a gateway')
@@ -41,7 +68,10 @@ def main():
     gateway_delete.set_defaults(func=delete_gateway)
 
     # Provider CRUD
-    provider_parser = subparsers.add_parser('provider', help='Handle providers')
+    provider_parser = subparsers.add_parser(
+        'provider',
+        help='Manage model providers: configure and manage large language model providers.'
+    )
     provider_subparsers = provider_parser.add_subparsers()
 
     provider_create = provider_subparsers.add_parser('create', help='Create a provider')
@@ -72,7 +102,10 @@ def main():
     provider_delete.set_defaults(func=delete_provider)
 
     # Route CRUD
-    route_parser = subparsers.add_parser('route', help='Handle routes')
+    route_parser = subparsers.add_parser(
+        'route',
+        help='Manage routing rules: define and control the routing logic for handling requests.'
+    )
     route_subparsers = route_parser.add_subparsers()
 
     route_create = route_subparsers.add_parser('create', help='Create a route')
@@ -103,7 +136,10 @@ def main():
     route_delete.set_defaults(func=delete_route)
 
     # Secret CRUD
-    secret_parser = subparsers.add_parser('secret', help='Handle secrets')
+    secret_parser = subparsers.add_parser(
+        'secret',
+        help='Manage API secrets: securely handle and manage API keys and credentials for access control.'
+    )
     secret_subparsers = secret_parser.add_subparsers()
 
     secret_create = secret_subparsers.add_parser('create', help='Create a secret')
@@ -136,7 +172,10 @@ def main():
     secret_delete.set_defaults(func=delete_secret)
 
     # Template CRUD
-    template_parser = subparsers.add_parser('template', help='Handle templates')
+    template_parser = subparsers.add_parser(
+        'template',
+        help='Manage templates: configure and manage templates for sensitive data protection.'
+    )
     template_subparsers = template_parser.add_subparsers()
 
     template_create = template_subparsers.add_parser('create', help='Create a template')
@@ -173,6 +212,97 @@ def main():
         args.func(args)
     else:
         parser.print_help()
+
+def authenticate(args):
+    default_url = "https://dev.javelin.live/"
+    
+    # ASCII-based representation of a javelin thrower
+    print("   O")
+    print("  /|\\")
+    print("  / \\    ========> Welcome to Javelin! 🚀")
+    print("\nBefore you can use Javelin, you need to authenticate.")
+    print("Press Enter to open the default login URL in your browser...")
+    print(f"Default URL: {default_url}")
+    print("Or enter a new URL (leave blank to use the default): ", end="")
+    
+    # Read user input
+    new_url = input().strip()
+    url_to_open = new_url if new_url else default_url
+
+    # Open the browser to the specified URL
+    print(f"\n🚀 Opening {url_to_open} in your browser...")
+    webbrowser.open(url_to_open)
+    
+    # Simulate waiting for authentication (in a real scenario, you'd handle the callback/token exchange)
+    input("\n⚡ Waiting for you to authenticate... Press Enter when done.")
+
+    # Fetch the user profile
+    profile_url = url_to_open + "profile"
+    user_info = get_user_info(profile_url)
+
+    if user_info:
+        print(f"✅ Successfully authenticated!")
+        print(f"User: {user_info.get('name')}, Group: {user_info.get('group')}")
+    else:
+        print(f"⚠️ Successfully authenticated, but failed to retrieve user information.")
+
+    # Store credentials in $HOME/.javelin/gateway.toml
+    home_dir = Path.home()
+    javelin_dir = home_dir / ".javelin"  # Ensure the directory is defined here
+
+    # Create the directory if it doesn't exist
+    javelin_dir.mkdir(exist_ok=True)
+    
+    toml_file_path = javelin_dir / "gateway.toml"
+
+    # Prepare the user and gateway data 
+    gateway_data = {
+        'gateway': {
+            url_to_open: {
+                'user_info': user_info if user_info else "User info retrieval failed" 
+            }
+        }
+    }
+
+    # Save token to default.toml
+    with toml_file_path.open('w') as toml_file:
+        toml.dump(gateway_data, toml_file)
+
+    print(f"Your Javelin credentials are stored in {toml_file_path}")
+
+def get_user_info(url):
+    # Send the GET request to fetch the profile page
+    url = "https://dev.javelin.live/profile"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raises an HTTPError if the status is not 200 OK
+
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err}")
+        if response.status_code == 401:
+            print("Authentication failed: Invalid or expired token.")
+        return None
+    except Exception as err:
+        print(f"Error occurred while fetching profile page: {err}")
+        return None
+
+    # Parse the HTML content using BeautifulSoup
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Attempt to extract the Name and Group
+    try:
+        # Replace with actual tag/classes as per the HTML structure
+        name = soup.find('h1', class_='profile-name').get_text(strip=True)
+        group = soup.find('span', class_='user-group').get_text(strip=True)
+    except AttributeError:
+        print("Failed to retrieve name or group: HTML structure may have changed.")
+        return None
+
+    # Return the extracted information
+    return {
+        "name": name,
+        "group": group
+    }
 
 if __name__ == "__main__":
     main()

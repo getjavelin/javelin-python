@@ -153,9 +153,12 @@ class UnauthorizedError(JavelinClientError):
     ) -> None:
         super().__init__(message=message, response=response)
 
+    # Override the __str__ method to only return the message
+    def __str__(self):
+        return self.message
+
 class ValidationError(JavelinClientError):
     def __init__(
         self, response: Optional[Response] = None, message: str = "Validation error"
     ) -> None:
         super().__init__(message=message, response=response)
-

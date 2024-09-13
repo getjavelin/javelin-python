@@ -1,4 +1,6 @@
 import os
+import toml
+from pathlib import Path
 import json
 from pydantic import ValidationError
 
@@ -26,34 +28,68 @@ from javelin_sdk.exceptions import (
     TemplateNotFoundError
 )
 
-# Retrieve environment variables
-base_url = os.getenv("JAVELIN_BASE_URL", "https://api-dev.javelin.live")
-javelin_api_key = os.getenv("JAVELIN_API_KEY")
-javelin_virtualapikey = os.getenv("JAVELIN_VIRTUALAPIKEY")
-llm_api_key = os.getenv("LLM_API_KEY")
+def get_javelin_client():
+    # Path to default.toml file
+    home_dir = Path.home()
+    toml_file_path = home_dir / ".javelin" / "gateway.toml"
+    
+    # Load settings from default.toml
+    if not toml_file_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {toml_file_path}")
 
-# Initialize the global JavelinClient
-client = JavelinClient(
-    base_url=base_url,
-    javelin_api_key=javelin_api_key,
-    javelin_virtualapikey=javelin_virtualapikey,
-    llm_api_key=llm_api_key,
-)
+    with open(toml_file_path, 'r') as toml_file:
+        config = toml.load(toml_file)
 
-'''
-# Print all the relevant variables
-print(f"Base URL: {base_url}")
-print(f"Javelin API Key: {javelin_api_key}")
-print(f"Javelin Virtual API Key: {javelin_virtualapikey}")
-print(f"LLM API Key: {llm_api_key}")
-'''
+    # Retrieve settings from the TOML config
+    try:
+        base_url = config.get("settings", {}).get("base_url", "https://api-dev.javelin.live")
+        javelin_api_key = config.get("gateway", {}).get(base_url, {}).get("javelin_api_key")
+        javelin_virtualapikey = config.get("settings", {}).get("javelin_virtualapikey")
+        llm_api_key = config.get("settings", {}).get("llm_api_key")
+    except KeyError as e:
+        raise KeyError(f"Missing expected key in the configuration file: {e}")
+
+    # Print all the relevant variables for debugging (optional)
+    '''
+    print(f"Base URL: {base_url}")
+    print(f"Javelin API Key: {javelin_api_key}")
+    print(f"Javelin Virtual API Key: {javelin_virtualapikey}")
+    print(f"LLM API Key: {llm_api_key}")
+    '''
+
+    # Ensure the API key is set before initializing
+    if not javelin_api_key or javelin_api_key == "":
+        raise UnauthorizedError(
+            response=None, message=(
+                "Please provide a valid Javelin API Key. "
+                "When you sign into Javelin, you can find your API Key in the "
+                "Account->Developer settings"
+            )
+        )
+    
+    # Initialize the JavelinClient when required
+    return JavelinClient(
+        base_url=base_url,
+        javelin_api_key=javelin_api_key,
+        javelin_virtualapikey=javelin_virtualapikey,
+        llm_api_key=llm_api_key,
+    )
+    
+    # Initialize the JavelinClient when required
+    return JavelinClient(
+        base_url=base_url,
+        javelin_api_key=javelin_api_key,
+        javelin_virtualapikey=javelin_virtualapikey,
+        llm_api_key=llm_api_key,
+    )
 
 def create_gateway(args):
     try:
+        client = get_javelin_client()
+
         # Parse the JSON input for GatewayConfig
         config_data = json.loads(args.config)
         config = GatewayConfig(**config_data)
-        
         gateway = Gateway(
             name=args.name,
             type=args.type,
@@ -64,38 +100,50 @@ def create_gateway(args):
         result = client.create_gateway(gateway)
         print(result)
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def list_gateways(args):
     try:
+        client = get_javelin_client()
+
+        # Fetch and print the list of gateways
         gateways = client.list_gateways()
         print("List of gateways:")
         print(json.dumps(gateways, indent=2, default=lambda o: o.__dict__))
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def get_gateway(args):
     try:
+        client = get_javelin_client()
+
         gateway = client.get_gateway(args.name)
         print(f"Gateway details for '{args.name}':")
         print(json.dumps(gateway, indent=2, default=lambda o: o.__dict__))
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def update_gateway(args):
     try:
+        client = get_javelin_client()
+
         config_data = json.loads(args.config)
         config = GatewayConfig(**config_data)
-
         gateway = Gateway(
             name=args.name,
             type=args.type,
@@ -106,23 +154,31 @@ def update_gateway(args):
         client.update_gateway(args.name, gateway_data)
         print(f"Gateway '{args.name}' updated successfully.")
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def delete_gateway(args):
     try:
+        client = get_javelin_client()
+
         client.delete_gateway(args.name)
         print(f"Gateway '{args.name}' deleted successfully.")
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def create_provider(args):
     try:
+        client = get_javelin_client()
+
         # Parse the JSON string from args.config to a dictionary
         config_data = json.loads(args.config)
         # Create an instance of ProviderConfig using the parsed config_data
@@ -143,35 +199,47 @@ def create_provider(args):
 
     except json.JSONDecodeError as e:
         print(f"Error parsing configuration JSON: {e}")
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def list_providers(args):
     try:
+        client = get_javelin_client()
+
         providers = client.list_providers()
         print("List of providers:")
         print(json.dumps(providers, indent=2, default=lambda o: o.__dict__))
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def get_provider(args):
     try:
+        client = get_javelin_client()
+
         provider = client.get_provider(args.name)
         print(f"Provider details for '{args.name}':")
         print(json.dumps(provider, indent=2, default=lambda o: o.__dict__))
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def update_provider(args):
     try:
+        client = get_javelin_client()
+
         # Parse the JSON string for config
         config_data = json.loads(args.config)
         # Create an instance of ProviderConfig using the parsed config_data
@@ -191,23 +259,31 @@ def update_provider(args):
 
     except json.JSONDecodeError as e:
         print(f"Error parsing configuration JSON: {e}")
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def delete_provider(args):
     try:
+        client = get_javelin_client()
+
         client.delete_provider(args.name)
         print(f"Provider '{args.name}' deleted successfully.")
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def create_route(args):
     try:
+        client = get_javelin_client()
+
         # Parse the JSON string for config and models
         config_data = json.loads(args.config)
         models_data = json.loads(args.models)
@@ -231,36 +307,47 @@ def create_route(args):
 
     except json.JSONDecodeError as e:
         print(f"Error parsing JSON: {e}")
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def list_routes(args):
     try:
+        client = get_javelin_client()
+
         routes = client.list_routes()
         print("List of routes:")
         print(json.dumps(routes, indent=2, default=lambda o: o.__dict__))
 
     except UnauthorizedError as e:
-        print(f"{e}")
-    except NetworkError as e:
-        
-        print(f"{e}")
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
 
 def get_route(args):
     try:
+        client = get_javelin_client()
+
         route = client.get_route(args.name)
         print(f"Route details for '{args.name}':")
         print(json.dumps(route, indent=2, default=lambda o: o.__dict__))
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def update_route(args):
     try:
+        client = get_javelin_client()
+
         # Parse the JSON string for config and models
         config_data = json.loads(args.config)
         models_data = json.loads(args.models)
@@ -283,25 +370,33 @@ def update_route(args):
 
     except json.JSONDecodeError as e:
         print(f"Error parsing JSON: {e}")
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def delete_route(args):
     try:
+        client = get_javelin_client()
+        
         client.delete_route(args.name)
         print(f"Route '{args.name}' deleted successfully.")
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 from collections import namedtuple
 
 def create_secret(args):
     try:
+        client = get_javelin_client()
+
         # Create an instance of the Secret class using the provided arguments
         secret = Secret(
             api_key=args.api_key,
@@ -323,35 +418,47 @@ def create_secret(args):
         result = client.create_secret(secret)
         print(result)
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def list_secrets(args):
     try:
+        client = get_javelin_client()
+
         secrets = client.list_secrets()
         print("List of secrets:")
         print(json.dumps(secrets, indent=2, default=lambda o: o.__dict__))
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def get_secret(args):
     try:
+        client = get_javelin_client()
+
         secret = client.get_secret(args.api_key)
         print(f"Secret details for '{args.api_key}':")
         print(json.dumps(secret, indent=2, default=lambda o: o.__dict__))
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def update_secret(args):
     try:
+        client = get_javelin_client()
+
         # Create an instance of the Secret class
         secret = Secret(
             api_key=args.api_key,
@@ -366,23 +473,31 @@ def update_secret(args):
         result = client.update_secret(secret)
         print(f"Secret '{args.api_key}' updated successfully.")
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def delete_secret(args):
     try:
+        client = get_javelin_client()
+
         client.delete_secret(args.provider_name, args.api_key)
         print(f"Secret '{args.api_key}' deleted successfully.")
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def create_template(args):
     try:
+        client = get_javelin_client()
+
         # Parse the JSON string for config and models
         config_data = json.loads(args.config)
         models_data = json.loads(args.models)
@@ -406,35 +521,47 @@ def create_template(args):
 
     except json.JSONDecodeError as e:
         print(f"Error parsing JSON: {e}")
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def list_templates(args):
     try:
+        client = get_javelin_client()
+
         templates = client.list_templates()
         print("List of templates:")
         print(json.dumps(templates, indent=2, default=lambda o: o.__dict__))
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def get_template(args):
     try:
+        client = get_javelin_client()
+
         template = client.get_template(args.name)
         print(f"Template details for '{args.name}':")
         print(json.dumps(template, indent=2, default=lambda o: o.__dict__))
 
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def update_template(args):
     try:
+        client = get_javelin_client()
+
         # Parse the JSON string for config and models
         config_data = json.loads(args.config)
         models_data = json.loads(args.models)
@@ -458,17 +585,23 @@ def update_template(args):
 
     except json.JSONDecodeError as e:
         print(f"Error parsing JSON: {e}")
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
 
 def delete_template(args):
     try:
+        client = get_javelin_client()
+
         client.delete_template(args.name)
         print(f"Template '{args.name}' deleted successfully.")
     
-    except (BadRequest, ValidationError, UnauthorizedError, NetworkError) as e:
-        print(f"{e}")
+    except UnauthorizedError as e:
+        print(f"UnauthorizedError: {e}")
+    except (BadRequest, ValidationError, NetworkError) as e:
+        print(f"An error occurred: {e}")
     except Exception as e:
-        print(f"{e}")
+        print(f"Unexpected error: {e}")
