@@ -20,6 +20,8 @@ javelin = "javelin_cli.cli:main"
 python = "^3.8"
 httpx = "^0.24.0"
 pydantic = "1.10.13"
+toml = "^0.10.2"
+beautifulsoup4 = "^4.12.3"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.3.1"
