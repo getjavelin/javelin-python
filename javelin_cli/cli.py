@@ -1,11 +1,9 @@
 import argparse
 import webbrowser
 import os
-import toml
 from pathlib import Path
 import importlib.metadata
 import requests
-from bs4 import BeautifulSoup
 
 from javelin_cli._internal.commands import (
     create_gateway, list_gateways, get_gateway, update_gateway, delete_gateway,
@@ -237,72 +235,39 @@ def authenticate(args):
     input("\n⚡ Waiting for you to authenticate... Press Enter when done.")
 
     # Fetch the user profile
-    profile_url = url_to_open + "profile"
-    user_info = get_user_info(profile_url)
+    profile_url = url_to_open + "getuserprofile"
+    cache_data = get_profile(profile_url)
 
-    if user_info:
+    if cache_data:
         print(f"✅ Successfully authenticated!")
-        print(f"User: {user_info.get('name')}, Group: {user_info.get('group')}")
-    else:
-        print(f"⚠️ Successfully authenticated, but failed to retrieve user information.")
+        
+        # Store cache in $HOME/.javelin/cache.json
+        home_dir = Path.home()
+        javelin_dir = home_dir / ".javelin"  # Ensure the directory is defined here
 
-    # Store credentials in $HOME/.javelin/gateway.toml
-    home_dir = Path.home()
-    javelin_dir = home_dir / ".javelin"  # Ensure the directory is defined here
-
-    # Create the directory if it doesn't exist
-    javelin_dir.mkdir(exist_ok=True)
+        # Create the directory if it doesn't exist
+        javelin_dir.mkdir(exist_ok=True)
     
-    toml_file_path = javelin_dir / "gateway.toml"
+        json_file_path = javelin_dir / "cache.json"
 
-    # Prepare the user and gateway data 
-    gateway_data = {
-        'gateway': {
-            url_to_open: {
-                'user_info': user_info if user_info else "User info retrieval failed" 
-            }
-        }
-    }
+        # Save the profile to cache.json
+        with open(json_file_path, 'w') as json_file:
+            json.dump(user_info, json_file, indent=4)
+        
+        print(f"Your Javelin credentials are stored in {json_file_path}")
 
-    # Save token to default.toml
-    with toml_file_path.open('w') as toml_file:
-        toml.dump(gateway_data, toml_file)
+    else:
+        print(f"⚠️ failed to retrieve Javelin credentials.")
 
-    print(f"Your Javelin credentials are stored in {toml_file_path}")
 
-def get_user_info(url):
-    # Send the GET request to fetch the profile page
-    url = "https://dev.javelin.live/profile"
+def get_profile(url):
     try:
         response = requests.get(url)
-        response.raise_for_status()  # Raises an HTTPError if the status is not 200 OK
-
-    except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")
-        if response.status_code == 401:
-            print("Authentication failed: Invalid or expired token.")
+        response.raise_for_status()  # Raise an error for bad status codes
+        return response.json()  # Assuming the response is a JSON object
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to fetch the profile: {e}")
         return None
-    except Exception as err:
-        print(f"Error occurred while fetching profile page: {err}")
-        return None
-
-    # Parse the HTML content using BeautifulSoup
-    soup = BeautifulSoup(response.text, 'html.parser')
     
-    # Attempt to extract the Name and Group
-    try:
-        # Replace with actual tag/classes as per the HTML structure
-        name = soup.find('h1', class_='profile-name').get_text(strip=True)
-        group = soup.find('span', class_='user-group').get_text(strip=True)
-    except AttributeError:
-        print("Failed to retrieve name or group: HTML structure may have changed.")
-        return None
-
-    # Return the extracted information
-    return {
-        "name": name,
-        "group": group
-    }
-
 if __name__ == "__main__":
     main()

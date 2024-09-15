@@ -1,5 +1,4 @@
 import os
-import toml
 from pathlib import Path
 import json
 from pydantic import ValidationError
@@ -29,34 +28,42 @@ from javelin_sdk.exceptions import (
 )
 
 def get_javelin_client():
-    # Path to default.toml file
+    # Path to cache.json file
     home_dir = Path.home()
-    toml_file_path = home_dir / ".javelin" / "gateway.toml"
+    json_file_path = home_dir / ".javelin" / "cache.json"
+
+    # Load cache.json
+    if not json_file_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {json_file_path}")
     
-    # Load settings from default.toml
-    if not toml_file_path.exists():
-        raise FileNotFoundError(f"Configuration file not found: {toml_file_path}")
+    with open(json_file_path, 'r') as json_file:
+        cache_data = json.load(json_file)
 
-    with open(toml_file_path, 'r') as toml_file:
-        config = toml.load(toml_file)
+    # Retrieve the list of gateways
+    gateways = cache_data.get('org', {}).get('public_metadata', {}).get('Gateways', [])
+    
+    if not gateways:
+        raise ValueError("No gateways found in the configuration.")
 
-    # Retrieve settings from the TOML config
-    try:
-        base_url = config.get("settings", {}).get("base_url", "https://api-dev.javelin.live")
-        javelin_api_key = config.get("gateway", {}).get(base_url, {}).get("javelin_api_key")
-        javelin_virtualapikey = config.get("settings", {}).get("javelin_virtualapikey")
-        llm_api_key = config.get("settings", {}).get("llm_api_key")
-    except KeyError as e:
-        raise KeyError(f"Missing expected key in the configuration file: {e}")
+    # List available gateways
+    print("Available Gateways:")
+    for i, gateway in enumerate(gateways):
+        print(f"{i + 1}. {gateway['namespace']} - {gateway['base_url']}")
+
+    # Allow the user to select a gateway
+    choice = int(input("Select a gateway (enter the number): ")) - 1
+    
+    if choice < 0 or choice >= len(gateways):
+        raise ValueError("Invalid selection. Please choose a valid gateway.")
+
+    selected_gateway = gateways[choice]
+    base_url = selected_gateway['base_url']
+    javelin_api_key = selected_gateway['api_key_value']
 
     # Print all the relevant variables for debugging (optional)
-    '''
     print(f"Base URL: {base_url}")
     print(f"Javelin API Key: {javelin_api_key}")
-    print(f"Javelin Virtual API Key: {javelin_virtualapikey}")
-    print(f"LLM API Key: {llm_api_key}")
-    '''
-
+    
     # Ensure the API key is set before initializing
     if not javelin_api_key or javelin_api_key == "":
         raise UnauthorizedError(
@@ -71,16 +78,6 @@ def get_javelin_client():
     return JavelinClient(
         base_url=base_url,
         javelin_api_key=javelin_api_key,
-        javelin_virtualapikey=javelin_virtualapikey,
-        llm_api_key=llm_api_key,
-    )
-    
-    # Initialize the JavelinClient when required
-    return JavelinClient(
-        base_url=base_url,
-        javelin_api_key=javelin_api_key,
-        javelin_virtualapikey=javelin_virtualapikey,
-        llm_api_key=llm_api_key,
     )
 
 def create_gateway(args):
@@ -108,6 +105,7 @@ def create_gateway(args):
         print(f"Unexpected error: {e}")
 
 def list_gateways(args):
+    '''
     try:
         client = get_javelin_client()
 
@@ -122,6 +120,30 @@ def list_gateways(args):
         print(f"An error occurred: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
+    '''
+    # Path to cache.json file
+    home_dir = Path.home()
+    json_file_path = home_dir / ".javelin" / "cache.json"
+
+    # Load cache.json
+    if not json_file_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {json_file_path}")
+    
+    with open(json_file_path, 'r') as json_file:
+        cache_data = json.load(json_file)
+
+    # Retrieve the list of gateways
+    gateways = cache_data.get('org', {}).get('public_metadata', {}).get('Gateways', [])
+    
+    if not gateways:
+        raise ValueError("No gateways found in the configuration.")
+
+    # List available gateways
+    print("Available Gateways:")
+    for i, gateway in enumerate(gateways):
+        print(f"\nGateway {i + 1}:")
+        for key, value in gateway.items():
+            print(f"  {key}: {value}")
 
 def get_gateway(args):
     try:
