@@ -1,4 +1,4 @@
-.PHONY: all format lint test tests
+.PHONY: all format lint test coverage build clean install install-wheel
 
 all: help
 
@@ -19,3 +19,17 @@ lint:
 
 test:
 	poetry run pytest tests
+
+build:
+	poetry build
+
+clean:
+	rm -rf dist/
+	rm -rf build/
+	rm -rf *.egg-info/
+
+install:
+	poetry install
+
+install-wheel:
+	pip install dist/javelin_sdk-0.2.6-py3-none-any.whl --force-reinstall
