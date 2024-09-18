@@ -1,3 +1,6 @@
+[project.urls]
+"Homepage" = "https://getjavelin.io"
+
 [tool.poetry]
 name = "javelin-sdk"
 version = "0.2.6"
@@ -5,14 +8,18 @@ description = "Python client for Javelin"
 authors = ["Sharath Rajasekar <sharath@getjavelin.io>"]
 readme = "README.md"
 license = "Apache-2.0"
+packages = [
+    { include = "javelin_cli" },
+    { include = "javelin_sdk" },
+]
 
-[project.urls]
-"Homepage" = "https://getjavelin.io"
+[tool.poetry.scripts]
+javelin = "javelin_cli.cli:main"
 
 [tool.poetry.dependencies]
 python = "^3.8"
 httpx = "^0.24.0"
-pydantic = "^1.10.7"
+pydantic = "1.10.13"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.3.1"
@@ -21,7 +28,7 @@ pytest-asyncio = "^0.21.0"
 pytest-mock = "^3.10.0"
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.3.0"
+black = "24.3.0"
 ruff = "^0.0.265"
 mypy = "^1.2.0"
 pre-commit = "^3.3.1"
