@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Any, Optional
 from pydantic import BaseModel, Field
 
 class GatewayConfig(BaseModel):
@@ -9,6 +9,7 @@ class GatewayConfig(BaseModel):
     system_namespace: Optional[str] = Field(default=None, description="A unique namespace within the system to prevent naming conflicts and to organize resources logically")
 
 class Gateway(BaseModel):
+    gateway_id: str = Field(default=None, description="Unique identifier for the gateway")
     name: str = Field(default=None, description="Name of the gateway")
     type: str = Field(default=None, description="The type development, staging, production of this gateway")
     enabled: Optional[bool] = Field(default=True, description="Whether the gateway is enabled")
@@ -18,32 +19,42 @@ class Gateways(BaseModel):
     gateways: List[Gateway] = Field(default=[], description="List of gateways")
 
 class Budget(BaseModel):
-    enabled: Optional[bool] = Field(default=None, description="Whether the budget feature is enabled")
-    annual: Optional[int] = Field(default=None, description="Annual budget limit")
-    monthly: Optional[int] = Field(default=None, description="Monthly budget limit")
-    weekly: Optional[int] = Field(default=None, description="Weekly budget limit")
-    currency: Optional[str] = Field(default=None, description="Currency for the budget")
+    enabled: Optional[bool] = Field(None, description="Whether the budget feature is enabled")
+    daily: Optional[float] = Field(None, description="Daily budget limit")
+    monthly: Optional[float] = Field(None, description="Monthly budget limit")
+    weekly: Optional[float] = Field(None, description="Weekly budget limit")
+    annual: Optional[float] = Field(None, description="Annual budget limit")
+    currency: Optional[str] = Field(None, description="Currency for the budget")
 
 class Dlp(BaseModel):
     enabled: Optional[bool] = Field(default=None, description="Whether DLP is enabled")
     strategy: Optional[str] = Field(default=None, description="DLP strategy")
     action: Optional[str] = Field(default=None, description="DLP action to take")
+    risk_analysis: Optional[str] = Field(default=None, description="Risk analysis configuration")
 
 class RouteConfig(BaseModel):
-    organization: Optional[str] = Field(default=None, description="Name of the organization")
-    owner: Optional[str] = Field(default=None, description="Owner of the route")
     rate_limit: Optional[int] = Field(default=None, description="Rate limit for the route")
-    retries: Optional[int] = Field(default=None, description="Number of retries for the route")
+    owner: Optional[str] = Field(default=None, description="Owner of the route")
+    organization: Optional[str] = Field(default=None, description="Organization associated with the route")
     archive: Optional[bool] = Field(default=None, description="Whether archiving is enabled")
+    retries: Optional[int] = Field(default=None, description="Number of retries for the route")
+    llm_cache: bool = Field(False, description="Whether LLM cache is enabled")
+    role_to_assume: Optional[str] = Field(None, description="Role to assume for the route")
+    enable_telemetry: Optional[bool] = Field(None, description="Whether telemetry is enabled")
     retention: Optional[int] = Field(default=None, description="Data retention period")
+    request_chain: Optional[Dict[str, Any]] = Field(None, description="Request chain configuration")
+    response_chain: Optional[Dict[str, Any]] = Field(None, description="Response chain configuration")
     budget: Optional[Budget] = Field(default=None, description="Budget configuration")
     dlp: Optional[Dlp] = Field(default=None, description="DLP configuration")
 
 class Model(BaseModel):
     name: str = Field(default=None, description="Name of the model")
     provider: str = Field(default=None, description="Provider of the model")
-    suffix: str = Field(default=None, description="Suffix of the model")
-    weight: Optional[float] = Field(default=None, description="Weight of the model")
+    suffix: str = Field(default=None, description="Suffix for the model")
+    weight: Optional[int] = Field(default=None, description="Weight of the model")
+    virtualsecretname: Optional[str] = Field(None, description="Virtual secret name")
+    fallbackenabled: Optional[bool] = Field(None, description="Whether fallback is enabled")
+    fallbackcodes: Optional[List[int]] = Field(None, description="Fallback codes")
 
 class Route(BaseModel):
     name: str = Field(default=None, description="Name of the route")
@@ -72,22 +83,28 @@ class Provider(BaseModel):
 class Providers(BaseModel):
     providers: List[Provider] = Field(default=[], description="List of providers")
 
-class infoType(BaseModel):
+class InfoType(BaseModel):
     name: str = Field(default=None, description="Name of the infoType")
-    description: Optional[str] = Field(default=None, description="Description of the infoType")
+    description: Optional[str] = Field(default=None, description="Description of the InfoType")
     regex: Optional[str] = Field(default=None, description="Regex of the infoType")
-    category: Optional[str] = Field(default=None, description="Category of the infoType")
+    wordlist: Optional[List[str]] = Field(default=None, description="Optional word list field, corresponding to 'wordlist' in JSON")
 
 class Transformation(BaseModel):
     method: str = Field(default=None, description="Method of the transformation Mask, Redact, Replace, etc")
 
 class TemplateConfig(BaseModel):
-    infoTypes: Optional[List[infoType]] = Field(default=[], description="List of infoTypes")
+    infoTypes: Optional[List[InfoType]] = Field(default=[], description="List of InfoTypes")
     transformation: Optional[Transformation] = Field(default=None, description="Transformation to be used")
     notify: Optional[bool] = Field(default=False, description="Whether to notify")
     reject: Optional[bool] = Field(default=False, description="Whether to reject")
     likelihood: Optional[str] = Field(default="Likely", description="indicate how likely it is that a piece of data matches infoTypes")
-    routePrompt: Optional[str] = Field(default=None, description="Prompt to be used for the route")
+    reject_prompt: Optional[str] = Field(default=None, description="Prompt to be used for the route")
+    risk_analysis: Optional[str] = Field(default=None, description="Risk analysis configuration")
+
+class TemplateModel(BaseModel):
+    name: str = Field(default=None, description="Name of the model")
+    provider: str = Field(default=None, description="Provider of the model")
+    suffix: str = Field(default=None, description="Suffix for the model")
 
 class Template(BaseModel):
     name: str = Field(default=None, description="Name of the Template")
@@ -96,7 +113,7 @@ class Template(BaseModel):
     enabled: Optional[bool] = Field(
         default=True, description="Whether the template is enabled"
     )
-    models: List[Model] = Field(default=[], description="List of models for the template")
+    models: List[TemplateModel] = Field(default=[], description="List of models for the template")
     config: TemplateConfig = Field(default=None, description="Configuration for the template")
 
 class Templates(BaseModel):
