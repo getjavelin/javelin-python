@@ -82,6 +82,12 @@ Javelin Documentation: https://docs.getjavelin.io
        print("Route Not Found")
 ```
 
+### Tests
+
+```
+  poetry run pytest
+```
+
 ### System Architecture
 
 ```mermaid
