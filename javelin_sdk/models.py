@@ -162,6 +162,7 @@ class JavelinConfig(BaseModel):
     base_url: str = "https://api-dev.javelin.live"
     javelin_virtualapikey: Optional[str] = None
     llm_api_key: Optional[str] = None
+    api_version: Optional[str] = None
 
     @validator("javelin_api_key")
     def validate_api_key(cls, value):

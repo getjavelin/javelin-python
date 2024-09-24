@@ -93,7 +93,8 @@ class JavelinClient:
         :param api_key: API key for authorization (if required).
         """
         self.config = config
-        self.base_url = urljoin(config.base_url, API_BASE_PATH)
+        api_version = config.api_version if config.api_version else API_BASE_PATH
+        self.base_url = urljoin(config.base_url, api_version)
         self._headers = {
             "x-api-key": config.javelin_api_key,
         }
