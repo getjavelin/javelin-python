@@ -145,121 +145,101 @@ class JavelinClient:
 
     def _send_request_sync(self, request: Request) -> httpx.Response:
         """
-        Send a request to the Javelin API.
+        Send a request to the Javelin API synchronously.
 
         :param request: Request object containing all necessary parameters.
         :return: Response from the Javelin API.
-
-        :raises ValueError: If an unsupported HTTP method is used.
-        :raises NetworkError: If a network error occurs.
-        :raises InternalServerError: If the Javelin API returns a 500 error.
-        :raises RateLimitExceededError: If the Javelin API returns a 429 error.
-        :raises GatewayAlreadyExistsError: If the Javelin API returns a 409 error.
-        :raises GatewayNotFoundError: If the Javelin API returns a 404 error.
-        :raises ProviderAlreadyExistsError: If the Javelin API returns a 409 error.
-        :raises ProviderNotFoundError: If the Javelin API returns a 404 error.
-        :raises RouteAlreadyExistsError: If the Javelin API returns a 409 error.
-        :raises RouteNotFoundError: If the Javelin API returns a 404 error.
-        :raises UnauthorizedError: If the Javelin API returns a 401 error.
         """
-        url = self._construct_url(
-            gateway_name=request.gateway,
-            provider_name=request.provider,
-            route_name=request.route,
-            secret_name=request.secret,
-            template_name=request.template,
-            query=request.is_query,
+        return self._send_sync_request(
+            client=self.client,
+            method=request.method,
+            url=self._construct_url(
+                gateway_name=request.gateway,
+                provider_name=request.provider,
+                route_name=request.route,
+                secret_name=request.secret,
+                template_name=request.template,
+                query=request.is_query,
+            ),
+            headers={**self._headers, **(request.headers or {})},
+            data=request.data,
         )
-        client = self.client
 
-        # Merging additional headers with default headers
-        request_headers = {**self._headers, **(request.headers or {})}
-        if request.is_query and request.route:
-            request_headers["x-javelin-route"] = request.route
-
-        try:
-            if request.method == HttpMethod.GET:
-                response = client.get(url, headers=request_headers)
-            elif request.method == HttpMethod.POST:
-                response = client.post(url, json=request.data, headers=request_headers)
-            elif request.method == HttpMethod.PUT:
-                response = client.put(url, json=request.data, headers=request_headers)
-            elif request.method == HttpMethod.DELETE:
-                response = client.delete(url, headers=request_headers)
-            else:
-                raise ValueError(f"Unsupported HTTP method: {request.method}")
-
-            return response
-        except httpx.NetworkError as e:
-            raise NetworkError(message=str(e))
-
-    async def _send_request_async(
-        self,
-        method: HttpMethod,
-        gateway: Optional[str] = "",
-        provider: Optional[str] = "",
-        route: Optional[str] = "",
-        secret: Optional[str] = "",
-        template: Optional[str] = "",
-        is_query: bool = False,
-        data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
-    ) -> httpx.Response:
+    async def _send_request_async(self, request: Request) -> httpx.Response:
         """
         Send a request asynchronously to the Javelin API.
 
-        :param method: HTTP method to use.
-        
-        :param gateway: Name of the gateway to send the request to.
-        :param provider: Name of the provider to send the request to.
-        :param route: Name of the route to send the request to.
-        :param is_query: Whether the route is a query route.
-        :param data: Data to send with the request.
-        :param headers: Additional headers to send with the request.
+        :param request: Request object containing all necessary parameters.
         :return: Response from the Javelin API.
-
-        :raises ValueError: If an unsupported HTTP method is used.
-        :raises NetworkError: If a network error occurs.
-
-        :raises InternalServerError: If the Javelin API returns a 500 error.
-        :raises RateLimitExceededError: If the Javelin API returns a 429 error.
-        :raises RouteAlreadyExistsError: If the Javelin API returns a 409 error.
-        :raises GatewayAlreadyExistsError: If the Javelin API returns a 409 error.
-        :raises GatewayNotFoundError: If the Javelin API returns a 404 error.
-        :raises ProviderAlreadyExistsError: If the Javelin API returns a 409 error.
-        :raises ProviderNotFoundError: If the Javelin API returns a 404 error.
-        :raises RouteNotFoundError: If the Javelin API returns a 404 error.
-        :raises UnauthorizedError: If the Javelin API returns a 401 error.
-
         """
-        url = self._construct_url(gateway_name=gateway,
-                                  provider_name=provider,
-                                  route_name=route, 
-                                  secret_name=secret,
-                                  template_name=template,
-                                  query=is_query)
-        aclient = self.aclient
+        return await self._send_async_request(
+            client=self.aclient,
+            method=request.method,
+            url=self._construct_url(
+                gateway_name=request.gateway,
+                provider_name=request.provider,
+                route_name=request.route,
+                secret_name=request.secret,
+                template_name=request.template,
+                query=request.is_query,
+            ),
+            headers={**self._headers, **(request.headers or {})},
+            data=request.data,
+        )
 
-        # Merging additional headers with default headers
-        request_headers = {**self._headers, **(headers or {})}
-        if is_query and route:
-            request_headers["x-javelin-route"] = route
+    def _send_sync_request(
+        self,
+        client: httpx.Client,
+        method: HttpMethod,
+        url: str,
+        headers: Dict[str, str],
+        data: Optional[Dict[str, Any]] = None,
+    ) -> httpx.Response:
+        """
+        Send a synchronous request to the Javelin API.
 
-        try:
-            if method == HttpMethod.GET:
-                response = await aclient.get(url, headers=request_headers)
-            elif method == HttpMethod.POST:
-                response = await aclient.post(url, json=data, headers=request_headers)
-            elif method == HttpMethod.PUT:
-                response = await aclient.put(url, json=data, headers=request_headers)
-            elif method == HttpMethod.DELETE:
-                response = await aclient.delete(url, headers=request_headers)
-            else:
-                raise ValueError(f"Unsupported HTTP method: {method}")
+        :param client: HTTP client to use for the request.
+        :param method: HTTP method to use.
+        :param url: URL to send the request to.
+        :param headers: Headers to send with the request.
+        :param data: Data to send with the request.
+        :return: Response from the Javelin API.
+        """
+        if method == HttpMethod.GET:
+            return client.get(url, headers=headers)
+        elif method == HttpMethod.POST:
+            return client.post(url, json=data, headers=headers)
+        elif method == HttpMethod.PUT:
+            return client.put(url, json=data, headers=headers)
+        elif method == HttpMethod.DELETE:
+            return client.delete(url, headers=headers)
 
-            return response
-        except httpx.NetworkError as e:
-            raise NetworkError(message=str(e))
+    async def _send_async_request(
+        self,
+        client: httpx.AsyncClient,
+        method: HttpMethod,
+        url: str,
+        headers: Dict[str, str],
+        data: Optional[Dict[str, Any]] = None,
+    ) -> httpx.Response:
+        """
+        Send an asynchronous request to the Javelin API.
+
+        :param client: HTTP client to use for the request.
+        :param method: HTTP method to use.
+        :param url: URL to send the request to.
+        :param headers: Headers to send with the request.
+        :param data: Data to send with the request.
+        :return: Response from the Javelin API.
+        """
+        if method == HttpMethod.GET:
+            return await client.get(url, headers=headers)
+        elif method == HttpMethod.POST:
+            return await client.post(url, json=data, headers=headers)
+        elif method == HttpMethod.PUT:
+            return await client.put(url, json=data, headers=headers)
+        elif method == HttpMethod.DELETE:
+            return await client.delete(url, headers=headers)
 
     def _process_gateway_response_ok(self, response: httpx.Response) -> str:
         """
@@ -540,7 +520,7 @@ class JavelinClient:
         :return: Response object containing route details.
         """
         self._validate_route_name(route_name)
-        response = await self._send_request_async(HttpMethod.GET, route=route_name)
+        response = await self._send_request_async(Request(method=HttpMethod.GET, route=route_name))
         return self._process_response_route(response)
 
     def _process_response_route(self, response: httpx.Response) -> Route:
@@ -580,7 +560,7 @@ class JavelinClient:
         """
         self._validate_route_name(route.name)
         response = await self._send_request_async(
-            HttpMethod.POST, route=route.name, data=route.dict()
+            Request(method=HttpMethod.POST, route=route.name, data=route.dict())
         )
         return self._process_route_response_ok(response)
 
@@ -614,7 +594,7 @@ class JavelinClient:
         """
         self._validate_route_name(route.name)
         response = await self._send_request_async(
-            HttpMethod.PUT, route=route.name, data=route.dict()
+            Request(method=HttpMethod.PUT, route=route.name, data=route.dict())
         )
         return self._process_route_response_ok(response)
 
@@ -653,7 +633,7 @@ class JavelinClient:
 
         :return: Routes object containing a list of all routes, or an empty list if an error occurs or no routes are found.
         """
-        response = await self._send_request_async(HttpMethod.GET, gateway="", provider="", route="###")
+        response = await self._send_request_async(Request(method=HttpMethod.GET, gateway="", provider="", route="###"))
 
         try:
             # Attempt to parse the response as JSON
@@ -713,7 +693,7 @@ class JavelinClient:
         """
         self._validate_route_name(route_name)
         response = await self._send_request_async(
-            HttpMethod.POST, route=route_name, is_query=True, data=query_body, headers=headers
+            Request(method=HttpMethod.POST, route=route_name, is_query=True, data=query_body, headers=headers)
         )
         return self._process_route_response_json(response)
 
@@ -743,7 +723,7 @@ class JavelinClient:
         :return: Response text indicating the success status (e.g., "OK").
         """
         self._validate_route_name(route_name)
-        response = await self._send_request_async(HttpMethod.DELETE, route=route_name)
+        response = await self._send_request_async(Request(method=HttpMethod.DELETE, route=route_name))
         return self._process_route_response_ok(response)
 
     @staticmethod
@@ -790,7 +770,7 @@ class JavelinClient:
         :return: Response object containing gateway details.
         """
         self._validate_gateway_name(gateway_name)
-        response = await self._send_request_async(HttpMethod.GET, gateway=gateway_name)
+        response = await self._send_request_async(Request(method=HttpMethod.GET, gateway=gateway_name))
         return self._process_response_gateway(response)
 
     def _process_response_gateway(self, response: httpx.Response) -> Gateway:
@@ -958,7 +938,7 @@ class JavelinClient:
         """
         Asynchronously delete a specific gateway.
 
-        :param gateway_name: Name of the provider to delete.
+        :param provider_name: Name of the provider to delete.
         :return: Response text indicating the success status (e.g., "OK").
         """
         self._validate_gateway_name(gateway_name)
@@ -1597,11 +1577,7 @@ class JavelinClient:
         """
         self._validate_template_name(template.name)
         response = await self._send_request_async(
-            Request(
-                method=HttpMethod.PUT,
-                template=template.name,
-                data=template.dict()
-            )
+            Request(method=HttpMethod.PUT, template=template.name, data=template.dict())
         )
         return self._process_template_response_ok(response)
 
@@ -1613,10 +1589,7 @@ class JavelinClient:
         :return: Templates object containing a list of all templates, or an empty list if an error occurs or no templates are found.
         """
         response = self._send_request_sync(
-            Request(
-                method=HttpMethod.GET,
-                template="###"
-            )
+            Request(method=HttpMethod.GET, template="###")
         )
 
         try:
@@ -1641,10 +1614,7 @@ class JavelinClient:
         :return: Templates object containing a list of all templates, or an empty list if an error occurs or no templates are found.
         """
         response = await self._send_request_async(
-            Request(
-                method=HttpMethod.GET,
-                template="###"
-            )
+            Request(method=HttpMethod.GET, template="###")
         )
 
         try:
@@ -1671,10 +1641,7 @@ class JavelinClient:
         """
         self._validate_template_name(template_name)
         response = self._send_request_sync(
-            Request(
-                method=HttpMethod.DELETE,
-                template=template_name
-            )
+            Request(method=HttpMethod.DELETE, template=template_name)
         )
         return self._process_template_response_ok(response)
 
@@ -1688,10 +1655,7 @@ class JavelinClient:
         """
         self._validate_template_name(template_name)
         response = await self._send_request_async(
-            Request(
-                method=HttpMethod.DELETE,
-                template=template_name
-            )
+            Request(method=HttpMethod.DELETE, template=template_name)
         )
         return self._process_template_response_ok(response)
 
