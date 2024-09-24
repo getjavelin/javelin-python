@@ -1,5 +1,6 @@
 from enum import Enum, auto
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union, Coroutine
+
 from urllib.parse import urljoin
 
 import httpx
@@ -143,104 +144,42 @@ class JavelinClient:
         if self._client:
             self._client.close()
 
-    def _send_request_sync(self, request: Request) -> httpx.Response:
-        """
-        Send a request to the Javelin API synchronously.
-
-        :param request: Request object containing all necessary parameters.
-        :return: Response from the Javelin API.
-        """
-        return self._send_sync_request(
-            client=self.client,
-            method=request.method,
-            url=self._construct_url(
-                gateway_name=request.gateway,
-                provider_name=request.provider,
-                route_name=request.route,
-                secret_name=request.secret,
-                template_name=request.template,
-                query=request.is_query,
-            ),
-            headers={**self._headers, **(request.headers or {})},
-            data=request.data,
+    def _prepare_request(self, request: Request) -> tuple:
+        url = self._construct_url(
+            gateway_name=request.gateway,
+            provider_name=request.provider,
+            route_name=request.route,
+            secret_name=request.secret,
+            template_name=request.template,
+            query=request.is_query,
         )
+        headers = {**self._headers, **(request.headers or {})}
+        return url, headers
+
+    def _send_request_sync(self, request: Request) -> httpx.Response:
+        return self._core_send_request(self.client, request)
 
     async def _send_request_async(self, request: Request) -> httpx.Response:
-        """
-        Send a request asynchronously to the Javelin API.
+        return await self._core_send_request(self.aclient, request)
 
-        :param request: Request object containing all necessary parameters.
-        :return: Response from the Javelin API.
-        """
-        return await self._send_async_request(
-            client=self.aclient,
-            method=request.method,
-            url=self._construct_url(
-                gateway_name=request.gateway,
-                provider_name=request.provider,
-                route_name=request.route,
-                secret_name=request.secret,
-                template_name=request.template,
-                query=request.is_query,
-            ),
-            headers={**self._headers, **(request.headers or {})},
-            data=request.data,
-        )
+    def _core_send_request(
+        self, 
+        client: Union[httpx.Client, httpx.AsyncClient], 
+        request: Request
+    ) -> Union[httpx.Response, Coroutine[Any, Any, httpx.Response]]:
+        url, headers = self._prepare_request(request)
 
-    def _send_sync_request(
-        self,
-        client: httpx.Client,
-        method: HttpMethod,
-        url: str,
-        headers: Dict[str, str],
-        data: Optional[Dict[str, Any]] = None,
-    ) -> httpx.Response:
-        """
-        Send a synchronous request to the Javelin API.
-
-        :param client: HTTP client to use for the request.
-        :param method: HTTP method to use.
-        :param url: URL to send the request to.
-        :param headers: Headers to send with the request.
-        :param data: Data to send with the request.
-        :return: Response from the Javelin API.
-        """
-        if method == HttpMethod.GET:
+        if request.method == HttpMethod.GET:
             return client.get(url, headers=headers)
-        elif method == HttpMethod.POST:
-            return client.post(url, json=data, headers=headers)
-        elif method == HttpMethod.PUT:
-            return client.put(url, json=data, headers=headers)
-        elif method == HttpMethod.DELETE:
+        elif request.method == HttpMethod.POST:
+            return client.post(url, json=request.data, headers=headers)
+        elif request.method == HttpMethod.PUT:
+            return client.put(url, json=request.data, headers=headers)
+        elif request.method == HttpMethod.DELETE:
             return client.delete(url, headers=headers)
-
-    async def _send_async_request(
-        self,
-        client: httpx.AsyncClient,
-        method: HttpMethod,
-        url: str,
-        headers: Dict[str, str],
-        data: Optional[Dict[str, Any]] = None,
-    ) -> httpx.Response:
-        """
-        Send an asynchronous request to the Javelin API.
-
-        :param client: HTTP client to use for the request.
-        :param method: HTTP method to use.
-        :param url: URL to send the request to.
-        :param headers: Headers to send with the request.
-        :param data: Data to send with the request.
-        :return: Response from the Javelin API.
-        """
-        if method == HttpMethod.GET:
-            return await client.get(url, headers=headers)
-        elif method == HttpMethod.POST:
-            return await client.post(url, json=data, headers=headers)
-        elif method == HttpMethod.PUT:
-            return await client.put(url, json=data, headers=headers)
-        elif method == HttpMethod.DELETE:
-            return await client.delete(url, headers=headers)
-
+        else:
+            raise ValueError(f"Unsupported HTTP method: {request.method}")
+        
     def _process_gateway_response_ok(self, response: httpx.Response) -> str:
         """
         Process a successful response from the Javelin API.
