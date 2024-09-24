@@ -1,5 +1,6 @@
 from typing import Dict, List, Any, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
+from javelin_sdk.exceptions import UnauthorizedError
 
 class GatewayConfig(BaseModel):
     buid: Optional[str] = Field(default=None, description="Business Unit ID (BUID) uniquely identifies the business unit associated with this gateway configuration")
@@ -155,3 +156,21 @@ class QueryResponse(BaseModel):
     object: str = Field(..., description="Object type")
     system_fingerprint: Optional[str] = Field(None, description="System fingerprint if available")
     usage: Usage = Field(..., description="Usage details")
+
+class JavelinConfig(BaseModel):
+    javelin_api_key: str
+    base_url: str = "https://api-dev.javelin.live"
+    javelin_virtualapikey: Optional[str] = None
+    llm_api_key: Optional[str] = None
+
+    @validator("javelin_api_key")
+    def validate_api_key(cls, value):
+        if not value:
+            raise UnauthorizedError(
+                response=None, message=(
+                    "Please provide a valid Javelin API Key. "
+                    "When you sign into Javelin, you can find your API Key in the "
+                    "Account->Developer settings"
+                )
+            )
+        return value

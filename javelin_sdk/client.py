@@ -29,6 +29,7 @@ from javelin_sdk.models import Route, Routes
 from javelin_sdk.models import Provider, Providers
 from javelin_sdk.models import Secret, Secrets
 from javelin_sdk.models import Template, Templates
+from javelin_sdk.models import JavelinConfig
 
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
@@ -61,38 +62,22 @@ class HttpMethod(Enum):
 
 
 class JavelinClient:
-    def __init__(
-        self,
-        javelin_api_key: str,
-        base_url: str = API_BASEURL,
-        javelin_virtualapikey: Optional[str] = None,
-        llm_api_key: Optional[str] = None,
-    ) -> None:
+    def __init__(self, config: JavelinConfig) -> None:
         """
         Initialize the JavelinClient.
 
         :param base_url: Base URL for the Javelin API.
         :param api_key: API key for authorization (if required).
         """
-        headers = {}
-        if not javelin_api_key or javelin_api_key == "":
-            raise UnauthorizedError(
-                response=None, message=
-                "Please provide a valid Javelin API Key. "
-                + "When you sign into Javelin, you can find your API Key in the "
-                + "Account->Developer settings"
-            )
-
-        headers["x-api-key"] = javelin_api_key
-
-        if javelin_virtualapikey:
-            headers["x-javelin-virtualapikey"] = javelin_virtualapikey
-
-        if llm_api_key:
-            headers["Authorization"] = f"Bearer {llm_api_key}"
-
-        self.base_url = urljoin(base_url, API_BASE_PATH)
-        self._headers = headers
+        self.config = config
+        self.base_url = urljoin(config.base_url, API_BASE_PATH)
+        self._headers = {
+            "x-api-key": config.javelin_api_key,
+        }
+        if config.llm_api_key:
+            self._headers["Authorization"] = f"Bearer {config.llm_api_key}"
+        if config.javelin_virtualapikey:
+            self._headers["x-javelin-virtualapikey"] = config.javelin_virtualapikey
         self._client = None
         self._aclient = None
 
