@@ -72,7 +72,7 @@ class RouteService:
         )
         try:
             response_json = response.json()
-            if 'error' in response_json:
+            if "error" in response_json:
                 return Routes(routes=[])
             else:
                 return Routes(routes=response_json)
@@ -85,7 +85,7 @@ class RouteService:
         )
         try:
             response_json = response.json()
-            if 'error' in response_json:
+            if "error" in response_json:
                 return Routes(routes=[])
             else:
                 return Routes(routes=response_json)

@@ -76,7 +76,7 @@ class TemplateService:
         )
         try:
             response_json = response.json()
-            if 'error' in response_json:
+            if "error" in response_json:
                 return Templates(templates=[])
             else:
                 return Templates(templates=response_json)
@@ -89,7 +89,7 @@ class TemplateService:
         )
         try:
             response_json = response.json()
-            if 'error' in response_json:
+            if "error" in response_json:
                 return Templates(templates=[])
             else:
                 return Templates(templates=response_json)

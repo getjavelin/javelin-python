@@ -85,13 +85,12 @@ class GatewayService:
 
         try:
             response_json = response.json()
-            if 'error' in response_json:
+            if "error" in response_json:
                 return Gateways(gateways=[])
             else:
                 return Gateways(gateways=response_json)
         except ValueError:
             return Gateways(gateways=[])
-        
 
     async def alist_gateways(self) -> List[Gateway]:
         response = await self.client._send_request_async(
@@ -99,7 +98,7 @@ class GatewayService:
         )
         try:
             response_json = response.json()
-            if 'error' in response_json:
+            if "error" in response_json:
                 return Gateways(gateways=[])
             else:
                 return Gateways(gateways=response_json)

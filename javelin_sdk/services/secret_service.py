@@ -72,10 +72,10 @@ class SecretService:
         )
         try:
             response_json = response.json()
-            if 'error' in response_json:
-                return Secrets(secrets=[])  
+            if "error" in response_json:
+                return Secrets(secrets=[])
             else:
-                return Secrets(secrets=response_json)  
+                return Secrets(secrets=response_json)
         except ValueError:
             return Secrets(secrets=[])
 
@@ -83,11 +83,11 @@ class SecretService:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.GET, secret="###")
         )
-        
+
         try:
             response_json = response.json()
-            if 'error' in response_json:
-                return Secrets(secrets=[])  
+            if "error" in response_json:
+                return Secrets(secrets=[])
             else:
                 return Secrets(secrets=response_json)
         except ValueError:

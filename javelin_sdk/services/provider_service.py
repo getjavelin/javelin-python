@@ -26,7 +26,7 @@ class ProviderService:
         """
         if not provider_name:
             raise ValueError("Provider name cannot be empty.")
-        
+
     def _process_provider_response_ok(self, response: httpx.Response) -> str:
         """Process a successful response from the Javelin API."""
         self._handle_provider_response(response)
@@ -88,7 +88,7 @@ class ProviderService:
         )
         try:
             response_json = response.json()
-            if 'error' in response_json:
+            if "error" in response_json:
                 return Providers(providers=[])
             else:
                 return Providers(providers=response_json)
@@ -99,10 +99,10 @@ class ProviderService:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.GET, provider="###")
         )
-        
+
         try:
             response_json = response.json()
-            if 'error' in response_json:
+            if "error" in response_json:
                 return Providers(providers=[])
             else:
                 return Providers(providers=response_json)
