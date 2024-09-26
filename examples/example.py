@@ -1,18 +1,16 @@
+import json
+import os
+
 from javelin_sdk import (
+    GatewayNotFoundError,
     JavelinClient,
     JavelinConfig,
-    Gateway,
-    Provider,
-    Route,
     NetworkError,
-    GatewayNotFoundError,
     ProviderNotFoundError,
+    Route,
     RouteNotFoundError,
     UnauthorizedError,
 )
-
-import os
-import json
 
 # Retrieve environment variables
 javelin_api_key = os.getenv("JAVELIN_API_KEY")
@@ -34,12 +32,15 @@ def pretty_print(obj):
     except TypeError:
         print(obj)
 
+
 def handle_gateway(client):
     """
-    Start the example by cleaning up any pre-existing gateways. 
+    Start the example by cleaning up any pre-existing gateways.
     This is done by deleting the gateway if it exists.
     """
-    print("1. Start clean (by deleting pre-existing gateways): ", "test_sdk_gw_kensho_1")
+    print(
+        "1. Start clean (by deleting pre-existing gateways): ", "test_sdk_gw_kensho_1"
+    )
     try:
         client.delete_gateway("test_sdk_gw_kensho_1")
     except GatewayNotFoundError as e:
@@ -49,7 +50,7 @@ def handle_gateway(client):
     Create a gateway. This is done by creating a Gateway object and passing it to the
     create_gateway method of the JavelinClient object.
     """
-    '''
+    """
     gateway_data = {
         "name": "test_sdk_gw_kensho_1",
         "type": "development",
@@ -70,7 +71,7 @@ def handle_gateway(client):
         print("Failed to create gateway: Unauthorized")
     except NetworkError as e:
         print("Failed to create gateway: Network Error")
-    '''
+    """
 
     """
     List gateways. This is done by calling the list_gateways method of the JavelinClient object.
@@ -83,9 +84,10 @@ def handle_gateway(client):
     except NetworkError as e:
         print("Failed to list gateways: Network Error")
 
+
 def handle_provider(client):
     """
-    Start the example by cleaning up any pre-existing providers. 
+    Start the example by cleaning up any pre-existing providers.
     This is done by deleting the provider if it exists.
     """
     print("1. Start clean (by deleting pre-existing providers): ", "test_sdk_openai_1")
@@ -105,9 +107,10 @@ def handle_provider(client):
     except NetworkError as e:
         print("Failed to list providers: Network Error")
 
+
 def handle_route(client):
     """
-    Start the example by cleaning up any pre-existing routes. 
+    Start the example by cleaning up any pre-existing routes.
     This is done by deleting the route if it exists.
     """
     print("1. Start clean (by deleting pre-existing routes): ", "test_sdk_route_1")
@@ -182,14 +185,14 @@ def handle_route(client):
     List routes. This is done by calling the list_routes method of the JavelinClient object.
     """
     print("4. Listing routes")
-    '''
+    """
     try:
         pretty_print(client.list_routes())
     except UnauthorizedError as e:
         print("Failed to list routes: Unauthorized")
     except NetworkError as e:
         print("Failed to list routes: Network Error")
-    '''
+    """
 
     print("5. Get Route: ", route.name)
     try:
@@ -231,6 +234,7 @@ def handle_route(client):
     except RouteNotFoundError as e:
         print(e.message, e.response_data)
 
+
 def main():
     print("Javelin Synchronous Example Code")
     """
@@ -255,6 +259,7 @@ def main():
     handle_gateway(client)
     handle_provider(client)
     handle_route(client)
+
 
 if __name__ == "__main__":
     main()
