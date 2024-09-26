@@ -26,8 +26,8 @@ class RouteService:
         """Process a response from the Javelin API and return a Route object."""
         self._handle_route_response(response)
         return Route(**response.json())
-    
-    def _validate_route_name(route_name: str):
+
+    def _validate_route_name(self, route_name: str):
         """
         Validate the route name. Raises a ValueError if the route name is empty.
 
@@ -35,7 +35,7 @@ class RouteService:
         """
         if not route_name:
             raise ValueError("Route name cannot be empty.")
-    
+
     def _process_route_response_json(self, response: httpx.Response) -> QueryResponse:
         """
         Process a successful response from the Javelin API.
