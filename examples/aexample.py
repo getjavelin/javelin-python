@@ -1,4 +1,6 @@
-from dotenv import load_dotenv
+import asyncio
+import json
+import os
 
 from javelin_sdk import (
     JavelinClient,
@@ -8,12 +10,6 @@ from javelin_sdk import (
     RouteNotFoundError,
     UnauthorizedError,
 )
-
-load_dotenv()
-
-import asyncio
-import json
-import os
 
 # Retrieve environment variables
 javelin_api_key = os.getenv("JAVELIN_API_KEY")
