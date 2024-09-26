@@ -1,31 +1,33 @@
+import json
 import os
 from pathlib import Path
-import json
+
 from pydantic import ValidationError
 
 from javelin_sdk.client import JavelinClient
+from javelin_sdk.exceptions import (
+    BadRequest,
+    GatewayNotFoundError,
+    NetworkError,
+    ProviderNotFoundError,
+    RouteNotFoundError,
+    SecretNotFoundError,
+    TemplateNotFoundError,
+    UnauthorizedError,
+)
 from javelin_sdk.models import (
-    GatewayConfig,
     Gateway,
-    ProviderConfig,
-    Provider,
-    RouteConfig,
+    GatewayConfig,
     Model,
+    Provider,
+    ProviderConfig,
     Route,
+    RouteConfig,
     Secret,
     Template,
     Templates,
 )
-from javelin_sdk.exceptions import (
-    BadRequest,
-    NetworkError, 
-    UnauthorizedError, 
-    GatewayNotFoundError, 
-    ProviderNotFoundError, 
-    RouteNotFoundError,
-    SecretNotFoundError,
-    TemplateNotFoundError
-)
+
 
 def get_javelin_client():
     # Path to cache.json file
@@ -35,13 +37,13 @@ def get_javelin_client():
     # Load cache.json
     if not json_file_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {json_file_path}")
-    
-    with open(json_file_path, 'r') as json_file:
+
+    with open(json_file_path, "r") as json_file:
         cache_data = json.load(json_file)
 
     # Retrieve the list of gateways
-    gateways = cache_data.get('org', {}).get('public_metadata', {}).get('Gateways', [])
-    
+    gateways = cache_data.get("org", {}).get("public_metadata", {}).get("Gateways", [])
+
     if not gateways:
         raise ValueError("No gateways found in the configuration.")
 
@@ -52,33 +54,35 @@ def get_javelin_client():
 
     # Allow the user to select a gateway
     choice = int(input("Select a gateway (enter the number): ")) - 1
-    
+
     if choice < 0 or choice >= len(gateways):
         raise ValueError("Invalid selection. Please choose a valid gateway.")
 
     selected_gateway = gateways[choice]
-    base_url = selected_gateway['base_url']
-    javelin_api_key = selected_gateway['api_key_value']
+    base_url = selected_gateway["base_url"]
+    javelin_api_key = selected_gateway["api_key_value"]
 
     # Print all the relevant variables for debugging (optional)
     print(f"Base URL: {base_url}")
     print(f"Javelin API Key: {javelin_api_key}")
-    
+
     # Ensure the API key is set before initializing
     if not javelin_api_key or javelin_api_key == "":
         raise UnauthorizedError(
-            response=None, message=(
+            response=None,
+            message=(
                 "Please provide a valid Javelin API Key. "
                 "When you sign into Javelin, you can find your API Key in the "
                 "Account->Developer settings"
-            )
+            ),
         )
-    
+
     # Initialize the JavelinClient when required
     return JavelinClient(
         base_url=base_url,
         javelin_api_key=javelin_api_key,
     )
+
 
 def create_gateway(args):
     try:
@@ -88,12 +92,9 @@ def create_gateway(args):
         config_data = json.loads(args.config)
         config = GatewayConfig(**config_data)
         gateway = Gateway(
-            name=args.name,
-            type=args.type,
-            enabled=args.enabled,
-            config=config
+            name=args.name, type=args.type, enabled=args.enabled, config=config
         )
-        
+
         result = client.create_gateway(gateway)
         print(result)
 
@@ -104,8 +105,9 @@ def create_gateway(args):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+
 def list_gateways(args):
-    '''
+    """
     try:
         client = get_javelin_client()
 
@@ -120,7 +122,7 @@ def list_gateways(args):
         print(f"An error occurred: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
-    '''
+    """
     # Path to cache.json file
     home_dir = Path.home()
     json_file_path = home_dir / ".javelin" / "cache.json"
@@ -128,13 +130,13 @@ def list_gateways(args):
     # Load cache.json
     if not json_file_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {json_file_path}")
-    
-    with open(json_file_path, 'r') as json_file:
+
+    with open(json_file_path, "r") as json_file:
         cache_data = json.load(json_file)
 
     # Retrieve the list of gateways
-    gateways = cache_data.get('org', {}).get('public_metadata', {}).get('Gateways', [])
-    
+    gateways = cache_data.get("org", {}).get("public_metadata", {}).get("Gateways", [])
+
     if not gateways:
         raise ValueError("No gateways found in the configuration.")
 
@@ -144,6 +146,7 @@ def list_gateways(args):
         print(f"\nGateway {i + 1}:")
         for key, value in gateway.items():
             print(f"  {key}: {value}")
+
 
 def get_gateway(args):
     try:
@@ -160,6 +163,7 @@ def get_gateway(args):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+
 def update_gateway(args):
     try:
         client = get_javelin_client()
@@ -167,10 +171,7 @@ def update_gateway(args):
         config_data = json.loads(args.config)
         config = GatewayConfig(**config_data)
         gateway = Gateway(
-            name=args.name,
-            type=args.type,
-            enabled=args.enabled,
-            config=config
+            name=args.name, type=args.type, enabled=args.enabled, config=config
         )
 
         client.update_gateway(args.name, gateway_data)
@@ -182,6 +183,7 @@ def update_gateway(args):
         print(f"An error occurred: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
+
 
 def delete_gateway(args):
     try:
@@ -197,6 +199,7 @@ def delete_gateway(args):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+
 def create_provider(args):
     try:
         client = get_javelin_client()
@@ -210,9 +213,13 @@ def create_provider(args):
         provider = Provider(
             name=args.name,
             type=args.type,
-            enabled=args.enabled if args.enabled is not None else True,  # Default to True if not provided
-            vault_enabled=args.vault_enabled if args.vault_enabled is not None else True,  # Default to True if not provided
-            config=config
+            enabled=(
+                args.enabled if args.enabled is not None else True
+            ),  # Default to True if not provided
+            vault_enabled=(
+                args.vault_enabled if args.vault_enabled is not None else True
+            ),  # Default to True if not provided
+            config=config,
         )
 
         # Assuming client.create_provider accepts a Pydantic model and handles it internally
@@ -227,6 +234,7 @@ def create_provider(args):
         print(f"An error occurred: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
+
 
 def list_providers(args):
     try:
@@ -243,6 +251,7 @@ def list_providers(args):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+
 def get_provider(args):
     try:
         client = get_javelin_client()
@@ -258,6 +267,7 @@ def get_provider(args):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+
 def update_provider(args):
     try:
         client = get_javelin_client()
@@ -272,8 +282,10 @@ def update_provider(args):
             name=args.name,
             type=args.type,
             enabled=args.enabled if args.enabled is not None else None,
-            vault_enabled=args.vault_enabled if args.vault_enabled is not None else None,
-            config=config
+            vault_enabled=(
+                args.vault_enabled if args.vault_enabled is not None else None
+            ),
+            config=config,
         )
 
         result = client.update_provider(provider)
@@ -288,6 +300,7 @@ def update_provider(args):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+
 def delete_provider(args):
     try:
         client = get_javelin_client()
@@ -301,6 +314,7 @@ def delete_provider(args):
         print(f"An error occurred: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
+
 
 def create_route(args):
     try:
@@ -318,9 +332,11 @@ def create_route(args):
         route = Route(
             name=args.name,
             type=args.type,
-            enabled=args.enabled if args.enabled is not None else True,  # Default to True if not provided
+            enabled=(
+                args.enabled if args.enabled is not None else True
+            ),  # Default to True if not provided
             models=models,
-            config=config
+            config=config,
         )
 
         # Assuming client.create_route accepts a Pydantic model and handles it internally
@@ -335,6 +351,7 @@ def create_route(args):
         print(f"An error occurred: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
+
 
 def list_routes(args):
     try:
@@ -351,6 +368,7 @@ def list_routes(args):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+
 def get_route(args):
     try:
         client = get_javelin_client()
@@ -365,6 +383,7 @@ def get_route(args):
         print(f"An error occurred: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
+
 
 def update_route(args):
     try:
@@ -384,7 +403,7 @@ def update_route(args):
             type=args.type,
             enabled=args.enabled if args.enabled is not None else None,
             models=models,
-            config=config
+            config=config,
         )
 
         result = client.update_route(route)
@@ -399,10 +418,11 @@ def update_route(args):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+
 def delete_route(args):
     try:
         client = get_javelin_client()
-        
+
         client.delete_route(args.name)
         print(f"Route '{args.name}' deleted successfully.")
 
@@ -413,7 +433,9 @@ def delete_route(args):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+
 from collections import namedtuple
+
 
 def create_secret(args):
     try:
@@ -425,7 +447,9 @@ def create_secret(args):
             api_key_secret_name=args.api_key_secret_name,
             api_key_secret_key=args.api_key_secret_key,
             provider_name=args.provider_name,
-            enabled=args.enabled if args.enabled is not None else True  # Default to True if not provided
+            enabled=(
+                args.enabled if args.enabled is not None else True
+            ),  # Default to True if not provided
         )
 
         # Include optional arguments only if they are provided
@@ -447,6 +471,7 @@ def create_secret(args):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+
 def list_secrets(args):
     try:
         client = get_javelin_client()
@@ -461,6 +486,7 @@ def list_secrets(args):
         print(f"An error occurred: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
+
 
 def get_secret(args):
     try:
@@ -477,6 +503,7 @@ def get_secret(args):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+
 def update_secret(args):
     try:
         client = get_javelin_client()
@@ -484,12 +511,16 @@ def update_secret(args):
         # Create an instance of the Secret class
         secret = Secret(
             api_key=args.api_key,
-            api_key_secret_name=args.api_key_secret_name if args.api_key_secret_name else None,
-            api_key_secret_key=args.api_key_secret_key if args.api_key_secret_key else None,
+            api_key_secret_name=(
+                args.api_key_secret_name if args.api_key_secret_name else None
+            ),
+            api_key_secret_key=(
+                args.api_key_secret_key if args.api_key_secret_key else None
+            ),
             query_param_key=args.query_param_key if args.query_param_key else None,
             header_key=args.header_key if args.header_key else None,
             group=args.group if args.group else None,
-            enabled=args.enabled if args.enabled is not None else None
+            enabled=args.enabled if args.enabled is not None else None,
         )
 
         result = client.update_secret(secret)
@@ -501,6 +532,7 @@ def update_secret(args):
         print(f"An error occurred: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
+
 
 def delete_secret(args):
     try:
@@ -515,6 +547,7 @@ def delete_secret(args):
         print(f"An error occurred: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
+
 
 def create_template(args):
     try:
@@ -533,9 +566,11 @@ def create_template(args):
             name=args.name,
             description=args.description,
             type=args.type,
-            enabled=args.enabled if args.enabled is not None else True,  # Default to True if not provided
+            enabled=(
+                args.enabled if args.enabled is not None else True
+            ),  # Default to True if not provided
             models=models,
-            config=config
+            config=config,
         )
 
         result = client.create_template(template)
@@ -549,6 +584,7 @@ def create_template(args):
         print(f"An error occurred: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
+
 
 def list_templates(args):
     try:
@@ -565,6 +601,7 @@ def list_templates(args):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+
 def get_template(args):
     try:
         client = get_javelin_client()
@@ -579,6 +616,7 @@ def get_template(args):
         print(f"An error occurred: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
+
 
 def update_template(args):
     try:
@@ -599,7 +637,7 @@ def update_template(args):
             type=args.type if args.type else None,
             enabled=args.enabled if args.enabled is not None else None,
             models=models,
-            config=config
+            config=config,
         )
 
         result = client.update_template(template)
@@ -614,13 +652,14 @@ def update_template(args):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+
 def delete_template(args):
     try:
         client = get_javelin_client()
 
         client.delete_template(args.name)
         print(f"Template '{args.name}' deleted successfully.")
-    
+
     except UnauthorizedError as e:
         print(f"UnauthorizedError: {e}")
     except (BadRequest, ValidationError, NetworkError) as e:
