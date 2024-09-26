@@ -30,6 +30,7 @@ from javelin_sdk.models import (
     Secrets,
     Template,
     Templates,
+    JavelinConfig
 )
 
 __all__ = [
@@ -63,4 +64,5 @@ __all__ = [
     "QueryBody",
     "QueryResponse",
     "JavelinClient",
+    "JavelinConfig"
 ]

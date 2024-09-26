@@ -1,5 +1,6 @@
 from javelin_sdk import (
     JavelinClient,
+    JavelinConfig,
     Gateway,
     Provider,
     Route,
@@ -237,12 +238,13 @@ def main():
     with the Javelin API. The base_url parameter is the URL of the Javelin API.
     """
     try:
-        client = JavelinClient(
+        config = JavelinConfig(
             base_url="https://api-dev.javelin.live",
             javelin_api_key=javelin_api_key,
             javelin_virtualapikey=javelin_virtualapikey,
             llm_api_key=llm_api_key,
         )
+        client = JavelinClient(config)
     except NetworkError as e:
         print(e.message, e.response_data)
         return

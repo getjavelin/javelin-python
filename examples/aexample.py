@@ -1,10 +1,13 @@
 from javelin_sdk import (
     JavelinClient,
+    JavelinConfig,
     Route,
     NetworkError,
     RouteNotFoundError,
     UnauthorizedError,
 )
+from dotenv import load_dotenv
+load_dotenv()
 
 import asyncio
 import os
@@ -34,12 +37,13 @@ async def main():
     """
 
     try:
-        client = JavelinClient(
+        config = JavelinConfig(
             base_url="https://api-dev.javelin.live",
             javelin_api_key=javelin_api_key,
             javelin_virtualapikey=javelin_virtualapikey,
             llm_api_key=llm_api_key,
         )
+        client = JavelinClient(config)
     except NetworkError as e:
         print("Failed to create client: Network Error")
         return
