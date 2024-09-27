@@ -119,3 +119,15 @@ class TemplateService:
             Request(method=HttpMethod.DELETE, template=template_name)
         )
         return self._process_template_response_ok(response)
+
+    def reload_data_protection(self, strategy_name: str) -> str:
+        response = self.client._send_request_sync(
+            Request(method=HttpMethod.POST, template=f"{strategy_name}/reload", data="")
+        )
+        return response
+
+    async def areload_data_protection(self, strategy_name: str) -> str:
+        response = await self.client._send_request_async(
+            Request(method=HttpMethod.POST, template=f"{strategy_name}/reload", data="")
+        )
+        return response

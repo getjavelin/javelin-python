@@ -159,6 +159,32 @@ class RouteService:
         )
         return self._process_route_response_json(response)
 
+    def query_llama(self, route_name: str, query: dict) -> Dict[str, Any]:
+        self._validate_route_name(route_name)
+        response = self.client._send_request_sync(
+            Request(
+                method=HttpMethod.POST,
+                route=route_name,
+                is_query=True,
+                data=query,
+                headers={"Content-Type": "application/json"},
+            )
+        )
+        return response
+
+    async def aquery_llama(self, route_name: str, query: dict) -> Dict[str, Any]:
+        self._validate_route_name(route_name)
+        response = await self.client._send_request_async(
+            Request(
+                method=HttpMethod.POST,
+                route=route_name,
+                is_query=True,
+                data=query,
+                headers={"Content-Type": "application/json"},
+            )
+        )
+        return response
+
     async def aquery_route(
         self,
         route_name: str,
