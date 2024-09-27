@@ -27,6 +27,24 @@ class RouteService:
         self._handle_route_response(response)
         return Route(**response.json())
 
+    def _validate_route_name(self, route_name: str):
+        """
+        Validate the route name. Raises a ValueError if the route name is empty.
+
+        :param route_name: Name of the route to validate.
+        """
+        if not route_name:
+            raise ValueError("Route name cannot be empty.")
+
+    def _process_route_response_json(self, response: httpx.Response) -> QueryResponse:
+        """
+        Process a successful response from the Javelin API.
+        Parse body into a QueryResponse object and return it.
+        This is for Query() requests.
+        """
+        self._handle_route_response(response)
+        return QueryResponse(**response.json())
+
     def _handle_route_response(self, response: httpx.Response) -> None:
         """Handle the API response by raising appropriate exceptions."""
         if response.status_code == 400:
@@ -43,24 +61,28 @@ class RouteService:
             raise InternalServerError(response=response)
 
     def create_route(self, route: Route) -> str:
+        self._validate_route_name(route.name)
         response = self.client._send_request_sync(
             Request(method=HttpMethod.POST, route=route.name, data=route.dict())
         )
         return self._process_route_response_ok(response)
 
     async def acreate_route(self, route: Route) -> str:
+        self._validate_route_name(route.name)
         response = await self.client._send_request_async(
             Request(method=HttpMethod.POST, route=route.name, data=route.dict())
         )
         return self._process_route_response_ok(response)
 
     def get_route(self, route_name: str) -> Route:
+        self._validate_route_name(route_name)
         response = self.client._send_request_sync(
             Request(method=HttpMethod.GET, route=route_name)
         )
         return self._process_route_response(response)
 
     async def aget_route(self, route_name: str) -> Route:
+        self._validate_route_name(route_name)
         response = await self.client._send_request_async(
             Request(method=HttpMethod.GET, route=route_name)
         )
@@ -93,18 +115,21 @@ class RouteService:
             return Routes(routes=[])
 
     def update_route(self, route: Route) -> str:
+        self._validate_route_name(route.name)
         response = self.client._send_request_sync(
             Request(method=HttpMethod.PUT, route=route.name, data=route.dict())
         )
         return self._process_route_response_ok(response)
 
     async def aupdate_route(self, route: Route) -> str:
+        self._validate_route_name(route.name)
         response = await self.client._send_request_async(
             Request(method=HttpMethod.PUT, route=route.name, data=route.dict())
         )
         return self._process_route_response_ok(response)
 
     def delete_route(self, route_name: str) -> str:
+        self._validate_route_name(route_name)
         response = self.client._send_request_sync(
             Request(method=HttpMethod.DELETE, route=route_name)
         )
@@ -122,6 +147,7 @@ class RouteService:
         query_body: Dict[str, Any],
         headers: Optional[Dict[str, str]] = None,
     ) -> QueryResponse:
+        self._validate_route_name(route_name)
         response = self.client._send_request_sync(
             Request(
                 method=HttpMethod.POST,
@@ -131,7 +157,7 @@ class RouteService:
                 headers=headers,
             )
         )
-        return QueryResponse(**response.json())
+        return self._process_route_response_json(response)
 
     async def aquery_route(
         self,
@@ -139,6 +165,7 @@ class RouteService:
         query_body: Dict[str, Any],
         headers: Optional[Dict[str, str]] = None,
     ) -> QueryResponse:
+        self._validate_route_name(route_name)
         response = await self.client._send_request_async(
             Request(
                 method=HttpMethod.POST,
@@ -148,4 +175,4 @@ class RouteService:
                 headers=headers,
             )
         )
-        return QueryResponse(**response.json())
+        return self._process_route_response_json(response)
