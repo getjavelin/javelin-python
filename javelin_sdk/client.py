@@ -3,7 +3,7 @@ from urllib.parse import urljoin
 
 import httpx
 
-from javelin_sdk.models import HttpMethod, JavelinConfig, QueryResponse, Request
+from javelin_sdk.models import HttpMethod, JavelinConfig, Request
 from javelin_sdk.services.gateway_service import GatewayService
 from javelin_sdk.services.provider_service import ProviderService
 from javelin_sdk.services.route_service import RouteService
@@ -230,6 +230,12 @@ class JavelinClient:
     aquery_route = lambda self, route_name, query_body, headers=None: self.route_service.aquery_route(
         route_name, query_body, headers
     )
+    query_llama = lambda self, route_name, query_body: self.route_service.query_llama(
+        route_name, query_body
+    )
+    aquery_llama = lambda self, route_name, query_body: self.route_service.aquery_llama(
+        route_name, query_body
+    )
 
     # Secret methods
     create_secret = lambda self, secret: self.secret_service.create_secret(secret)
@@ -274,5 +280,15 @@ class JavelinClient:
     adelete_template = (
         lambda self, template_name: self.template_service.adelete_template(
             template_name
+        )
+    )
+    reload_data_protection = (
+        lambda self, strategy_name: self.template_service.reload_data_protection(
+            strategy_name
+        )
+    )
+    areload_data_protection = (
+        lambda self, strategy_name: self.template_service.areload_data_protection(
+            strategy_name
         )
     )

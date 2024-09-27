@@ -191,7 +191,7 @@ class TemplateConfig(BaseModel):
         default="Likely",
         description="indicate how likely it is that a piece of data matches infoTypes",
     )
-    reject_prompt: Optional[str] = Field(
+    rejectPrompt: Optional[str] = Field(
         default=None, description="Prompt to be used for the route"
     )
     risk_analysis: Optional[str] = Field(
