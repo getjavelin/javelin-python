@@ -241,7 +241,22 @@ class Secret(BaseModel):
         default=True, description="Whether the secret is enabled"
     )
 
-
+    def masked(self):
+        """
+        Return a version of the model where sensitive fields are masked.
+        """
+        return {
+            "api_key": self.api_key,
+            "api_key_secret_name": self.api_key_secret_name,
+            "api_key_secret_key": "***MASKED***" if self.api_key_secret_key else None,
+            "api_key_secret_key_javelin": "***MASKED***" if self.api_key_secret_key_javelin else None,
+            "provider_name": self.provider_name,
+            "query_param_key": self.query_param_key,
+            "header_key": self.header_key,
+            "group": self.group,
+            "enabled": self.enabled,
+        }
+    
 class Secrets(BaseModel):
     secrets: List[Secret] = Field(default=[], description="List of secrets")
 
