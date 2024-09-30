@@ -1,7 +1,7 @@
 from enum import Enum, auto
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from javelin_sdk.exceptions import UnauthorizedError
 
@@ -249,14 +249,17 @@ class Secret(BaseModel):
             "api_key": self.api_key,
             "api_key_secret_name": self.api_key_secret_name,
             "api_key_secret_key": "***MASKED***" if self.api_key_secret_key else None,
-            "api_key_secret_key_javelin": "***MASKED***" if self.api_key_secret_key_javelin else None,
+            "api_key_secret_key_javelin": (
+                "***MASKED***" if self.api_key_secret_key_javelin else None
+            ),
             "provider_name": self.provider_name,
             "query_param_key": self.query_param_key,
             "header_key": self.header_key,
             "group": self.group,
             "enabled": self.enabled,
         }
-    
+
+
 class Secrets(BaseModel):
     secrets: List[Secret] = Field(default=[], description="List of secrets")
 
@@ -299,8 +302,9 @@ class JavelinConfig(BaseModel):
     llm_api_key: Optional[str] = None
     api_version: Optional[str] = None
 
-    @validator("javelin_api_key")
-    def validate_api_key(cls, value):
+    @field_validator("javelin_api_key")
+    @classmethod
+    def validate_api_key(cls, value: str) -> str:
         if not value:
             raise UnauthorizedError(
                 response=None,
