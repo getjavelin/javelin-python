@@ -313,17 +313,19 @@ class JavelinClient:
         request = Request(
             method=HttpMethod.GET,
             archive=archive_name,
-            query_params={"page": 1, "limit": n}
+            query_params={"page": 1, "limit": n},
         )
         response = self._send_request_sync(request)
         print(response)
         return response
-    
-    async def aget_last_n_chronicle_records(self, archive_name: str, n: int) -> Dict[str, Any]:
+
+    async def aget_last_n_chronicle_records(
+        self, archive_name: str, n: int
+    ) -> Dict[str, Any]:
         request = Request(
             method=HttpMethod.GET,
             archive=archive_name,
-            query_params={"page": 1, "limit": n}
+            query_params={"page": 1, "limit": n},
         )
         response = await self._send_request_async(request)
         return response

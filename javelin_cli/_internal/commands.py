@@ -16,9 +16,9 @@ from javelin_sdk.exceptions import (
     UnauthorizedError,
 )
 from javelin_sdk.models import (
-    JavelinConfig,
     Gateway,
     GatewayConfig,
+    JavelinConfig,
     Model,
     Provider,
     ProviderConfig,
@@ -475,6 +475,7 @@ def create_secret(args):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+
 def list_secrets(args):
     try:
         client = get_javelin_client()
@@ -507,6 +508,7 @@ def list_secrets(args):
         print(f"An error occurred: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
+
 
 def get_secret(args):
     try:
