@@ -82,6 +82,8 @@ class JavelinClient:
             secret_name=request.secret,
             template_name=request.template,
             query=request.is_query,
+            archive=request.archive,
+            query_params=request.query_params,
         )
         headers = {**self._headers, **(request.headers or {})}
         return url, headers
@@ -116,6 +118,8 @@ class JavelinClient:
         secret_name: Optional[str] = "",
         template_name: Optional[str] = "",
         query: bool = False,
+        archive: Optional[str] = "",
+        query_params: Optional[Dict[str, Any]] = None,
     ) -> str:
         url_parts = [self.base_url]
 
@@ -148,9 +152,20 @@ class JavelinClient:
             url_parts.extend(["admin", "processors", "dp", "templates"])
             if template_name != "###":
                 url_parts.append(template_name)
+        elif archive:
+            url_parts.extend(["admin", "archives"])
+            if archive != "###":
+                url_parts.append(archive)
         else:
             url_parts.extend(["admin", "routes"])
-        return "/".join(url_parts)
+
+        url = "/".join(url_parts)
+
+        if query_params:
+            query_string = "&".join(f"{k}={v}" for k, v in query_params.items())
+            url += f"?{query_string}"
+
+        return url
 
     # Gateway methods
     create_gateway = lambda self, gateway: self.gateway_service.create_gateway(gateway)
@@ -292,3 +307,23 @@ class JavelinClient:
             strategy_name
         )
     )
+
+    # Archive methods
+    def get_last_n_chronicle_records(self, archive_name: str, n: int) -> Dict[str, Any]:
+        request = Request(
+            method=HttpMethod.GET,
+            archive=archive_name,
+            query_params={"page": 1, "limit": n}
+        )
+        response = self._send_request_sync(request)
+        print(response)
+        return response
+    
+    async def aget_last_n_chronicle_records(self, archive_name: str, n: int) -> Dict[str, Any]:
+        request = Request(
+            method=HttpMethod.GET,
+            archive=archive_name,
+            query_params={"page": 1, "limit": n}
+        )
+        response = await self._send_request_async(request)
+        return response
