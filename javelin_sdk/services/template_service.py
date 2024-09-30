@@ -48,6 +48,7 @@ class TemplateService:
                 method=HttpMethod.POST, template=template.name, data=template.dict()
             )
         )
+        self.reload_data_protection(template.name)
         return self._process_template_response_ok(response)
 
     async def acreate_template(self, template: Template) -> str:
@@ -56,6 +57,7 @@ class TemplateService:
                 method=HttpMethod.POST, template=template.name, data=template.dict()
             )
         )
+        await self.areload_data_protection(template.name)
         return self._process_template_response_ok(response)
 
     def get_template(self, template_name: str) -> Template:
@@ -100,12 +102,14 @@ class TemplateService:
         response = self.client._send_request_sync(
             Request(method=HttpMethod.PUT, template=template.name, data=template.dict())
         )
+        self.reload_data_protection(template.name)
         return self._process_template_response_ok(response)
 
     async def aupdate_template(self, template: Template) -> str:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.PUT, template=template.name, data=template.dict())
         )
+        await self.areload_data_protection(template.name)
         return self._process_template_response_ok(response)
 
     def delete_template(self, template_name: str) -> str:

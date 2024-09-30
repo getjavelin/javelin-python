@@ -332,6 +332,8 @@ class Request:
         is_query: bool = False,
         data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
+        archive: Optional[str] = "",
+        query_params: Optional[Dict[str, Any]] = None,
     ):
         self.method = method
         self.gateway = gateway
@@ -342,3 +344,5 @@ class Request:
         self.is_query = is_query
         self.data = data
         self.headers = headers
+        self.archive = archive
+        self.query_params = query_params
