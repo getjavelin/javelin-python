@@ -16,6 +16,7 @@ from javelin_sdk.exceptions import (
     UnauthorizedError,
 )
 from javelin_sdk.models import (
+    JavelinConfig,
     Gateway,
     GatewayConfig,
     Model,
@@ -24,6 +25,7 @@ from javelin_sdk.models import (
     Route,
     RouteConfig,
     Secret,
+    Secrets,
     Template,
     Templates,
 )
@@ -63,8 +65,8 @@ def get_javelin_client():
     javelin_api_key = selected_gateway["api_key_value"]
 
     # Print all the relevant variables for debugging (optional)
-    print(f"Base URL: {base_url}")
-    print(f"Javelin API Key: {javelin_api_key}")
+    # print(f"Base URL: {base_url}")
+    # print(f"Javelin API Key: {javelin_api_key}")
 
     # Ensure the API key is set before initializing
     if not javelin_api_key or javelin_api_key == "":
@@ -78,10 +80,12 @@ def get_javelin_client():
         )
 
     # Initialize the JavelinClient when required
-    return JavelinClient(
+    config = JavelinConfig(
         base_url=base_url,
         javelin_api_key=javelin_api_key,
     )
+
+    return JavelinClient(config)
 
 
 def create_gateway(args):
@@ -471,14 +475,31 @@ def create_secret(args):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
-
 def list_secrets(args):
     try:
         client = get_javelin_client()
 
-        secrets = client.list_secrets()
-        print("List of secrets:")
-        print(json.dumps(secrets, indent=2, default=lambda o: o.__dict__))
+        # Fetch the list of secrets from the client
+        secrets_response = client.list_secrets()
+        # print(secrets_response.json(indent=2))
+
+        # Check if the response is an instance of Secrets
+        if isinstance(secrets_response, Secrets):
+            secrets_list = secrets_response.secrets
+
+            # Check if there are no secrets
+            if not secrets_list:
+                print("No secrets available.")
+                return
+
+            # Iterate over the secrets and mask sensitive data
+            masked_secrets = [secret.masked() for secret in secrets_list]
+
+            # Print the masked secrets
+            print(json.dumps({"secrets": masked_secrets}, indent=2))
+
+        else:
+            print(f"Unexpected secret format: {secrets_response}")
 
     except UnauthorizedError as e:
         print(f"UnauthorizedError: {e}")
@@ -487,14 +508,16 @@ def list_secrets(args):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
-
 def get_secret(args):
     try:
         client = get_javelin_client()
 
+        # Fetch the secret and mask sensitive data
         secret = client.get_secret(args.api_key)
+        masked_secret = secret.masked()  # Ensure the sensitive fields are masked
+
         print(f"Secret details for '{args.api_key}':")
-        print(json.dumps(secret, indent=2, default=lambda o: o.__dict__))
+        print(json.dumps(masked_secret, indent=2))
 
     except UnauthorizedError as e:
         print(f"UnauthorizedError: {e}")
