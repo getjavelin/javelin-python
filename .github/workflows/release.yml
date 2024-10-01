@@ -1,0 +1,186 @@
+name: Release Build - Javelin Python
+
+on:
+  release:
+    types: [created]
+
+env:
+  env_var: ${{ vars.ENV_CONTEXT_VAR }}
+  DEVOPS_REPO: "javelin-cloud"
+  CHANGELOG_BR: main
+  PY_VER: 3.11.8
+
+jobs:
+  javelin-package:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setting up Repo Env
+        id: repo_env_setup
+        shell: bash
+        run: |-
+          echo "shortsha=$(git rev-parse --short=7 HEAD)" >> ${GITHUB_OUTPUT}
+          echo "repository=$(basename ${{ github.repository }})" >> ${GITHUB_OUTPUT}
+
+      - name: Set Lowercase Repo Name
+        id: lc_repository
+        env:
+          REPO_NAME: ${{ steps.repo_env_setup.outputs.repository }}
+        shell: bash
+        run: echo "name=${REPO_NAME,,}" >> ${GITHUB_OUTPUT}
+
+      - name: Set up Python Version
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PY_VER }}
+          cache: 'pip'
+
+      - name: Validate Release
+        env:
+          RELEASE_NAME: ${{ github.event.release.name }}
+          REGEX_PATTERN: "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+        shell: bash
+        run: |-
+          if [[ "${{ env.RELEASE_NAME }}" =~ ${{ env.REGEX_PATTERN }} ]]; then
+            echo "Valid version format: ${{ env.RELEASE_NAME }}"
+          else
+            echo "Invalid version format: ${{ env.RELEASE_NAME }}"
+            exit 1
+          fi
+
+      - name: Setting up the Package Version
+        env:
+          PY_VER_FILE: "pyproject.toml"
+          RELEASE_NAME: ${{ github.event.release.name }}
+        shell: bash
+        run: |-
+          export RELEASE_VERSION=$(echo ${{ env.RELEASE_NAME }} | sed 's|^v||g')
+          if cat ${{ env.PY_VER_FILE }} | grep 'version = "RELEASE_VERSION"' ; then
+            sed -i "s|^version = \"RELEASE_VERSION\"|version = \"${RELEASE_VERSION}\"|g" ${{ env.PY_VER_FILE }}
+            cat ${file}
+          else
+            echo "Version entry format is wrong in the ${{ env.PY_VER_FILE }} file...!"
+            cat ${file}
+            exit 1
+          fi
+
+      - name: Install Dependencies
+        shell: bash
+        run: |-
+          pip install build
+
+      - name: Build Package
+        shell: bash
+        run: |-
+          python -m build
+
+      - name: Publish Package
+        uses: pypa/gh-action-pypi-publish@v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+    outputs:
+      short_sha: ${{ steps.repo_env_setup.outputs.shortsha }}
+      lc_repository: ${{ steps.lc_repository.outputs.name }}
+
+  javelin-chglog:
+    needs:
+      - javelin-package
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          persist-credentials: true
+
+      - name: Check chglog config
+        id: chglog_config
+        shell: bash
+        run: |
+          if test -d ".chglog" ; then
+            if test -f ".chglog/config.yml" ; then
+              echo "present=true" >> ${GITHUB_OUTPUT}
+            fi
+          fi
+
+      - name: Install git-chglog and generate CHANGELOG
+        if: ${{ steps.chglog_config.outputs.present == 'true' }}
+        shell: bash
+        run: |
+          curl -sLfO https://github.com/git-chglog/git-chglog/releases/download/v0.15.4/git-chglog_0.15.4_linux_amd64.tar.gz
+          tar -zxvf git-chglog_0.15.4_linux_amd64.tar.gz
+          chmod +x git-chglog
+          sudo mv git-chglog /usr/local/bin/
+          TAG_NAME=${GITHUB_REF_NAME}
+          /usr/local/bin/git-chglog --config .chglog/config.yml --output CHANGELOG.md
+
+      - name: Commit CHANGELOG
+        if: ${{ steps.chglog_config.outputs.present == 'true' }}
+        run: |
+          git fetch
+          git switch -c ${{ env.CHANGELOG_BR }} origin/${{ env.CHANGELOG_BR }}  # Switch to the ${{ env.CHANGELOG_BR }} branch
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add CHANGELOG.md
+          git commit -m "Update CHANGELOG for ${GITHUB_REF#refs/tags/} - [skip ci]"
+          git push origin ${{ env.CHANGELOG_BR }}
+
+  javelin-package-notify:
+    needs:
+      - javelin-package
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-latest
+    if: always()
+    env:
+      SVC_NAME: ${{ needs.javelin-package.outputs.lc_repository }}
+      JOB_STATUS: ${{ needs.javelin-package.result }}
+      JOB_STATUS_FAIL_MARK: ":x:"
+      JOB_STATUS_SUCCESS_MARK: ":white_check_mark:"
+      TAG_NAME: ${{ github.event.release.tag_name }}
+      RELEASE_NAME: ${{ github.event.release.name }}
+      RELEASE_AUTHOR: ${{ github.event.release.author.login }}
+      BUILD_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      SLACK_PAYLOAD_JSON: slack-package-payload.json
+    steps:
+      - name: DevOps Repository Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ github.repository_owner }}/${{ env.DEVOPS_REPO }}"
+          token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: true
+          ref: main
+          path: ${{ env.DEVOPS_REPO }}
+
+      - name: Slack Payload Template
+        shell: bash
+        run: |-
+          if [[ ${{ needs.javelin-package.result }} == "success" ]] ; then
+            export JOB_STATUS_MARK=${JOB_STATUS_SUCCESS_MARK}
+          else
+            export JOB_STATUS_MARK=${JOB_STATUS_FAIL_MARK}
+          fi
+          envsubst < ${{ env.DEVOPS_REPO }}/slack-notify/${{ env.SLACK_PAYLOAD_JSON }} > ${{ env.SLACK_PAYLOAD_JSON }}
+          cat ${{ env.SLACK_PAYLOAD_JSON }}
+
+      - name: Slack Notification
+        uses: slackapi/slack-github-action@v1.26.0
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          channel-id: "${{ vars.SLACK_CHANNEL_ID }}"
+          payload-file-path: "${{ env.SLACK_PAYLOAD_JSON }}"
