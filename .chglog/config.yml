@@ -1,0 +1,23 @@
+style: "angular"
+
+template: "CHANGELOG.tpl.md"
+
+info:
+  title: "Changelog"
+  repository_url: "https://github.com/getjavelin/javelin-python"
+
+tag:
+  pattern: "^(v\\d+\\.\\d+\\.\\d+)$" # Example for 'v1.2.3'-style tags
+
+commit_groups:
+  title_maps:
+    feat: "Features"
+    fix: "Bug Fixes"
+
+header:
+  pattern: "^(\\w*)(\\(.+\\))?: (.+)$"
+  pattern_maps:
+    - type
+    - scope
+    - subject
+
