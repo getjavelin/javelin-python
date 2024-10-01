@@ -2,11 +2,9 @@ import json
 import os
 
 from javelin_sdk import (
-    GatewayNotFoundError,
     JavelinClient,
     JavelinConfig,
     NetworkError,
-    ProviderNotFoundError,
     Route,
     RouteNotFoundError,
     UnauthorizedError,
@@ -22,116 +20,40 @@ def pretty_print(obj):
     """
     Pretty-prints an object that has a JSON representation.
     """
-    # If the object has a `dict` method, call it to get its dictionary representation.
     if hasattr(obj, "dict"):
         obj = obj.dict()
 
-    # Use the `json` module to print the dictionary as a string.
-    try:
-        print(json.dumps(obj, indent=4))
-    except TypeError:
-        print(obj)
+    print(json.dumps(obj, indent=4))
 
 
-def handle_gateway(client):
+def route_example(client):
     """
-    Start the example by cleaning up any pre-existing gateways.
-    This is done by deleting the gateway if it exists.
-    """
-    print(
-        "1. Start clean (by deleting pre-existing gateways): ", "test_sdk_gw_kensho_1"
-    )
-    try:
-        client.delete_gateway("test_sdk_gw_kensho_1")
-    except GatewayNotFoundError as e:
-        print(e.message, e.response_data)
-
-    """
-    Create a gateway. This is done by creating a Gateway object and passing it to the
-    create_gateway method of the JavelinClient object.
-    """
-    """
-    gateway_data = {
-        "name": "test_sdk_gw_kensho_1",
-        "type": "development",
-        "enabled": True,
-        "config": {
-            "buid": "kensho",
-            "base_url": "https://api-dev.javelin.live/",
-            "api_key_value": "test-token",
-            "organization_id": "test_org",
-            "system_namespace": "javelin-dev"
-        },
-    }
-    gateway = Gateway.parse_obj(gateway_data)
-    print("2. Creating gateway: ", gateway.name)
-    try:
-        client.create_gateway(gateway)
-    except UnauthorizedError as e:
-        print("Failed to create gateway: Unauthorized")
-    except NetworkError as e:
-        print("Failed to create gateway: Network Error")
-    """
-
-    """
-    List gateways. This is done by calling the list_gateways method of the JavelinClient object.
-    """
-    print("4. Listing gateways")
-    try:
-        pretty_print(client.list_gateways())
-    except UnauthorizedError as e:
-        print("Failed to list gateways: Unauthorized")
-    except NetworkError as e:
-        print("Failed to list gateways: Network Error")
-
-
-def handle_provider(client):
-    """
-    Start the example by cleaning up any pre-existing providers.
-    This is done by deleting the provider if it exists.
-    """
-    print("1. Start clean (by deleting pre-existing providers): ", "test_sdk_openai_1")
-    try:
-        client.delete_provider("test_sdk_openai_1")
-    except ProviderNotFoundError as e:
-        print(e.message, e.response_data)
-
-    """
-    List providers. This is done by calling the list_providers method of the JavelinClient object.
-    """
-    print("4. Listing providers")
-    try:
-        pretty_print(client.list_providers())
-    except UnauthorizedError as e:
-        print("Failed to list providers: Unauthorized")
-    except NetworkError as e:
-        print("Failed to list providers: Network Error")
-
-
-def handle_route(client):
-    """
-    Start the example by cleaning up any pre-existing routes.
+    Start the example by cleaning up any pre-existing routes. 
     This is done by deleting the route if it exists.
     """
-    print("1. Start clean (by deleting pre-existing routes): ", "test_sdk_route_1")
+    print("1. Start clean (by deleting pre-existing routes): ", "test_route_1")
     try:
-        client.delete_route("test_sdk_route_1")
+        client.delete_route("test_route_1")
+    except UnauthorizedError as e:
+        print("Failed to delete route: Unauthorized")
+    except NetworkError as e:
+        print("Failed to delete route: Network Error")
     except RouteNotFoundError as e:
-        print(e.message, e.response_data)
+        print("Failed to delete route: Route Not Found")
 
     """
     Create a route. This is done by creating a Route object and passing it to the
     create_route method of the JavelinClient object.
     """
     route_data = {
-        "name": "test_sdk_route_1",
+        "name": "test_route_1",
         "type": "chat",
         "enabled": True,
         "models": [
             {
                 "name": "gpt-3.5-turbo",
-                "provider": "OpenAI",
-                "suffix": "/v1/chat/completions",
+                "provider": "openai",
+                "suffix": "/chat/completions",
             }
         ],
         "config": {
@@ -166,54 +88,58 @@ def handle_route(client):
     query_data = {
         "model": "gpt-3.5-turbo",
         "messages": [
-            {
-                "role": "user",
-                "content": "You are a helpful assistant. What is the capital of India",
-            },
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Hello!"},
         ],
         "temperature": 0.8,
     }
 
-    print("3. Querying route: ", "test_sdk_route_1")
+    print("3. Querying route: ", route.name)
     try:
-        response = client.query_route("test_sdk_route_1", query_data)
+        response = client.query_route("test_route_1", query_data)
         pretty_print(response)
     except UnauthorizedError as e:
-        print("Failed to query route: Unauthorized" + e.message, e.response_data)
+        print("Failed to query route: Unauthorized")
+    except NetworkError as e:
+        print("Failed to query route: Network Error")
+    except RouteNotFoundError as e:
+        print("Failed to query route: Route Not Found")
 
     """
     List routes. This is done by calling the list_routes method of the JavelinClient object.
     """
     print("4. Listing routes")
-    """
     try:
         pretty_print(client.list_routes())
     except UnauthorizedError as e:
         print("Failed to list routes: Unauthorized")
     except NetworkError as e:
         print("Failed to list routes: Network Error")
-    """
 
     print("5. Get Route: ", route.name)
     try:
         pretty_print(client.get_route(route.name))
+    except UnauthorizedError as e:
+        print("Failed to get route: Unauthorized")
+    except NetworkError as e:
+        print("Failed to get route: Network Error")
     except RouteNotFoundError as e:
-        print(e.message, e.response_data)
+        print("Failed to get route: Route Not Found")
 
     """
     Update the route. This is done by calling the update_route method of the JavelinClient
     object. The route object is passed as an argument.
     """
     print("6. Updating Route: ", route.name)
-    #    try:
-    #        route.config.retries = 5
-    #       client.update_route(route)
-    #    except UnauthorizedError as e:
-    #        print("Failed to update route: Unauthorized")
-    #    except NetworkError as e:
-    #        print("Failed to update route: Network Error")
-    #    except RouteNotFoundError as e:
-    #        print("Failed to update route: Route Not Found")
+    try:
+        route.config.retries = 5
+        client.update_route(route)
+    except UnauthorizedError as e:
+        print("Failed to update route: Unauthorized")
+    except NetworkError as e:
+        print("Failed to update route: Network Error")
+    except RouteNotFoundError as e:
+        print("Failed to update route: Route Not Found")
 
     """
     Get the route. This is done by calling the get_route method of the JavelinClient object.
@@ -221,8 +147,12 @@ def handle_route(client):
     print("7. Get Route: ", route.name)
     try:
         pretty_print(client.get_route(route.name))
+    except UnauthorizedError as e:
+        print("Failed to get route: Unauthorized")
+    except NetworkError as e:
+        print("Failed to get route: Network Error")
     except RouteNotFoundError as e:
-        print(e.message, e.response_data)
+        print("Failed to get route: Route Not Found")
 
     """
     Delete the route. This is done by calling the delete_route method of the JavelinClient
@@ -231,8 +161,12 @@ def handle_route(client):
     print("8. Deleting Route: ", route.name)
     try:
         client.delete_route(route.name)
+    except UnauthorizedError as e:
+        print("Failed to delete route: Unauthorized")
+    except NetworkError as e:
+        print("Failed to delete route: Network Error")
     except RouteNotFoundError as e:
-        print(e.message, e.response_data)
+        print("Failed to delete route: Route Not Found")
 
 
 def main():
@@ -241,6 +175,7 @@ def main():
     Create a JavelinClient object. This object is used to interact
     with the Javelin API. The base_url parameter is the URL of the Javelin API.
     """
+
     try:
         config = JavelinConfig(
             base_url="https://api-dev.javelin.live",
@@ -250,16 +185,10 @@ def main():
         )
         client = JavelinClient(config)
     except NetworkError as e:
-        print(e.message, e.response_data)
-        return
-    except UnauthorizedError as e:
-        print(e.message, e.response_data)
+        print("Failed to create client: Network Error")
         return
 
-    handle_gateway(client)
-    handle_provider(client)
-    handle_route(client)
-
+    route_example(client)
 
 if __name__ == "__main__":
     main()
