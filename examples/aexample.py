@@ -27,25 +27,8 @@ def pretty_print(obj):
     print(json.dumps(obj, indent=4))
 
 
-async def main():
-    print("Javelin Asynchronous Example Code")
-    """
-    Create a JavelinClient object. This object is used to interact
-    with the Javelin API. The base_url parameter is the URL of the Javelin API.
-    """
 
-    try:
-        config = JavelinConfig(
-            base_url="https://api-dev.javelin.live",
-            javelin_api_key=javelin_api_key,
-            javelin_virtualapikey=javelin_virtualapikey,
-            llm_api_key=llm_api_key,
-        )
-        client = JavelinClient(config)
-    except NetworkError as e:
-        print("Failed to create client: Network Error")
-        return
-
+async def route_example(client):
     """
     Start the example by cleaning up any pre-existing routes. 
     This is done by deleting the route if it exists.
@@ -187,6 +170,27 @@ async def main():
     except RouteNotFoundError as e:
         print("Failed to delete route: Route Not Found")
 
+
+async def main():
+    print("Javelin Asynchronous Example Code")
+    """
+    Create a JavelinClient object. This object is used to interact
+    with the Javelin API. The base_url parameter is the URL of the Javelin API.
+    """
+
+    try:
+        config = JavelinConfig(
+            base_url="https://api-dev.javelin.live",
+            javelin_api_key=javelin_api_key,
+            javelin_virtualapikey=javelin_virtualapikey,
+            llm_api_key=llm_api_key,
+        )
+        client = JavelinClient(config)
+    except NetworkError as e:
+        print("Failed to create client: Network Error")
+        return
+
+    await route_example(client)
 
 if __name__ == "__main__":
     asyncio.run(main())
