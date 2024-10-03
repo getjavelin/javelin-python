@@ -35,7 +35,7 @@ class Gateway(BaseModel):
     name: str = Field(default=None, description="Name of the gateway")
     type: str = Field(
         default=None,
-        description="The type development, staging, production of this gateway",
+        description="The type of this gateway (e.g., development, staging, production)",
     )
     enabled: Optional[bool] = Field(
         default=True, description="Whether the gateway is enabled"
@@ -296,11 +296,18 @@ class QueryResponse(BaseModel):
 
 
 class JavelinConfig(BaseModel):
-    javelin_api_key: str
-    base_url: str = "https://api-dev.javelin.live"
-    javelin_virtualapikey: Optional[str] = None
-    llm_api_key: Optional[str] = None
-    api_version: Optional[str] = None
+    javelin_api_key: str = Field(..., description="Javelin API key")
+    base_url: str = Field(
+        default="https://api-dev.javelin.live",
+        description="Base URL for the Javelin API",
+    )
+    javelin_virtualapikey: Optional[str] = Field(
+        default=None, description="Virtual API key for Javelin"
+    )
+    llm_api_key: Optional[str] = Field(
+        default=None, description="API key for the LLM provider"
+    )
+    api_version: Optional[str] = Field(default=None, description="API version")
 
     @field_validator("javelin_api_key")
     @classmethod

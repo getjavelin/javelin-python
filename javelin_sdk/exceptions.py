@@ -1,6 +1,7 @@
 from typing import Any, Dict, Optional
 
 from httpx import Response
+from pydantic import ValidationError as PydanticValidationError
 
 
 class JavelinClientError(Exception):
@@ -186,6 +187,10 @@ class UnauthorizedError(JavelinClientError):
 
 class ValidationError(JavelinClientError):
     def __init__(
-        self, response: Optional[Response] = None, message: str = "Validation error"
+        self, error: PydanticValidationError, message: str = "Validation error occurred"
     ) -> None:
-        super().__init__(message=message, response=response)
+        super().__init__(message=message)
+        self.error = error
+
+    def __str__(self):
+        return f"{self.message}: {self.error}"
