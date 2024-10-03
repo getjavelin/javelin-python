@@ -83,9 +83,9 @@ jobs:
 
       - name: Publish Package
         uses: pypa/gh-action-pypi-publish@v1.10.2
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
+        # with:
+        #   user: __token__
+        #   password: ${{ secrets.PYPI_API_TOKEN }}
     outputs:
       short_sha: ${{ steps.repo_env_setup.outputs.shortsha }}
       lc_repository: ${{ steps.lc_repository.outputs.name }}
