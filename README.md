@@ -7,6 +7,12 @@ This is the Python client package for Javelin.
 For more information about Javelin, see https://getjavelin.io  
 Javelin Documentation: https://docs.getjavelin.io
 
+### Development
+
+For local development, Please change `version = "RELEASE_VERSION"` with any semantic version example : `version = "v0.1.10"` in `pyproject.toml`
+
+*Make sure that the file `pyproject.toml` reverted before commit back to main*
+
 ### Installation
 
 ```python
