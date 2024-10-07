@@ -3,6 +3,12 @@ import importlib.metadata
 import os
 import webbrowser
 from pathlib import Path
+import json
+import http.server
+import socketserver
+import threading
+import urllib.parse
+import random
 
 import requests
 
@@ -53,6 +59,7 @@ def main():
 
     # Auth command
     auth_parser = subparsers.add_parser("auth", help="Authenticate with Javelin.")
+    auth_parser.add_argument("--force", action="store_true", help="Force re-authentication, overriding existing credentials")
     auth_parser.set_defaults(func=authenticate)
 
     # Gateway CRUD
@@ -347,9 +354,17 @@ def main():
 
 
 def authenticate(args):
-    default_url = "https://dev.javelin.live/"
+    home_dir = Path.home()
+    javelin_dir = home_dir / ".javelin"
+    credentials_file = javelin_dir / "credentials.json"
 
-    # ASCII-based representation of a javelin thrower
+    if credentials_file.exists() and not args.force:
+        print("✅ User is already authenticated!")
+        print("Use --force to re-authenticate and override existing credentials.")
+        return
+    
+    default_url = "https://dev.javelin.live/"
+    
     print("   O")
     print("  /|\\")
     print("  / \\    ========> Welcome to Javelin! 🚀")
@@ -357,42 +372,92 @@ def authenticate(args):
     print("Press Enter to open the default login URL in your browser...")
     print(f"Default URL: {default_url}")
     print("Or enter a new URL (leave blank to use the default): ", end="")
-
-    # Read user input
+    
     new_url = input().strip()
     url_to_open = new_url if new_url else default_url
 
-    # Open the browser to the specified URL
+    server_thread, port = start_local_server()
+
+    redirect_uri = f"http://localhost:{port}"
+    encoded_redirect = urllib.parse.quote(redirect_uri)
+    
+    url_to_open = f"{url_to_open}sign-in?localhost_url={encoded_redirect}&cli=1"
+
     print(f"\n🚀 Opening {url_to_open} in your browser...")
     webbrowser.open(url_to_open)
 
-    # Simulate waiting for authentication (in a real scenario, you'd handle the callback/token exchange)
-    input("\n⚡ Waiting for you to authenticate... Press Enter when done.")
+    print("\n⚡ Waiting for authentication... (Server is running)")
+    
+    server_thread.join()
 
-    # Fetch the user profile
-    profile_url = url_to_open + "getuserprofile"
-    cache_data = get_profile(profile_url)
-
-    if cache_data:
-        print(f"✅ Successfully authenticated!")
-
-        # Store cache in $HOME/.javelin/cache.json
-        home_dir = Path.home()
-        javelin_dir = home_dir / ".javelin"  # Ensure the directory is defined here
-
-        # Create the directory if it doesn't exist
-        javelin_dir.mkdir(exist_ok=True)
-
-        json_file_path = javelin_dir / "cache.json"
-
-        # Save the profile to cache.json
-        with open(json_file_path, "w") as json_file:
-            json.dump(user_info, json_file, indent=4)
-
-        print(f"Your Javelin credentials are stored in {json_file_path}")
-
+    if credentials_file.exists():
+        print("✅ Successfully authenticated!")
     else:
-        print(f"⚠️ failed to retrieve Javelin credentials.")
+        print("⚠️ Failed to retrieve Javelin credentials.")
+
+
+def start_local_server():
+    # Find an available port
+    port = random.randint(8000, 9000)
+    
+    class AuthHandler(http.server.SimpleHTTPRequestHandler):
+        def end_headers(self):
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+            self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+            super().end_headers()
+
+        def do_OPTIONS(self):
+            self.send_response(200)
+            self.end_headers()
+
+        def do_GET(self):
+            query = urllib.parse.urlparse(self.path).query
+            params = urllib.parse.parse_qs(query)
+            
+            if 'secrets' in params:
+                secrets = params['secrets'][0]
+                store_credentials(secrets)
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html')
+                self.end_headers()
+                self.wfile.write(b"Authentication successful. You can close this window.")
+                
+                # Shutdown the server
+                threading.Thread(target=self.server.shutdown).start()
+            else:
+                self.send_response(400)
+                self.send_header('Content-type', 'text/html')
+                self.end_headers()
+                self.wfile.write(b"Invalid request. Missing 'secrets' parameter.")
+
+    def run_server():
+        with socketserver.TCPServer(("", port), AuthHandler) as httpd:
+            print(f"Server started on port {port}")
+            httpd.serve_forever()
+
+    server_thread = threading.Thread(target=run_server)
+    server_thread.start()
+    
+    return server_thread, port
+
+
+def store_credentials(secrets):
+    home_dir = Path.home()
+    javelin_dir = home_dir / ".javelin"
+    javelin_dir.mkdir(exist_ok=True)
+    
+    credentials_file = javelin_dir / "credentials.json"
+    
+    try:
+        credentials = json.loads(secrets)
+        with open(credentials_file, "w") as f:
+            json.dump(credentials, f, indent=4)
+        print("Credentials stored successfully.")
+    except json.JSONDecodeError:
+        print("Error: Invalid JSON data received.")
+    except IOError:
+        print("Error: Unable to write credentials to file.")
 
 
 def get_profile(url):
