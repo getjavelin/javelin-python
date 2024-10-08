@@ -76,7 +76,12 @@ def update_models_file(new_models: Dict[str, Dict[str, Any]]):
                     f"Field({'None' if details.get('required') != True else '...'}, description=\"{details.get('description', '')}\")"
                     for prop, details in properties.items() if prop in new_fields
                 )
-                updated_model = existing_model + "\n" + new_field_code
+                
+                if "pass" in existing_model:
+                    updated_model = existing_model.replace("pass", new_field_code.strip())
+                else:
+                    updated_model = existing_model + "\n" + new_field_code
+                
                 updated_content = updated_content.replace(existing_model, updated_model)
         else:
             print(f"Skipping new model: {model_name}")
