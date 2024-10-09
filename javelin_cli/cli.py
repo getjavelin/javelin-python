@@ -356,14 +356,14 @@ def main():
 def authenticate(args):
     home_dir = Path.home()
     javelin_dir = home_dir / ".javelin"
-    credentials_file = javelin_dir / "credentials.json"
-
-    if credentials_file.exists() and not args.force:
+    cache_file = javelin_dir / "cache.json"
+    print(cache_file)
+    if cache_file.exists() and not args.force:
         print("✅ User is already authenticated!")
-        print("Use --force to re-authenticate and override existing credentials.")
+        print("Use --force to re-authenticate and override existing cache.")
         return
     
-    default_url = "https://dev.javelin.live/"
+    default_url = "http://localhost:3000/"
     
     print("   O")
     print("  /|\\")
@@ -390,10 +390,10 @@ def authenticate(args):
     
     server_thread.join()
 
-    if credentials_file.exists():
+    if cache_file.exists():
         print("✅ Successfully authenticated!")
     else:
-        print("⚠️ Failed to retrieve Javelin credentials.")
+        print("⚠️ Failed to retrieve Javelin cache.")
 
 
 def start_local_server():
@@ -401,6 +401,8 @@ def start_local_server():
     port = random.randint(8000, 9000)
     
     class AuthHandler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, format, *args):
+            pass
         def end_headers(self):
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
@@ -447,17 +449,17 @@ def store_credentials(secrets):
     javelin_dir = home_dir / ".javelin"
     javelin_dir.mkdir(exist_ok=True)
     
-    credentials_file = javelin_dir / "credentials.json"
+    cache_file = javelin_dir / "cache.json"
     
     try:
-        credentials = json.loads(secrets)
-        with open(credentials_file, "w") as f:
-            json.dump(credentials, f, indent=4)
-        print("Credentials stored successfully.")
+        cache_data = json.loads(secrets)
+        with open(cache_file, "w") as f:
+            json.dump(cache_data, f, indent=4)
+        print("Cache data stored successfully.")
     except json.JSONDecodeError:
         print("Error: Invalid JSON data received.")
     except IOError:
-        print("Error: Unable to write credentials to file.")
+        print("Error: Unable to write cache data to file.")
 
 
 def get_profile(url):
