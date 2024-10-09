@@ -9,6 +9,7 @@ from javelin_sdk.services.provider_service import ProviderService
 from javelin_sdk.services.route_service import RouteService
 from javelin_sdk.services.secret_service import SecretService
 from javelin_sdk.services.template_service import TemplateService
+from javelin_sdk.chat import ChatCompletions
 
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
@@ -18,8 +19,7 @@ API_TIMEOUT = 10
 class JavelinClient:
     def __init__(self, config: JavelinConfig) -> None:
         self.config = config
-        api_version = config.api_version if config.api_version else API_BASE_PATH
-        self.base_url = urljoin(config.base_url, api_version)
+        self.base_url = urljoin(config.base_url, config.api_version or "/v1")
         self._headers = {
             "x-api-key": config.javelin_api_key,
         }
@@ -35,6 +35,8 @@ class JavelinClient:
         self.route_service = RouteService(self)
         self.secret_service = SecretService(self)
         self.template_service = TemplateService(self)
+
+        self.chat = ChatCompletions(self)
 
     @property
     def client(self):
