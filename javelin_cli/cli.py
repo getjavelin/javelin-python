@@ -363,7 +363,7 @@ def authenticate(args):
         print("Use --force to re-authenticate and override existing cache.")
         return
     
-    default_url = "http://localhost:3000/"
+    default_url = "https://dev.javelin.live/"
     
     print("   O")
     print("  /|\\")
