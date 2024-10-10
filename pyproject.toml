@@ -20,6 +20,7 @@ javelin = "javelin_cli.cli:main"
 python = "^3.8"
 httpx = "^0.24.0"
 pydantic = "^2.9.2"
+requests = "^2.31.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.3.1"
