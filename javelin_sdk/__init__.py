@@ -31,6 +31,10 @@ from javelin_sdk.models import (
     Secrets,
     Template,
     Templates,
+    OpenAIModel,
+    BedrockModel,
+    HuggingFaceModel,
+    GeminiModel,
 )
 
 __all__ = [
@@ -64,4 +68,8 @@ __all__ = [
     "QueryResponse",
     "JavelinClient",
     "JavelinConfig",
+    "OpenAIModel",
+    "BedrockModel",
+    "HuggingFaceModel",
+    "GeminiModel",
 ]
