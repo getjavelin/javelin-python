@@ -3,7 +3,10 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 import re
 
-SWAGGER_FILE_PATH = Path(".github/scripts/swagger.yaml")
+#change to curr dir
+import os
+
+SWAGGER_FILE_PATH = Path(os.path.join(os.path.dirname(__file__), "swagger.yaml"))
 
 MODELS_FILE_PATH = Path("javelin_sdk/models.py")
 
