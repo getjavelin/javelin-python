@@ -25,7 +25,7 @@ def pretty_print(obj):
 def query_route(
     client: JavelinClient, route_name: str, provider: str, query_data: Dict[str, Any]
 ):
-    response = client.chat.create(
+    response = client.chat.completions.create(
         route=route_name,
         provider=provider,
         model=query_data["model"],

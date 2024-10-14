@@ -9,7 +9,7 @@ from javelin_sdk.services.provider_service import ProviderService
 from javelin_sdk.services.route_service import RouteService
 from javelin_sdk.services.secret_service import SecretService
 from javelin_sdk.services.template_service import TemplateService
-from javelin_sdk.chat import ChatCompletions
+from javelin_sdk.chat_completions import Chat
 
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
@@ -36,7 +36,7 @@ class JavelinClient:
         self.secret_service = SecretService(self)
         self.template_service = TemplateService(self)
 
-        self.chat = ChatCompletions(self)
+        self.chat = Chat(self)
 
     @property
     def client(self):

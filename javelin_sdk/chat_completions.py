@@ -1,6 +1,5 @@
 from typing import List, Dict, Any
 from javelin_sdk.model_adapters import ModelAdapterFactory
-from javelin_sdk.exceptions import BadRequest, UnauthorizedError, RouteNotFoundError
 
 
 class ChatCompletions:
@@ -26,3 +25,8 @@ class ChatCompletions:
         except Exception as e:
             print(f"Error in create method: {str(e)}")
             raise e
+
+
+class Chat:
+    def __init__(self, client):
+        self.completions = ChatCompletions(client)
