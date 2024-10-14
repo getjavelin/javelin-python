@@ -318,7 +318,6 @@ class JavelinClient:
             query_params={"page": 1, "limit": n},
         )
         response = self._send_request_sync(request)
-        print(response)
         return response
 
     async def aget_last_n_chronicle_records(

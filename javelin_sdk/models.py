@@ -280,7 +280,7 @@ class Usage(BaseModel):
 class Choice(BaseModel):
     finish_reason: str = Field(..., description="Reason for the completion finish")
     index: int = Field(..., description="Index of the choice")
-    message: Message = Field(..., description="Message details")
+    message: Dict[str, str] = Field(..., description="Message details")
 
 
 class QueryResponse(BaseModel):
@@ -358,9 +358,11 @@ class Request:
         self.archive = archive
         self.query_params = query_params
 
+
 class Message(BaseModel):
     role: str
     content: str
+
 
 class ChatCompletion(BaseModel):
     id: str
@@ -369,6 +371,7 @@ class ChatCompletion(BaseModel):
     model: str
     choices: List[Dict[str, Any]]
     usage: Dict[str, int]
+
 
 class ModelConfig(BaseModel):
     provider: str
@@ -379,19 +382,6 @@ class ModelConfig(BaseModel):
     class Config:
         protected_namespaces = ()  # This resolves the warning
 
-class OpenAIModel(ModelConfig):
-    provider: str = "openai"
-
-class BedrockModel(ModelConfig):
-    provider: str = "bedrock"
-    region_name: str = "us-east-1"
-
-class HuggingFaceModel(ModelConfig):
-    provider: str = "huggingface"
-    device_map: int = 0
-
-class GeminiModel(ModelConfig):
-    provider: str = "gemini"
 
 class JavelinConfig(BaseModel):
     base_url: str = Field(default="https://api-dev.javelin.live")
@@ -399,4 +389,3 @@ class JavelinConfig(BaseModel):
     javelin_virtualapikey: Optional[str] = None
     llm_api_key: Optional[str] = None
     api_version: Optional[str] = None
-    models: List[ModelConfig] = []

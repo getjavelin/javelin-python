@@ -8,18 +8,19 @@ from javelin_sdk import (
     Route,
     RouteNotFoundError,
     UnauthorizedError,
-    OpenAIModel,
 )
 
 # Retrieve environment variables
 javelin_api_key = os.getenv("JAVELIN_API_KEY")
 javelin_virtualapikey = os.getenv("JAVELIN_VIRTUALAPIKEY")
-llm_api_key = os.getenv("LLM_API_KEY")
+llm_api_key = os.getenv("OPENAI_API_KEY")
+
 
 def pretty_print(obj):
     if hasattr(obj, "dict"):
         obj = obj.dict()
     print(json.dumps(obj, indent=4))
+
 
 def route_example(client):
     # Clean up pre-existing route
@@ -71,13 +72,21 @@ def route_example(client):
     # Query the route
     print("3. Querying route: ", route.name)
     try:
-        response = client.chat.create(
-            model="gpt-3.5-turbo",
-            route="test_route_1",
-            messages=[
+        query_data = {
+            "model": "gpt-3.5-turbo",
+            "messages": [
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": "What is the capital of France?"}
-            ]
+                {"role": "user", "content": "Hello!"},
+            ],
+            "temperature": 0.7,
+        }
+
+        response = response = client.chat.create(
+            route="test_route_1",
+            provider="Azure OpenAI",
+            model=query_data["model"],
+            messages=query_data["messages"],
+            temperature=query_data.get("temperature", 0.7),
         )
         pretty_print(response)
     except UnauthorizedError as e:
@@ -98,6 +107,7 @@ def route_example(client):
     except RouteNotFoundError as e:
         print("Failed to delete route: Route Not Found")
 
+
 def main():
     print("Javelin Drop-in Replacement Example")
 
@@ -106,7 +116,6 @@ def main():
             javelin_api_key=javelin_api_key,
             javelin_virtualapikey=javelin_virtualapikey,
             llm_api_key=llm_api_key,
-            models=[OpenAIModel(name="gpt-3.5-turbo")]
         )
         client = JavelinClient(config)
     except NetworkError as e:
@@ -114,6 +123,7 @@ def main():
         return
 
     route_example(client)
+
 
 if __name__ == "__main__":
     main()
