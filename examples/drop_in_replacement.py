@@ -1,6 +1,15 @@
-import os
 import json
-from javelin_sdk import JavelinClient, JavelinConfig, OpenAIModel, Route, RouteNotFoundError, UnauthorizedError, NetworkError
+import os
+
+from javelin_sdk import (
+    JavelinClient,
+    JavelinConfig,
+    NetworkError,
+    Route,
+    RouteNotFoundError,
+    UnauthorizedError,
+    OpenAIModel,
+)
 
 # Retrieve environment variables
 javelin_api_key = os.getenv("JAVELIN_API_KEY")
@@ -12,79 +21,99 @@ def pretty_print(obj):
         obj = obj.dict()
     print(json.dumps(obj, indent=4))
 
-# Create JavelinConfig
-config = JavelinConfig(
-    javelin_api_key=javelin_api_key,
-    javelin_virtualapikey=javelin_virtualapikey,
-    llm_api_key=llm_api_key,
-    models=[OpenAIModel(name="gpt-3.5-turbo")]
-)
+def route_example(client):
+    # Clean up pre-existing route
+    print("1. Start clean (by deleting pre-existing routes): ", "test_route_1")
+    try:
+        client.delete_route("test_route_1")
+    except UnauthorizedError as e:
+        print("Failed to delete route: Unauthorized")
+    except NetworkError as e:
+        print("Failed to delete route: Network Error")
+    except RouteNotFoundError as e:
+        print("Failed to delete route: Route Not Found")
 
-# Create JavelinClient
-client = JavelinClient(config)
-
-# Create a route
-route_data = {
-    "name": "test_route_1",
-    "type": "chat",
-    "enabled": True,
-    "models": [
-        {
-            "name": "gpt-3.5-turbo",
-            "provider": "openai",
-            "suffix": "/chat/completions",
-        }
-    ],
-    "config": {
-        "organization": "myusers",
-        "rate_limit": 7,
-        "retries": 3,
-        "archive": True,
-        "retention": 7,
-        "budget": {
-            "enabled": True,
-            "annual": 100000,
-            "currency": "USD",
+    # Create a route
+    route_data = {
+        "name": "test_route_1",
+        "type": "chat",
+        "enabled": True,
+        "models": [
+            {
+                "name": "gpt-3.5-turbo",
+                "provider": "Azure OpenAI",
+                "suffix": "/chat/completions",
+            }
+        ],
+        "config": {
+            "organization": "myusers",
+            "rate_limit": 7,
+            "retries": 3,
+            "archive": True,
+            "retention": 7,
+            "budget": {
+                "enabled": True,
+                "annual": 100000,
+                "currency": "USD",
+            },
+            "dlp": {"enabled": True, "strategy": "Inspect", "action": "notify"},
         },
-        "dlp": {"enabled": True, "strategy": "Inspect", "action": "notify"},
-    },
-}
+    }
+    route = Route.parse_obj(route_data)
+    print("2. Creating route: ", route.name)
+    try:
+        client.create_route(route)
+    except UnauthorizedError as e:
+        print("Failed to create route: Unauthorized")
+    except NetworkError as e:
+        print("Failed to create route: Network Error")
 
-route = Route.parse_obj(route_data)
-print("Creating route: ", route.name)
-try:
-    client.create_route(route)
-except UnauthorizedError as e:
-    print("Failed to create route: Unauthorized")
-except NetworkError as e:
-    print("Failed to create route: Network Error")
+    # Query the route
+    print("3. Querying route: ", route.name)
+    try:
+        response = client.chat.create(
+            model="gpt-3.5-turbo",
+            route="test_route_1",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": "What is the capital of France?"}
+            ]
+        )
+        pretty_print(response)
+    except UnauthorizedError as e:
+        print("Failed to query route: Unauthorized")
+    except NetworkError as e:
+        print("Failed to query route: Network Error")
+    except RouteNotFoundError as e:
+        print("Failed to query route: Route Not Found")
 
-# Query the route
-print("Querying route: ", route.name)
-try:
-    response = client.chat.create(
-        model="gpt-3.5-turbo",
-        route="test_route_1",  # Use the route name we just created
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": "What is the capital of France?"}
-        ]
-    )
-    pretty_print(response)
-except UnauthorizedError as e:
-    print("Failed to query route: Unauthorized")
-except NetworkError as e:
-    print("Failed to query route: Network Error")
-except RouteNotFoundError as e:
-    print("Failed to query route: Route Not Found")
+    # Clean up: Delete the route
+    print("4. Deleting Route: ", route.name)
+    try:
+        client.delete_route(route.name)
+    except UnauthorizedError as e:
+        print("Failed to delete route: Unauthorized")
+    except NetworkError as e:
+        print("Failed to delete route: Network Error")
+    except RouteNotFoundError as e:
+        print("Failed to delete route: Route Not Found")
 
-# Clean up: Delete the route
-print("Deleting Route: ", route.name)
-try:
-    client.delete_route(route.name)
-except UnauthorizedError as e:
-    print("Failed to delete route: Unauthorized")
-except NetworkError as e:
-    print("Failed to delete route: Network Error")
-except RouteNotFoundError as e:
-    print("Failed to delete route: Route Not Found")
+def main():
+    print("Javelin Drop-in Replacement Example")
+
+    try:
+        config = JavelinConfig(
+            javelin_api_key=javelin_api_key,
+            javelin_virtualapikey=javelin_virtualapikey,
+            llm_api_key=llm_api_key,
+            models=[OpenAIModel(name="gpt-3.5-turbo")]
+        )
+        client = JavelinClient(config)
+    except NetworkError as e:
+        print("Failed to create client: Network Error")
+        return
+
+    route_example(client)
+
+if __name__ == "__main__":
+    main()

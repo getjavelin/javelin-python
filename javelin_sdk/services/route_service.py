@@ -11,6 +11,7 @@ from javelin_sdk.exceptions import (
     UnauthorizedError,
 )
 from javelin_sdk.models import HttpMethod, QueryResponse, Request, Route, Routes
+from javelin_sdk.model_adapters import ModelAdapterFactory
 
 
 class RouteService:
@@ -43,6 +44,7 @@ class RouteService:
         This is for Query() requests.
         """
         self._handle_route_response(response)
+        print("response:", response.json())
         return QueryResponse(**response.json())
 
     def _handle_route_response(self, response: httpx.Response) -> None:
@@ -146,7 +148,7 @@ class RouteService:
         route_name: str,
         query_body: Dict[str, Any],
         headers: Optional[Dict[str, str]] = None,
-    ) -> QueryResponse:
+    ) -> Dict[str, Any]:
         self._validate_route_name(route_name)
         response = self.client._send_request_sync(
             Request(
@@ -157,41 +159,16 @@ class RouteService:
                 headers=headers,
             )
         )
+        
         return self._process_route_response_json(response)
-
-    def query_llama(self, route_name: str, query: dict) -> Dict[str, Any]:
-        self._validate_route_name(route_name)
-        response = self.client._send_request_sync(
-            Request(
-                method=HttpMethod.POST,
-                route=route_name,
-                is_query=True,
-                data=query,
-                headers={"Content-Type": "application/json"},
-            )
-        )
-        return response
-
-    async def aquery_llama(self, route_name: str, query: dict) -> Dict[str, Any]:
-        self._validate_route_name(route_name)
-        response = await self.client._send_request_async(
-            Request(
-                method=HttpMethod.POST,
-                route=route_name,
-                is_query=True,
-                data=query,
-                headers={"Content-Type": "application/json"},
-            )
-        )
-        return response
-
+    
+    # aquery_route
     async def aquery_route(
         self,
         route_name: str,
         query_body: Dict[str, Any],
         headers: Optional[Dict[str, str]] = None,
-    ) -> QueryResponse:
-        self._validate_route_name(route_name)
+    ) -> Dict[str, Any]:
         response = await self.client._send_request_async(
             Request(
                 method=HttpMethod.POST,
@@ -202,3 +179,4 @@ class RouteService:
             )
         )
         return self._process_route_response_json(response)
+    
