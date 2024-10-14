@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 import re
 
-#change to curr dir
 import os
 
 SWAGGER_FILE_PATH = Path(os.path.join(os.path.dirname(__file__), "swagger.yaml"))
@@ -11,12 +10,14 @@ SWAGGER_FILE_PATH = Path(os.path.join(os.path.dirname(__file__), "swagger.yaml")
 MODELS_FILE_PATH = Path("javelin_sdk/models.py")
 
 FIELDS_TO_EXCLUDE = {
-    'Gateway': ['created_at', 'modified_at', 'created_by', 'modified_by'],
-    'Provider': ['created_at', 'modified_at', 'created_by', 'modified_by'],
+    'Gateway': ['created_at', 'modified_at', 'created_by', 'modified_by', 'request_chain', 'response_chain'],
+    'Provider': ['created_at', 'modified_at', 'created_by', 'modified_by', 'api_keys'],
     'Route': ['created_at', 'modified_at', 'created_by', 'modified_by'],
     'Template': ['created_at', 'modified_at', 'created_by', 'modified_by'],
     'APIKey': ['created_at', 'modified_at', 'created_by', 'modified_by', 'organization'],
 }
+
+MODELS_TO_EXCLUDE = ['ResponseMessage', 'APIKey']
 
 def read_swagger():
     with SWAGGER_FILE_PATH.open() as f:
@@ -27,10 +28,11 @@ def parse_swagger(swagger_data):
     for model_name, model_spec in swagger_data['definitions'].items():
         properties = model_spec.get('properties', {})
         model_name = model_name.split('.')[-1]
-        models[model_name] = {
-            prop: details for prop, details in properties.items()
-            if prop not in FIELDS_TO_EXCLUDE.get(model_name, [])
-        }
+        if model_name not in MODELS_TO_EXCLUDE:
+            models[model_name] = {
+                prop: details for prop, details in properties.items()
+                if prop not in FIELDS_TO_EXCLUDE.get(model_name, [])
+            }
     return models
 
 def get_python_type(openapi_type: str, items: Optional[Dict[str, Any]] = None) -> str:
@@ -87,7 +89,9 @@ def update_models_file(new_models: Dict[str, Dict[str, Any]]):
                 
                 updated_content = updated_content.replace(existing_model, updated_model)
         else:
-            print(f"Skipping new model: {model_name}")
+            # Add new model
+            new_model_code = generate_model_code(model_name, properties)
+            updated_content += f"\n\n{new_model_code}"
 
     if updated_content != current_content:
         MODELS_FILE_PATH.write_text(updated_content)
