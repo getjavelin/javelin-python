@@ -28,8 +28,8 @@ def query_route(
     response = client.chat.completions.create(
         route=route_name,
         provider=provider,
-        model=query_data["model"],
         messages=query_data["messages"],
+        model=query_data.get("model"),
         temperature=query_data.get("temperature", 0.7),
     )
     pretty_print(response)

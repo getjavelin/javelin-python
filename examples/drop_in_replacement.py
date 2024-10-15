@@ -10,7 +10,6 @@ from javelin_sdk import (
     UnauthorizedError,
 )
 
-
 # Retrieve environment variables
 javelin_api_key = os.getenv("JAVELIN_API_KEY")
 javelin_virtualapikey = os.getenv("JAVELIN_VIRTUALAPIKEY")
@@ -85,8 +84,8 @@ def route_example(client):
         response = client.chat.completions.create(
             route="test_route_1",
             provider="Azure OpenAI",
-            model=query_data["model"],
             messages=query_data["messages"],
+            model=query_data.get("model"),
             temperature=query_data.get("temperature", 0.7),
         )
         pretty_print(response)

@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from javelin_sdk.model_adapters import ModelAdapterFactory
 
 
@@ -10,8 +10,8 @@ class ChatCompletions:
         self,
         route: str,
         provider: str,
-        model: str,
         messages: List[Dict[str, str]],
+        model: Optional[str] = None,
         temperature: float = 0.7,
     ) -> Dict[str, Any]:
         try:
