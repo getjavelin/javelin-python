@@ -4,6 +4,10 @@ from typing import Dict, Any
 
 from javelin_sdk import JavelinConfig, JavelinClient
 
+import dotenv
+
+dotenv.load_dotenv()
+
 # Retrieve environment variables
 javelin_api_key = os.getenv("JAVELIN_API_KEY")
 javelin_virtualapikey = os.getenv("JAVELIN_VIRTUALAPIKEY")
@@ -22,19 +26,6 @@ def pretty_print(obj):
         print(obj)
 
 
-def query_route(
-    client: JavelinClient, route_name: str, provider: str, query_data: Dict[str, Any]
-):
-    response = client.chat.completions.create(
-        route=route_name,
-        provider=provider,
-        messages=query_data["messages"],
-        model=query_data.get("model"),
-        temperature=query_data.get("temperature", 0.7),
-    )
-    pretty_print(response)
-
-
 def main():
     config = JavelinConfig(
         base_url="https://api-dev.javelin.live",
@@ -44,22 +35,42 @@ def main():
     )
     client = JavelinClient(config)
 
-    model_providers_routes = [
-        {"provider": "OpenAI", "route_name": "myusers"},
-        {"provider": "BedrockAmazon", "route_name": "bedrocktitan"},
-        {"provider": "BedrockMeta", "route_name": "bedrockllama"},
+    chat_completion_routes = [
+        {"route_name": "myusers"},
     ]
 
-    for model in model_providers_routes:
-        query_data = {
-            "model": "gpt-3.5-turbo",
-            "messages": [
+    text_completion_routes = [
+        {"route_name": "bedrockllama"},
+        {"route_name": "bedrocktitan"},
+    ]
+
+    # Chat completion examples
+    for route in chat_completion_routes:
+        print(f"\nQuerying chat completion route: {route['route_name']}")
+        chat_response = client.chat.completions.create(
+            route=route["route_name"],
+            model="gpt-3.5-turbo",
+            messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": "Hello!"},
+                {"role": "user", "content": "Hello! What can you do?"},
             ],
-            "temperature": 0.7,
-        }
-        query_route(client, model["route_name"], model["provider"], query_data)
+            temperature=0.7,
+        )
+        print("Chat Completion Response:")
+        pretty_print(chat_response)
+
+    # Text completion examples
+    for route in text_completion_routes:
+        print(f"\nQuerying text completion route: {route['route_name']}")
+        completion_response = client.completions.create(
+            route=route["route_name"],
+            model="gpt-3.5-turbo-instruct",
+            prompt="Complete this sentence: The quick brown fox",
+            max_tokens=50,
+            temperature=0.7,
+        )
+        print("Text Completion Response:")
+        pretty_print(completion_response)
 
 
 if __name__ == "__main__":
