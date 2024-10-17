@@ -1,6 +1,8 @@
 import json
 import os
 
+import dotenv
+
 from javelin_sdk import (
     JavelinClient,
     JavelinConfig,
@@ -9,7 +11,6 @@ from javelin_sdk import (
     RouteNotFoundError,
     UnauthorizedError,
 )
-import dotenv
 
 dotenv.load_dotenv()
 

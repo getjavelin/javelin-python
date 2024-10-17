@@ -1,10 +1,10 @@
-import os
 import json
-from typing import Dict, Any
-
-from javelin_sdk import JavelinConfig, JavelinClient
+import os
+from typing import Any, Dict
 
 import dotenv
+
+from javelin_sdk import JavelinClient, JavelinConfig
 
 dotenv.load_dotenv()
 

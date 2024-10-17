@@ -1,4 +1,5 @@
-from typing import List, Dict, Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
+
 from javelin_sdk.model_adapters import ModelAdapterFactory
 from javelin_sdk.models import Route
 
@@ -19,6 +20,7 @@ class BaseCompletions:
             route_info = self.client.route_service.get_route(route)
             is_completions = isinstance(messages_or_prompt, str)
             route_type = "completions" if is_completions else "chat"
+
             if route_info.type != route_type:
                 raise ValueError(
                     f"Route '{route}' is not a {route_type} route. {route_info.type} != {route_type}"
@@ -35,13 +37,9 @@ class BaseCompletions:
             request_data = {
                 "temperature": temperature,
                 "max_tokens": max_tokens,
+                "prompt" if is_completions else "messages": messages_or_prompt,
                 **kwargs,
             }
-
-            if is_completions:
-                request_data["prompt"] = messages_or_prompt
-            else:
-                request_data["messages"] = messages_or_prompt
 
             prepared_request = adapter.prepare_request(
                 provider=primary_model.provider,
@@ -55,7 +53,7 @@ class BaseCompletions:
             )
         except Exception as e:
             print(f"Error in create method: {str(e)}")
-            raise e
+            raise
 
 
 class ChatCompletions(BaseCompletions):
