@@ -49,7 +49,6 @@ def main():
         print(f"\nQuerying chat completion route: {route['route_name']}")
         chat_response = client.chat.completions.create(
             route=route["route_name"],
-            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": "Hello! What can you do?"},
@@ -64,7 +63,6 @@ def main():
         print(f"\nQuerying text completion route: {route['route_name']}")
         completion_response = client.completions.create(
             route=route["route_name"],
-            model="gpt-3.5-turbo-instruct",
             prompt="Complete this sentence: The quick brown fox",
             max_tokens=50,
             temperature=0.7,

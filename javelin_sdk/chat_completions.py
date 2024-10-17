@@ -11,7 +11,6 @@ class BaseCompletions:
         self,
         route: str,
         messages_or_prompt: Union[List[Dict[str, str]], str],
-        model: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         **kwargs,
@@ -34,7 +33,6 @@ class BaseCompletions:
             )
 
             request_data = {
-                "model": model or primary_model.name,
                 "temperature": temperature,
                 "max_tokens": max_tokens,
                 **kwargs,
@@ -45,14 +43,16 @@ class BaseCompletions:
             else:
                 request_data["messages"] = messages_or_prompt
 
-            prepared_request = (
-                adapter.prepare_completion_request(**request_data)
-                if is_completions
-                else adapter.prepare_request(**request_data)
+            prepared_request = adapter.prepare_request(
+                provider=primary_model.provider,
+                model=primary_model.name,
+                **request_data,
             )
-
             response = self.client.query_route(route, query_body=prepared_request)
-            return adapter.parse_response(response)
+
+            return adapter.parse_response(
+                primary_model.provider, primary_model.name, response
+            )
         except Exception as e:
             print(f"Error in create method: {str(e)}")
             raise e
@@ -63,13 +63,12 @@ class ChatCompletions(BaseCompletions):
         self,
         route: str,
         messages: List[Dict[str, str]],
-        model: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         **kwargs,
     ) -> Dict[str, Any]:
         return self._create_request(
-            route, messages, model, temperature, max_tokens, **kwargs
+            route, messages, temperature=temperature, max_tokens=max_tokens, **kwargs
         )
 
 
@@ -78,13 +77,12 @@ class Completions(BaseCompletions):
         self,
         route: str,
         prompt: str,
-        model: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         **kwargs,
     ) -> Dict[str, Any]:
         return self._create_request(
-            route, prompt, model, temperature, max_tokens, **kwargs
+            route, prompt, temperature=temperature, max_tokens=max_tokens, **kwargs
         )
 
 
