@@ -1,6 +1,8 @@
 import json
 import os
 
+import dotenv
+
 from javelin_sdk import (
     JavelinClient,
     JavelinConfig,
@@ -9,6 +11,8 @@ from javelin_sdk import (
     RouteNotFoundError,
     UnauthorizedError,
 )
+
+dotenv.load_dotenv()
 
 # Retrieve environment variables
 javelin_api_key = os.getenv("JAVELIN_API_KEY")
@@ -28,7 +32,7 @@ def pretty_print(obj):
 
 def route_example(client):
     """
-    Start the example by cleaning up any pre-existing routes. 
+    Start the example by cleaning up any pre-existing routes.
     This is done by deleting the route if it exists.
     """
     print("1. Start clean (by deleting pre-existing routes): ", "test_route_1")
@@ -189,6 +193,7 @@ def main():
         return
 
     route_example(client)
+
 
 if __name__ == "__main__":
     main()

@@ -303,7 +303,7 @@ class Usage(BaseModel):
 class Choice(BaseModel):
     finish_reason: str = Field(..., description="Reason for the completion finish")
     index: int = Field(..., description="Index of the choice")
-    message: Message = Field(..., description="Message details")
+    message: Dict[str, str] = Field(..., description="Message details")
 
 
 class QueryResponse(BaseModel):
@@ -380,3 +380,35 @@ class Request:
         self.headers = headers
         self.archive = archive
         self.query_params = query_params
+
+
+class Message(BaseModel):
+    role: str
+    content: str
+
+
+class ChatCompletion(BaseModel):
+    id: str
+    object: str = "chat.completion"
+    created: int
+    model: str
+    choices: List[Dict[str, Any]]
+    usage: Dict[str, int]
+
+
+class ModelConfig(BaseModel):
+    provider: str
+    name: str  # Changed from model_name to name
+    api_base: Optional[str] = None
+    api_key: Optional[str] = None
+
+    class Config:
+        protected_namespaces = ()  # This resolves the warning
+
+
+class JavelinConfig(BaseModel):
+    base_url: str = Field(default="https://api-dev.javelin.live")
+    javelin_api_key: str
+    javelin_virtualapikey: Optional[str] = None
+    llm_api_key: Optional[str] = None
+    api_version: Optional[str] = None

@@ -3,6 +3,7 @@ from urllib.parse import urljoin
 
 import httpx
 
+from javelin_sdk.chat_completions import Chat, Completions
 from javelin_sdk.models import HttpMethod, JavelinConfig, Request
 from javelin_sdk.services.gateway_service import GatewayService
 from javelin_sdk.services.provider_service import ProviderService
@@ -18,8 +19,7 @@ API_TIMEOUT = 10
 class JavelinClient:
     def __init__(self, config: JavelinConfig) -> None:
         self.config = config
-        api_version = config.api_version if config.api_version else API_BASE_PATH
-        self.base_url = urljoin(config.base_url, api_version)
+        self.base_url = urljoin(config.base_url, config.api_version or "/v1")
         self._headers = {
             "x-api-key": config.javelin_api_key,
         }
@@ -35,6 +35,9 @@ class JavelinClient:
         self.route_service = RouteService(self)
         self.secret_service = SecretService(self)
         self.template_service = TemplateService(self)
+
+        self.chat = Chat(self)
+        self.completions = Completions(self)
 
     @property
     def client(self):
@@ -316,7 +319,6 @@ class JavelinClient:
             query_params={"page": 1, "limit": n},
         )
         response = self._send_request_sync(request)
-        print(response)
         return response
 
     async def aget_last_n_chronicle_records(
