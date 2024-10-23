@@ -2,6 +2,8 @@ import asyncio
 import json
 import os
 
+import dotenv
+
 from javelin_sdk import (
     JavelinClient,
     JavelinConfig,
@@ -10,6 +12,8 @@ from javelin_sdk import (
     RouteNotFoundError,
     UnauthorizedError,
 )
+
+dotenv.load_dotenv()
 
 # Retrieve environment variables
 javelin_api_key = os.getenv("JAVELIN_API_KEY")
@@ -27,10 +31,9 @@ def pretty_print(obj):
     print(json.dumps(obj, indent=4))
 
 
-
 async def route_example(client):
     """
-    Start the example by cleaning up any pre-existing routes. 
+    Start the example by cleaning up any pre-existing routes.
     This is done by deleting the route if it exists.
     """
     print("1. Start clean (by deleting pre-existing routes): ", "test_route_1")
@@ -191,6 +194,7 @@ async def main():
         return
 
     await route_example(client)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

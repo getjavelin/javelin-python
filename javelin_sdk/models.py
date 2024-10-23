@@ -59,6 +59,17 @@ class Budget(BaseModel):
     annual: Optional[float] = Field(None, description="Annual budget limit")
     currency: Optional[str] = Field(None, description="Currency for the budget")
 
+class ContentTypes(BaseModel):
+    operator: Optional[str] = Field(
+        default=None, description="Content type operator"
+    )
+    restriction: Optional[str] = Field(
+        default=None, description="Content type restriction"
+    )
+    probability_threshold: Optional[float] = Field(
+        default=None, description="Content type probability threshold"
+    )
+
 
 class Dlp(BaseModel):
     enabled: Optional[bool] = Field(default=None, description="Whether DLP is enabled")
@@ -67,6 +78,16 @@ class Dlp(BaseModel):
     risk_analysis: Optional[str] = Field(
         default=None, description="Risk analysis configuration"
     )
+
+class PromptSafety(BaseModel):
+    enabled: Optional[bool] = Field(default=None, description="Whether prompt safety is enabled")
+    reject_prompt: Optional[str] = Field(default=None, description="Reject prompt for the route")
+    content_types: Optional[List[ContentTypes]] = Field(default=None, description="List of content types")
+
+class ContentFilter(BaseModel):
+    enabled: Optional[bool] = Field(default=None, description="Whether content filter is enabled")
+    reject_prompt: Optional[str] = Field(default=None, description="Reject prompt for the route")
+    content_types: Optional[List[ContentTypes]] = Field(default=None, description="List of content types")
 
 
 class RouteConfig(BaseModel):
@@ -99,6 +120,8 @@ class RouteConfig(BaseModel):
     )
     budget: Optional[Budget] = Field(default=None, description="Budget configuration")
     dlp: Optional[Dlp] = Field(default=None, description="DLP configuration")
+    content_filter: Optional[ContentFilter] = Field(default= None, description="Content Filter Description")
+    prompt_safety: Optional[PromptSafety] = Field(default=None, description="Prompt Safety Description")
 
 
 class Model(BaseModel):
@@ -106,11 +129,11 @@ class Model(BaseModel):
     provider: str = Field(default=None, description="Provider of the model")
     suffix: str = Field(default=None, description="Suffix for the model")
     weight: Optional[int] = Field(default=None, description="Weight of the model")
-    virtualsecretname: Optional[str] = Field(None, description="Virtual secret name")
-    fallbackenabled: Optional[bool] = Field(
+    virtual_secret_name: Optional[str] = Field(None, description="Virtual secret name")
+    fallback_enabled: Optional[bool] = Field(
         None, description="Whether fallback is enabled"
     )
-    fallbackcodes: Optional[List[int]] = Field(None, description="Fallback codes")
+    fallback_codes: Optional[List[int]] = Field(None, description="Fallback codes")
 
 
 class Route(BaseModel):
@@ -280,7 +303,7 @@ class Usage(BaseModel):
 class Choice(BaseModel):
     finish_reason: str = Field(..., description="Reason for the completion finish")
     index: int = Field(..., description="Index of the choice")
-    message: Message = Field(..., description="Message details")
+    message: Dict[str, str] = Field(..., description="Message details")
 
 
 class QueryResponse(BaseModel):
@@ -357,3 +380,35 @@ class Request:
         self.headers = headers
         self.archive = archive
         self.query_params = query_params
+
+
+class Message(BaseModel):
+    role: str
+    content: str
+
+
+class ChatCompletion(BaseModel):
+    id: str
+    object: str = "chat.completion"
+    created: int
+    model: str
+    choices: List[Dict[str, Any]]
+    usage: Dict[str, int]
+
+
+class ModelConfig(BaseModel):
+    provider: str
+    name: str  # Changed from model_name to name
+    api_base: Optional[str] = None
+    api_key: Optional[str] = None
+
+    class Config:
+        protected_namespaces = ()  # This resolves the warning
+
+
+class JavelinConfig(BaseModel):
+    base_url: str = Field(default="https://api-dev.javelin.live")
+    javelin_api_key: str
+    javelin_virtualapikey: Optional[str] = None
+    llm_api_key: Optional[str] = None
+    api_version: Optional[str] = None
