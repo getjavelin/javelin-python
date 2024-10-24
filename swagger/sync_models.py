@@ -157,7 +157,7 @@ def modify_and_convert_swagger(input_file, output_file):
 def main():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     input_file = os.path.join(current_dir, 'swagger.yaml')
-    output_file = os.path.join(current_dir, 'swagger_3.yaml')
+    output_file = os.path.join(current_dir, 'swagger.yaml')
     modify_and_convert_swagger(input_file, output_file)
     swagger_data = read_swagger()
     new_models = parse_swagger(swagger_data)
