@@ -59,6 +59,17 @@ class Budget(BaseModel):
     annual: Optional[float] = Field(None, description="Annual budget limit")
     currency: Optional[str] = Field(None, description="Currency for the budget")
 
+class ContentTypes(BaseModel):
+    operator: Optional[str] = Field(
+        default=None, description="Content type operator"
+    )
+    restriction: Optional[str] = Field(
+        default=None, description="Content type restriction"
+    )
+    probability_threshold: Optional[float] = Field(
+        default=None, description="Content type probability threshold"
+    )
+
 
 class Dlp(BaseModel):
     enabled: Optional[bool] = Field(default=None, description="Whether DLP is enabled")
@@ -67,6 +78,16 @@ class Dlp(BaseModel):
     risk_analysis: Optional[str] = Field(
         default=None, description="Risk analysis configuration"
     )
+
+class PromptSafety(BaseModel):
+    enabled: Optional[bool] = Field(default=None, description="Whether prompt safety is enabled")
+    reject_prompt: Optional[str] = Field(default=None, description="Reject prompt for the route")
+    content_types: Optional[List[ContentTypes]] = Field(default=None, description="List of content types")
+
+class ContentFilter(BaseModel):
+    enabled: Optional[bool] = Field(default=None, description="Whether content filter is enabled")
+    reject_prompt: Optional[str] = Field(default=None, description="Reject prompt for the route")
+    content_types: Optional[List[ContentTypes]] = Field(default=None, description="List of content types")
 
 
 class RouteConfig(BaseModel):
@@ -99,6 +120,8 @@ class RouteConfig(BaseModel):
     )
     budget: Optional[Budget] = Field(default=None, description="Budget configuration")
     dlp: Optional[Dlp] = Field(default=None, description="DLP configuration")
+    content_filter: Optional[ContentFilter] = Field(default= None, description="Content Filter Description")
+    prompt_safety: Optional[PromptSafety] = Field(default=None, description="Prompt Safety Description")
 
 
 class Model(BaseModel):
@@ -106,11 +129,11 @@ class Model(BaseModel):
     provider: str = Field(default=None, description="Provider of the model")
     suffix: str = Field(default=None, description="Suffix for the model")
     weight: Optional[int] = Field(default=None, description="Weight of the model")
-    virtualsecretname: Optional[str] = Field(None, description="Virtual secret name")
-    fallbackenabled: Optional[bool] = Field(
+    virtual_secret_name: Optional[str] = Field(None, description="Virtual secret name")
+    fallback_enabled: Optional[bool] = Field(
         None, description="Whether fallback is enabled"
     )
-    fallbackcodes: Optional[List[int]] = Field(None, description="Fallback codes")
+    fallback_codes: Optional[List[int]] = Field(None, description="Fallback codes")
 
 
 class Route(BaseModel):
