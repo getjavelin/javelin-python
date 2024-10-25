@@ -6,7 +6,7 @@ import os
 import requests
 
 SWAGGER_FILE_PATH = Path(os.path.join(os.path.dirname(__file__), "swagger.yaml"))
-MODELS_FILE_PATH = Path("javelin_sdk/models.py")
+MODELS_FILE_PATH = Path(os.path.join(os.path.dirname(__file__), "..", "javelin_sdk", "models.py"))
 
 FIELDS_TO_EXCLUDE = {
     'Gateway': ['created_at', 'modified_at', 'created_by', 'modified_by', 'response_chain', 'request_chain'],
