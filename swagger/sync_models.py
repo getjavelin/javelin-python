@@ -92,7 +92,7 @@ def update_models_file(new_models: Dict[str, Dict[str, Any]]):
                     f"{get_python_type(properties[prop].get('type'), properties[prop].get('items'))}"
                     f"{']' if properties[prop].get('required') != True else ''} = "
                     f"Field(default={'None' if properties[prop].get('required') != True else '...'}, "
-                    f"description=\"{properties[prop].get('description', '').replace('"', '\\"')}\")"
+                    f"description={repr(properties[prop].get('description', ''))})"
                     for prop in new_fields
                 )
                 
