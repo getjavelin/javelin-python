@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from javelin_sdk.model_adapters import ModelAdapterFactory
 from javelin_sdk.models import Route
-
+import json
 
 class BaseCompletions:
     def __init__(self, client):
@@ -46,8 +46,9 @@ class BaseCompletions:
                 model=primary_model.name,
                 **request_data,
             )
+            print(f"DEBUG: Prepared request: {json.dumps(prepared_request, indent=2)}")
             response = self.client.query_route(route, query_body=prepared_request)
-
+            print(f"DEBUG: Response from Javelin: {response}")
             return adapter.parse_response(
                 primary_model.provider, primary_model.name, response
             )
