@@ -1,231 +1,195 @@
 import time
 import uuid
+import json
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Type
-from pydantic import BaseModel
 import jmespath
+import logging
 
-from .model_configs import ModelConfigFactory
+from .models import ModelSpec, TransformRule, TypeHint, ArrayHandling
 
-class TransformRule(BaseModel):
-    source_path: str
-    target_path: str
-    default_value: Any = None
-    transform_function: Optional[str] = None
+logger = logging.getLogger(__name__)
 
 class ModelAdapter(ABC):
+    def __init__(self, model_spec: Optional[ModelSpec] = None):
+        self.model_spec = model_spec
+        logger.debug(f"Initializing ModelAdapter with spec: {model_spec}")
+
     @abstractmethod
     def prepare_request(self, provider: str, model: str, **kwargs) -> Dict[str, Any]:
         pass
 
     @abstractmethod
-    def parse_response(
-        self, provider: str, model: str, response: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def parse_response(self, provider: str, model: str, response: Dict[str, Any]) -> Dict[str, Any]:
         pass
 
     def transform(self, data: Dict[str, Any], rules: List[TransformRule]) -> Dict[str, Any]:
-        """Generic transform method for all adapters"""
+        logger.debug(f"Transform called with data: {data}")
+        logger.debug(f"Transform rules: {rules}")
+        
+        # Don't copy original data to avoid duplicates
         result = {}
         
         for rule in rules:
-            # Handle messages specially if present
-            if rule.source_path == "messages" and "messages" in data:
-                value = data["messages"]
-            else:
-                value = jmespath.search(rule.source_path, data)
+            logger.debug(f"\nProcessing rule: {rule}")
+            try:
+                # Check conditions first
+                if rule.conditions:
+                    condition_met = all(
+                        self._evaluate_condition(cond, data)
+                        for cond in rule.conditions
+                    )
+                    if not condition_met:
+                        logger.debug(f"Conditions not met for rule: {rule.conditions}")
+                        continue
 
-            # Only process if value exists or there's a default
-            if value is not None:
+                # Get source value
+                value = self._get_value(rule.source_path, data)
+                
+                # Use default if value is None
+                if value is None:
+                    value = rule.default_value
+                    
+                # Apply transform function if specified
                 if rule.transform_function and hasattr(self, rule.transform_function):
-                    value = getattr(self, rule.transform_function)(value)
-            elif rule.default_value is not None:
-                value = rule.default_value
-            else:
+                    transform_method = getattr(self, rule.transform_function)
+                    value = transform_method(value)
+
+                # Handle array operations
+                if rule.array_handling and isinstance(value, (list, tuple)):
+                    if rule.array_handling == ArrayHandling.JOIN:
+                        value = " ".join(str(v) for v in value if v is not None)
+                    elif rule.array_handling == ArrayHandling.FIRST:
+                        value = value[0] if value else None
+                    elif rule.array_handling == ArrayHandling.LAST:
+                        value = value[-1] if value else None
+
+                # Apply type coercion
+                if rule.type_hint and value is not None:
+                    value = self._coerce_type(value, rule.type_hint)
+
+                # Set value if not None
+                if value is not None:
+                    self._set_nested_value(result, rule.target_path, value)
+
+            except Exception as e:
+                logger.error(f"Rule processing error: {e}")
                 continue
 
-            # Create nested structure
-            current = result
-            parts = rule.target_path.split('.')
-            
-            for i, part in enumerate(parts[:-1]):
-                if '[' in part:
-                    base_part = part.split('[')[0]
-                    if base_part not in current:
-                        current[base_part] = []
-                    while len(current[base_part]) <= 0:
-                        current[base_part].append({})
-                    current = current[base_part][0]
-                else:
-                    if part not in current:
-                        current[part] = {}
-                    current = current[part]
-            
-            current[parts[-1]] = value
-        
+        # Remove None values
+        result = {k: v for k, v in result.items() if v is not None}
+        logger.debug(f"Final transform result: {result}")
         return result
 
-class OpenAIAdapter(ModelAdapter):
+    def _evaluate_condition(self, condition: str, data: Dict[str, Any]) -> bool:
+        """Evaluate a condition string against data"""
+        try:
+            type_value = data.get("type", "")
+            # Handle both completion/completions
+            if "completion" in condition and type_value in ["completion", "completions"]:
+                return True
+            return eval(f"'{type_value}' {condition.split('type ==')[1]}")
+        except Exception as e:
+            logger.error(f"Condition evaluation error: {e}")
+            return False
+
+    def _get_value(self, source_path: str, data: Dict[str, Any]) -> Any:
+        """Get value using source path"""
+        if source_path == "messages" and "messages" in data:
+            return data["messages"]
+        elif source_path == "prompt" and "prompt" in data:
+            return data["prompt"]
+        else:
+            try:
+                return jmespath.search(source_path, data)
+            except Exception as e:
+                logger.error(f"Error searching for {source_path}: {e}")
+                return None
+
+    def _handle_array(self, value: Any, array_handling: ArrayHandling) -> Any:
+        """Handle array operations"""
+        if array_handling == ArrayHandling.JOIN:
+            return " ".join(str(v) for v in value)
+        elif array_handling == ArrayHandling.FIRST:
+            return value[0] if value else None
+        elif array_handling == ArrayHandling.LAST:
+            return value[-1] if value else None
+
+    def _coerce_type(self, value: Any, type_hint: TypeHint) -> Any:
+        """Coerce type"""
+        if type_hint == TypeHint.FLOAT:
+            return float(value)
+        elif type_hint == TypeHint.INTEGER:
+            return int(value)
+        elif type_hint == TypeHint.BOOLEAN:
+            return bool(value)
+        elif type_hint == TypeHint.STRING:
+            return str(value)
+
+    def _set_nested_value(self, result: Dict[str, Any], target_path: str, value: Any) -> None:
+        """Set nested value"""
+        current = result
+        parts = target_path.split('.')
+        
+        for i, part in enumerate(parts[:-1]):
+            if part not in current:
+                current[part] = {}
+            current = current[part]
+        
+        current[parts[-1]] = value
+
+class BaseAdapter(ModelAdapter):
     def prepare_request(self, provider: str, model: str, **kwargs) -> Dict[str, Any]:
-        # OpenAI format is our base format, so just pass through
-        return kwargs
+        """Prepare request based on provider and model"""
+        print(f"Preparing request for {provider}/{model}")
+        print(f"Input kwargs: {kwargs}")
+        
+        if not self.model_spec:
+            print("No model spec found, returning kwargs as-is")
+            return kwargs
 
-    def parse_response(
-        self, provider: str, model: str, response: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        # OpenAI format is our base format, so just pass through
-        return response
+        result = self.transform(kwargs, self.model_spec.input_rules)
+        
+        # Remove None values
+        if "inputText" in result and result["inputText"] is None:
+            del result["inputText"]
+        if "prompt" in result and result["prompt"] is None:
+            del result["prompt"]
+            
+        print(f"Transformed request: {result}")
+        return result
 
-class AzureOpenAIAdapter(OpenAIAdapter):
-    pass
-
-class BedrockAmazonAdapter(ModelAdapter):
-    def __init__(self):
-        self.input_rules = {
-            "titan": [
-                # For chat completion: Convert messages to inputText
-                TransformRule(
-                    source_path="messages",
-                    target_path="inputText",
-                    transform_function="format_messages"
-                ),
-                # For text completion: Use prompt directly
-                TransformRule(
-                    source_path="prompt",
-                    target_path="inputText"
-                ),
-                # Config parameters
-                TransformRule(
-                    source_path="temperature",
-                    target_path="textGenerationConfig.temperature",
-                    default_value=0.7
-                ),
-                TransformRule(
-                    source_path="max_tokens",
-                    target_path="textGenerationConfig.maxTokenCount",
-                    default_value=50
-                )
-            ],
-            "llama": [
-                # For chat completion: Convert messages to prompt
-                TransformRule(
-                    source_path="messages",
-                    target_path="prompt",
-                    transform_function="format_messages"
-                ),
-                # For text completion: Use prompt directly
-                TransformRule(
-                    source_path="prompt",
-                    target_path="prompt"
-                ),
-                # Parameters
-                TransformRule(
-                    source_path="temperature",
-                    target_path="temperature",
-                    default_value=0.7
-                ),
-                TransformRule(
-                    source_path="max_tokens",
-                    target_path="max_gen_len",
-                    default_value=50
-                ),
-                TransformRule(
-                    source_path="top_p",
-                    target_path="top_p",
-                    default_value=0.9
-                )
-            ]
-        }
-
-        self.output_rules = {
-            "titan": [
-                TransformRule(
-                    source_path="results[0].outputText",
-                    target_path="choices[0].message.content",
-                    default_value=""
-                ),
-                TransformRule(
-                    source_path="inputTextTokenCount",
-                    target_path="usage.prompt_tokens",
-                    default_value=0
-                ),
-                TransformRule(
-                    source_path="results[0].tokenCount",
-                    target_path="usage.completion_tokens",
-                    default_value=0
-                )
-            ],
-            "llama": [
-                TransformRule(
-                    source_path="generation",
-                    target_path="choices[0].message.content",
-                    default_value=""
-                ),
-                TransformRule(
-                    source_path="prompt_token_count",
-                    target_path="usage.prompt_tokens",
-                    default_value=0
-                ),
-                TransformRule(
-                    source_path="generation_token_count",
-                    target_path="usage.completion_tokens",
-                    default_value=0
-                )
-            ]
-        }
-
-    def format_messages(self, messages: List[Dict[str, str]]) -> str:
-        """Format OpenAI messages into a single string"""
-        if not messages:
-            return ""
-        return " ".join(msg.get('content', '') for msg in messages)
-
-    def prepare_request(self, provider: str, model: str, **kwargs) -> Dict[str, Any]:
-        model_lower = model.lower()
-        model_config_type = ModelConfigFactory.get_config(model)
-        model_config = model_config_type()
-        model_name = model_config.name if hasattr(model_config, "name") else model_lower
-
-        # Transform input based on model type
-        rules = self.input_rules.get(model_name, [])
-        transformed_input = self.transform(kwargs, rules)
-
-        return transformed_input
-
-    def parse_response(
-        self, provider: str, model: str, response: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        model_config_type = ModelConfigFactory.get_config(model)
-        model_config = model_config_type()
-        model_name = model_config.name if hasattr(model_config, "name") else model.lower()
-
-        # Transform output based on model type
-        rules = self.output_rules.get(model_name, [])
-        transformed_output = self.transform(response, rules)
-
+    def parse_response(self, provider: str, model: str, response: Dict[str, Any]) -> Dict[str, Any]:
+        """Parse response based on provider and model"""
+        print(f"Parsing response for {provider}/{model}")
+        
+        if not self.model_spec:
+            return response
+            
+        # Transform output using rules from model spec
+        transformed = self.transform(response, self.model_spec.output_rules)
+        
         result = {
             "id": f"chatcmpl-{uuid.uuid4()}",
             "object": "chat.completion",
             "created": int(time.time()),
             "model": model,
-            "choices": transformed_output.get("choices", []),
-            "usage": transformed_output.get("usage", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0})
+            "choices": transformed.get("choices", []),
+            "usage": transformed.get("usage", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0})
         }
 
         # Ensure proper message structure
         if "choices" in result and result["choices"]:
-            if "message" not in result["choices"][0]:
-                result["choices"][0]["message"] = {
+            choice = result["choices"][0]
+            if "message" not in choice:
+                choice["message"] = {
                     "role": "assistant",
-                    "content": result["choices"][0].get("content", "")
+                    "content": choice.get("content", "")
                 }
-            else:
-                result["choices"][0]["message"]["role"] = "assistant"
-            
-            if "finish_reason" not in result["choices"][0]:
-                result["choices"][0]["finish_reason"] = "stop"
-            if "index" not in result["choices"][0]:
-                result["choices"][0]["index"] = 0
+            if "finish_reason" not in choice:
+                choice["finish_reason"] = "stop"
+            if "index" not in choice:
+                choice["index"] = 0
 
         # Calculate total tokens
         if "usage" in result:
@@ -236,31 +200,16 @@ class BedrockAmazonAdapter(ModelAdapter):
 
         return result
 
+    def format_messages(self, messages: List[Dict[str, str]]) -> str:
+        print(f"\nFormatting messages: {messages}")
+        if not messages:
+            print("No messages to format")
+            return ""
+        result = " ".join(msg.get('content', '') for msg in messages)
+        print(f"Formatted result: {result}")
+        return result
+
 class ModelAdapterFactory:
-    _adapters = {}
-
     @classmethod
-    def register_adapter(cls, provider: str, model: str, adapter: Type[ModelAdapter]):
-        if provider not in cls._adapters:
-            cls._adapters[provider] = {}
-        cls._adapters[provider][model] = adapter
-
-    @classmethod
-    def get_adapter(cls, provider: str, model: str) -> ModelAdapter:
-        provider_lower = provider.lower().replace(" ", "")
-        model_lower = model.lower()
-
-        if provider_lower not in cls._adapters:
-            raise ValueError(f"Unsupported provider: {provider}")
-
-        if model_lower in cls._adapters[provider_lower]:
-            return cls._adapters[provider_lower][model_lower]()
-        elif "*" in cls._adapters[provider_lower]:
-            return cls._adapters[provider_lower]["*"]()
-        else:
-            raise ValueError(f"Unsupported model for provider {provider}: {model}")
-
-# Register adapters
-ModelAdapterFactory.register_adapter("openai", "*", OpenAIAdapter)
-ModelAdapterFactory.register_adapter("azureopenai", "*", AzureOpenAIAdapter)
-ModelAdapterFactory.register_adapter("amazon", "*", BedrockAmazonAdapter)
+    def get_adapter(cls, provider: str, model: str, model_spec: Optional[ModelSpec] = None) -> ModelAdapter:
+        return BaseAdapter(model_spec)

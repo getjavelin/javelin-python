@@ -152,16 +152,48 @@ class Routes(BaseModel):
     routes: List[Route] = Field(default=[], description="List of routes")
 
 
+class ArrayHandling(str, Enum):
+    JOIN = "join"
+    FIRST = "first"
+    LAST = "last"
+    FLATTEN = "flatten"
+
+class TypeHint(str, Enum):
+    STRING = "str"
+    INTEGER = "int"
+    FLOAT = "float"
+    BOOLEAN = "bool"
+    ARRAY = "array"
+    OBJECT = "object"
+
+class TransformRule(BaseModel):
+    source_path: str
+    target_path: str
+    default_value: Any = None
+    transform_function: Optional[str] = None
+    conditions: Optional[List[str]] = None
+    array_handling: Optional[ArrayHandling] = None
+    type_hint: Optional[TypeHint] = None
+
+class ModelSpec(BaseModel):
+    input_rules: List[TransformRule] = Field(default=[], description="Rules for input transformation")
+    output_rules: List[TransformRule] = Field(default=[], description="Rules for output transformation")
+    input_schema: Dict[str, Any] = Field(default={}, description="Input schema for validation")
+    output_schema: Dict[str, Any] = Field(default={}, description="Output schema for validation")
+    supported_features: List[str] = Field(default=[], description="List of supported features")
+    max_tokens: Optional[int] = Field(default=None, description="Maximum tokens supported")
+    default_parameters: Dict[str, Any] = Field(default={}, description="Default parameters")
+
 class ProviderConfig(BaseModel):
     api_base: str = Field(default=None, description="Base URL of the API")
     api_type: Optional[str] = Field(default=None, description="Type of the API")
     api_version: Optional[str] = Field(default=None, description="Version of the API")
-    deployment_name: Optional[str] = Field(
-        default=None, description="Name of the deployment"
-    )
-    organization: Optional[str] = Field(
-        default=None, description="Name of the organization"
-    )
+    deployment_name: Optional[str] = Field(default=None, description="Name of the deployment")
+    organization: Optional[str] = Field(default=None, description="Name of the organization")
+    model_specs: Dict[str, ModelSpec] = Field(default={}, description="Model specifications")
+
+    class Config:
+        protected_namespaces = ()
 
 
 class Provider(BaseModel):
@@ -412,3 +444,7 @@ class JavelinConfig(BaseModel):
     javelin_virtualapikey: Optional[str] = None
     llm_api_key: Optional[str] = None
     api_version: Optional[str] = None
+
+
+
+
