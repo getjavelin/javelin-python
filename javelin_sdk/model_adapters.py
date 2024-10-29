@@ -1,3 +1,4 @@
+import re
 import time
 import uuid
 import json
@@ -24,61 +25,47 @@ class ModelAdapter(ABC):
         pass
 
     def transform(self, data: Dict[str, Any], rules: List[TransformRule]) -> Dict[str, Any]:
-        logger.debug(f"Transform called with data: {data}")
-        logger.debug(f"Transform rules: {rules}")
-        
-        # Don't copy original data to avoid duplicates
+        """Transform data using provided rules. Handles nested structures and arrays."""
         result = {}
         
         for rule in rules:
-            logger.debug(f"\nProcessing rule: {rule}")
             try:
-                # Check conditions first
-                if rule.conditions:
-                    condition_met = all(
-                        self._evaluate_condition(cond, data)
-                        for cond in rule.conditions
-                    )
-                    if not condition_met:
-                        logger.debug(f"Conditions not met for rule: {rule.conditions}")
-                        continue
+                # Skip if conditions not met
+                if rule.conditions and not all(
+                    self._evaluate_condition(cond, data) 
+                    for cond in rule.conditions
+                ):
+                    continue
 
-                # Get source value
-                value = self._get_value(rule.source_path, data)
+                # Extract value using jmespath
+                value = self._extract_value(rule.source_path, data)
                 
-                # Use default if value is None
+                # Use default if no value found
                 if value is None:
                     value = rule.default_value
-                    
-                # Apply transform function if specified
-                if rule.transform_function and hasattr(self, rule.transform_function):
-                    transform_method = getattr(self, rule.transform_function)
-                    value = transform_method(value)
+                    if value is None:
+                        continue
 
-                # Handle array operations
-                if rule.array_handling and isinstance(value, (list, tuple)):
-                    if rule.array_handling == ArrayHandling.JOIN:
-                        value = " ".join(str(v) for v in value if v is not None)
-                    elif rule.array_handling == ArrayHandling.FIRST:
-                        value = value[0] if value else None
-                    elif rule.array_handling == ArrayHandling.LAST:
-                        value = value[-1] if value else None
+                # Apply any transform function
+                if value is not None and rule.transform_function:
+                    value = self._apply_transform(value, rule.transform_function)
 
-                # Apply type coercion
-                if rule.type_hint and value is not None:
-                    value = self._coerce_type(value, rule.type_hint)
+                # Handle arrays
+                if value is not None and rule.array_handling:
+                    value = self._handle_array_value(value, rule.array_handling)
 
-                # Set value if not None
+                # Apply type conversion
+                if value is not None and rule.type_hint:
+                    value = self._convert_type(value, rule.type_hint)
+
+                # Set the transformed value
                 if value is not None:
                     self._set_nested_value(result, rule.target_path, value)
 
             except Exception as e:
-                logger.error(f"Rule processing error: {e}")
+                logger.error(f"Error processing rule {rule}: {str(e)}")
                 continue
 
-        # Remove None values
-        result = {k: v for k, v in result.items() if v is not None}
-        logger.debug(f"Final transform result: {result}")
         return result
 
     def _evaluate_condition(self, condition: str, data: Dict[str, Any]) -> bool:
@@ -138,24 +125,20 @@ class ModelAdapter(ABC):
         
         current[parts[-1]] = value
 
-class BaseAdapter(ModelAdapter):
+class BaseAdapter:
+    def __init__(self, model_spec: Optional[ModelSpec] = None):
+        self.model_spec = model_spec
+        logger.debug(f"Initializing ModelAdapter with spec: {model_spec}")
+
     def prepare_request(self, provider: str, model: str, **kwargs) -> Dict[str, Any]:
         """Prepare request based on provider and model"""
         print(f"Preparing request for {provider}/{model}")
         print(f"Input kwargs: {kwargs}")
         
         if not self.model_spec:
-            print("No model spec found, returning kwargs as-is")
             return kwargs
 
         result = self.transform(kwargs, self.model_spec.input_rules)
-        
-        # Remove None values
-        if "inputText" in result and result["inputText"] is None:
-            del result["inputText"]
-        if "prompt" in result and result["prompt"] is None:
-            del result["prompt"]
-            
         print(f"Transformed request: {result}")
         return result
 
@@ -165,32 +148,26 @@ class BaseAdapter(ModelAdapter):
         
         if not self.model_spec:
             return response
-            
-        # Transform output using rules from model spec
+
         transformed = self.transform(response, self.model_spec.output_rules)
         
         result = {
-            "id": f"chatcmpl-{uuid.uuid4()}",
+            "id": f"chatcmpl-{str(uuid.uuid4())}",
             "object": "chat.completion",
             "created": int(time.time()),
             "model": model,
-            "choices": transformed.get("choices", []),
-            "usage": transformed.get("usage", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0})
+            "choices": [],
+            "usage": transformed.get("usage", {
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0
+            })
         }
 
-        # Ensure proper message structure
-        if "choices" in result and result["choices"]:
-            choice = result["choices"][0]
-            if "message" not in choice:
-                choice["message"] = {
-                    "role": "assistant",
-                    "content": choice.get("content", "")
-                }
-            if "finish_reason" not in choice:
-                choice["finish_reason"] = "stop"
-            if "index" not in choice:
-                choice["index"] = 0
-
+        # Handle choices from transformed data
+        if "choices" in transformed:
+            result["choices"] = transformed["choices"]
+            
         # Calculate total tokens
         if "usage" in result:
             result["usage"]["total_tokens"] = (
@@ -200,15 +177,100 @@ class BaseAdapter(ModelAdapter):
 
         return result
 
-    def format_messages(self, messages: List[Dict[str, str]]) -> str:
-        print(f"\nFormatting messages: {messages}")
-        if not messages:
-            print("No messages to format")
-            return ""
-        result = " ".join(msg.get('content', '') for msg in messages)
-        print(f"Formatted result: {result}")
+    def transform(self, data: Dict[str, Any], rules: List[TransformRule]) -> Dict[str, Any]:
+        """Transform data using provided rules"""
+        result = {}
+        
+        for rule in rules:
+            try:
+                # Check conditions
+                if rule.conditions and not self._check_conditions(rule.conditions, data):
+                    continue
+
+                # Get value using source path
+                value = self._get_value(rule.source_path, data)
+                if value is None:
+                    value = rule.default_value
+                    if value is None:
+                        continue
+
+                # Handle array operations if specified
+                if rule.array_handling and isinstance(value, (list, tuple)):
+                    if rule.array_handling == ArrayHandling.JOIN:
+                        value = " ".join(str(v) for v in value if v is not None)
+                    elif rule.array_handling == ArrayHandling.FIRST:
+                        value = value[0] if value else None
+                    elif rule.array_handling == ArrayHandling.LAST:
+                        value = value[-1] if value else None
+
+                # Apply type conversion
+                if rule.type_hint and value is not None:
+                    value = self._convert_type(value, rule.type_hint)
+
+                # Set the value in result
+                if value is not None:
+                    self._set_value(result, rule.target_path, value)
+
+            except Exception as e:
+                logger.error(f"Error processing rule {rule}: {str(e)}")
+                continue
+
         return result
 
+    def _check_conditions(self, conditions: List[str], data: Dict[str, Any]) -> bool:
+        """Check if all conditions are met"""
+        for condition in conditions:
+            try:
+                if "type ==" in condition:
+                    type_value = data.get("type", "")
+                    expected_type = condition.split("type ==")[1].strip().strip("'").strip('"')
+                    if type_value != expected_type:
+                        return False
+            except Exception as e:
+                logger.error(f"Error checking condition {condition}: {str(e)}")
+                return False
+        return True
+
+    def _get_value(self, path: str, data: Dict[str, Any]) -> Any:
+        """Get value from data using path"""
+        try:
+            # Direct access for simple paths
+            if path in data:
+                return data[path]
+            
+            # Use jmespath for complex paths
+            return jmespath.search(path, data)
+        except Exception as e:
+            logger.error(f"Error getting value for path {path}: {str(e)}")
+            return None
+
+    def _convert_type(self, value: Any, type_hint: TypeHint) -> Any:
+        """Convert value to specified type"""
+        try:
+            if type_hint == TypeHint.FLOAT:
+                return float(value)
+            elif type_hint == TypeHint.INTEGER:
+                return int(value)
+            elif type_hint == TypeHint.BOOLEAN:
+                return bool(value)
+            elif type_hint == TypeHint.STRING:
+                return str(value)
+        except (ValueError, TypeError):
+            logger.warning(f"Failed to convert {value} to {type_hint}")
+            return value
+        return value
+
+    def _set_value(self, obj: Dict[str, Any], path: str, value: Any) -> None:
+        """Set value in object using dot notation path"""
+        parts = path.split('.')
+        current = obj
+        
+        for i, part in enumerate(parts[:-1]):
+            if part not in current:
+                current[part] = {}
+            current = current[part]
+            
+        current[parts[-1]] = value
 class ModelAdapterFactory:
     @classmethod
     def get_adapter(cls, provider: str, model: str, model_spec: Optional[ModelSpec] = None) -> ModelAdapter:

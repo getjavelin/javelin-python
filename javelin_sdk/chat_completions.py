@@ -23,7 +23,7 @@ class BaseCompletions:
     ) -> Dict[str, Any]:
         """Create and process a request for either chat or text completion"""
         try:
-            logger.debug(f"Creating request for route: {route}")
+            print(f"Creating request for route: {route}")
             
             # Get route info and validate
             route_info = self.client.route_service.get_route(route)
@@ -55,7 +55,7 @@ class BaseCompletions:
             model_type = self._determine_model_type(route, primary_model.name)
             model_spec = self._get_model_spec(primary_model.provider, model_type)
             
-            logger.debug(f"Using model type: {model_type} for provider: {primary_model.provider}")
+            print(f"Using model type: {model_type} for provider: {primary_model.provider}")
 
             # Initialize adapter
             adapter = ModelAdapterFactory.get_adapter(
@@ -73,7 +73,7 @@ class BaseCompletions:
                 **kwargs
             }
             
-            logger.debug(f"Request data before transformation: {request_data}")
+            print(f"Request data before transformation: {request_data}")
             
             # Prepare and send request
             prepared_request = adapter.prepare_request(
@@ -82,10 +82,11 @@ class BaseCompletions:
                 **request_data
             )
             
-            logger.debug(f"Transformed request data: {prepared_request}")
+            print(f"Transformed request data: {prepared_request}")
             
             # Send request and parse response
             response = self.client.query_route(route, query_body=prepared_request)
+            print(f"Response: {response}")
             return adapter.parse_response(
                 primary_model.provider, primary_model.name, response
             )
@@ -136,9 +137,8 @@ class BaseCompletions:
                 ],
                 output_rules=[
                     TransformRule(
-                        source_path="choices[0].message.content",
-                        target_path="choices[0].message.content",
-                        default_value=""
+                        source_path="choices",
+                        target_path="choices"
                     ),
                     TransformRule(
                         source_path="usage.prompt_tokens",
@@ -155,25 +155,21 @@ class BaseCompletions:
                 ]
             )
         
-        # For other providers, return their specific transformations
         if provider_lower == "amazon":
             if model_type == "llama":
                 return ModelSpec(
                     input_rules=[
-                        # For chat completion: Convert messages to prompt
                         TransformRule(
                             source_path="messages[*].content",
                             target_path="prompt",
                             array_handling=ArrayHandling.JOIN,
                             conditions=["type == 'chat'"]
                         ),
-                        # For text completion: Use prompt directly
                         TransformRule(
                             source_path="prompt",
                             target_path="prompt",
                             conditions=["type == 'completions'"]
                         ),
-                        # Parameters
                         TransformRule(
                             source_path="temperature",
                             target_path="temperature",
@@ -194,10 +190,18 @@ class BaseCompletions:
                         )
                     ],
                     output_rules=[
+                        # Transform into complete choices array structure
                         TransformRule(
-                            source_path="generation",
-                            target_path="choices[0].message.content",
-                            default_value=""
+                            source_path="{choices: [{index: `0`, message: {role: 'assistant', content: generation}, finish_reason: stop_reason || 'stop'}]}",
+                            target_path="choices",
+                            default_value=[{
+                                "index": 0,
+                                "message": {
+                                    "role": "assistant",
+                                    "content": ""
+                                },
+                                "finish_reason": "stop"
+                            }]
                         ),
                         TransformRule(
                             source_path="prompt_token_count",
@@ -216,20 +220,17 @@ class BaseCompletions:
             elif "titan" in model_type.lower():
                 return ModelSpec(
                     input_rules=[
-                        # For chat completion: Convert messages to inputText
                         TransformRule(
                             source_path="messages",
                             target_path="inputText",
                             transform_function="format_messages",
                             conditions=["type == 'chat'"]
                         ),
-                        # For text completion: Convert prompt to inputText
                         TransformRule(
                             source_path="prompt",
                             target_path="inputText",
                             conditions=["type == 'completions'"]
                         ),
-                        # Config parameters
                         TransformRule(
                             source_path="temperature",
                             target_path="textGenerationConfig.temperature",
@@ -244,11 +245,18 @@ class BaseCompletions:
                         )
                     ],
                     output_rules=[
+                        # Transform into complete choices array structure
                         TransformRule(
-                            source_path="results[*].outputText",
-                            target_path="choices[0].message.content",
-                            default_value="",
-                            array_handling=ArrayHandling.FIRST
+                            source_path="{choices: [{index: `0`, message: {role: 'assistant', content: results[0].outputText}, finish_reason: results[0].completionReason || 'stop'}]}",
+                            target_path="choices",
+                            default_value=[{
+                                "index": 0,
+                                "message": {
+                                    "role": "assistant",
+                                    "content": ""
+                                },
+                                "finish_reason": "stop"
+                            }]
                         ),
                         TransformRule(
                             source_path="inputTextTokenCount",
@@ -266,7 +274,6 @@ class BaseCompletions:
                 )
         
         return ModelSpec(input_rules=[], output_rules=[])
-
 class ChatCompletions(BaseCompletions):
     def create(
         self,
