@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Any
 
 import httpx
 
@@ -154,3 +154,20 @@ class ProviderService:
                 return Secrets(secrets=response_json)
         except ValueError:
             return Secrets(secrets=[])
+
+    async def get_model_specs(
+        self, provider_name: str, model_name: str
+    ) -> Dict[str, Any]:
+        """Get model specifications from the provider configuration"""
+        response = await self.client._send_request_async(
+            Request(
+                method=HttpMethod.GET,
+                provider=provider_name,
+                query_params={"model": model_name},
+            )
+        )
+
+        try:
+            return response.json()
+        except ValueError:
+            return {}

@@ -4,7 +4,13 @@ from urllib.parse import urljoin
 import httpx
 
 from javelin_sdk.chat_completions import Chat, Completions
-from javelin_sdk.models import HttpMethod, JavelinConfig, Request
+from javelin_sdk.models import (
+    HttpMethod,
+    JavelinConfig,
+    Request,
+    RemoteModelSpec,
+    ModelSpec,
+)
 from javelin_sdk.services.gateway_service import GatewayService
 from javelin_sdk.services.provider_service import ProviderService
 from javelin_sdk.services.route_service import RouteService
@@ -331,3 +337,16 @@ class JavelinClient:
         )
         response = await self._send_request_async(request)
         return response
+
+    async def get_model_specs(self, provider: str, model: str) -> Optional[ModelSpec]:
+        """Get model specifications from provider configuration"""
+        try:
+            specs = await self.provider_service.get_model_specs(provider, model)
+            if specs:
+                remote_spec = RemoteModelSpec(
+                    provider=provider, model_name=model, **specs
+                )
+                return remote_spec.to_model_spec()
+        except Exception as e:
+            print(f"Failed to get remote model specs: {str(e)}")
+        return None

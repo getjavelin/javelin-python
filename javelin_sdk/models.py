@@ -485,3 +485,16 @@ class JavelinConfig(BaseModel):
     javelin_virtualapikey: Optional[str] = None
     llm_api_key: Optional[str] = None
     api_version: Optional[str] = None
+
+
+class RemoteModelSpec(BaseModel):
+    provider: str
+    model_name: str
+    input_rules: List[Dict[str, Any]]
+    output_rules: List[Dict[str, Any]]
+
+    def to_model_spec(self) -> ModelSpec:
+        return ModelSpec(
+            input_rules=[TransformRule(**rule) for rule in self.input_rules],
+            output_rules=[TransformRule(**rule) for rule in self.output_rules],
+        )
