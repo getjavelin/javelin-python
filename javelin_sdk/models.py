@@ -59,10 +59,9 @@ class Budget(BaseModel):
     annual: Optional[float] = Field(None, description="Annual budget limit")
     currency: Optional[str] = Field(None, description="Currency for the budget")
 
+
 class ContentTypes(BaseModel):
-    operator: Optional[str] = Field(
-        default=None, description="Content type operator"
-    )
+    operator: Optional[str] = Field(default=None, description="Content type operator")
     restriction: Optional[str] = Field(
         default=None, description="Content type restriction"
     )
@@ -79,15 +78,29 @@ class Dlp(BaseModel):
         default=None, description="Risk analysis configuration"
     )
 
+
 class PromptSafety(BaseModel):
-    enabled: Optional[bool] = Field(default=None, description="Whether prompt safety is enabled")
-    reject_prompt: Optional[str] = Field(default=None, description="Reject prompt for the route")
-    content_types: Optional[List[ContentTypes]] = Field(default=None, description="List of content types")
+    enabled: Optional[bool] = Field(
+        default=None, description="Whether prompt safety is enabled"
+    )
+    reject_prompt: Optional[str] = Field(
+        default=None, description="Reject prompt for the route"
+    )
+    content_types: Optional[List[ContentTypes]] = Field(
+        default=None, description="List of content types"
+    )
+
 
 class ContentFilter(BaseModel):
-    enabled: Optional[bool] = Field(default=None, description="Whether content filter is enabled")
-    reject_prompt: Optional[str] = Field(default=None, description="Reject prompt for the route")
-    content_types: Optional[List[ContentTypes]] = Field(default=None, description="List of content types")
+    enabled: Optional[bool] = Field(
+        default=None, description="Whether content filter is enabled"
+    )
+    reject_prompt: Optional[str] = Field(
+        default=None, description="Reject prompt for the route"
+    )
+    content_types: Optional[List[ContentTypes]] = Field(
+        default=None, description="List of content types"
+    )
 
 
 class RouteConfig(BaseModel):
@@ -120,8 +133,12 @@ class RouteConfig(BaseModel):
     )
     budget: Optional[Budget] = Field(default=None, description="Budget configuration")
     dlp: Optional[Dlp] = Field(default=None, description="DLP configuration")
-    content_filter: Optional[ContentFilter] = Field(default= None, description="Content Filter Description")
-    prompt_safety: Optional[PromptSafety] = Field(default=None, description="Prompt Safety Description")
+    content_filter: Optional[ContentFilter] = Field(
+        default=None, description="Content Filter Description"
+    )
+    prompt_safety: Optional[PromptSafety] = Field(
+        default=None, description="Prompt Safety Description"
+    )
 
 
 class Model(BaseModel):
@@ -158,6 +175,7 @@ class ArrayHandling(str, Enum):
     LAST = "last"
     FLATTEN = "flatten"
 
+
 class TypeHint(str, Enum):
     STRING = "str"
     INTEGER = "int"
@@ -165,6 +183,7 @@ class TypeHint(str, Enum):
     BOOLEAN = "bool"
     ARRAY = "array"
     OBJECT = "object"
+
 
 class TransformRule(BaseModel):
     source_path: str
@@ -175,22 +194,44 @@ class TransformRule(BaseModel):
     array_handling: Optional[ArrayHandling] = None
     type_hint: Optional[TypeHint] = None
 
+
 class ModelSpec(BaseModel):
-    input_rules: List[TransformRule] = Field(default=[], description="Rules for input transformation")
-    output_rules: List[TransformRule] = Field(default=[], description="Rules for output transformation")
-    input_schema: Dict[str, Any] = Field(default={}, description="Input schema for validation")
-    output_schema: Dict[str, Any] = Field(default={}, description="Output schema for validation")
-    supported_features: List[str] = Field(default=[], description="List of supported features")
-    max_tokens: Optional[int] = Field(default=None, description="Maximum tokens supported")
-    default_parameters: Dict[str, Any] = Field(default={}, description="Default parameters")
+    input_rules: List[TransformRule] = Field(
+        default=[], description="Rules for input transformation"
+    )
+    output_rules: List[TransformRule] = Field(
+        default=[], description="Rules for output transformation"
+    )
+    input_schema: Dict[str, Any] = Field(
+        default={}, description="Input schema for validation"
+    )
+    output_schema: Dict[str, Any] = Field(
+        default={}, description="Output schema for validation"
+    )
+    supported_features: List[str] = Field(
+        default=[], description="List of supported features"
+    )
+    max_tokens: Optional[int] = Field(
+        default=None, description="Maximum tokens supported"
+    )
+    default_parameters: Dict[str, Any] = Field(
+        default={}, description="Default parameters"
+    )
+
 
 class ProviderConfig(BaseModel):
     api_base: str = Field(default=None, description="Base URL of the API")
     api_type: Optional[str] = Field(default=None, description="Type of the API")
     api_version: Optional[str] = Field(default=None, description="Version of the API")
-    deployment_name: Optional[str] = Field(default=None, description="Name of the deployment")
-    organization: Optional[str] = Field(default=None, description="Name of the organization")
-    model_specs: Dict[str, ModelSpec] = Field(default={}, description="Model specifications")
+    deployment_name: Optional[str] = Field(
+        default=None, description="Name of the deployment"
+    )
+    organization: Optional[str] = Field(
+        default=None, description="Name of the organization"
+    )
+    model_specs: Dict[str, ModelSpec] = Field(
+        default={}, description="Model specifications"
+    )
 
     class Config:
         protected_namespaces = ()
@@ -444,7 +485,3 @@ class JavelinConfig(BaseModel):
     javelin_virtualapikey: Optional[str] = None
     llm_api_key: Optional[str] = None
     api_version: Optional[str] = None
-
-
-
-
