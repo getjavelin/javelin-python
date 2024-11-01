@@ -183,6 +183,7 @@ class TypeHint(str, Enum):
     BOOLEAN = "bool"
     ARRAY = "array"
     OBJECT = "object"
+    PASSTHROUGH = "passthrough"
 
 
 class TransformRule(BaseModel):
@@ -193,6 +194,7 @@ class TransformRule(BaseModel):
     conditions: Optional[List[str]] = None
     array_handling: Optional[ArrayHandling] = None
     type_hint: Optional[TypeHint] = None
+    additional_data: Optional[Dict[str, Any]] = None
 
 
 class ModelSpec(BaseModel):
@@ -441,6 +443,7 @@ class Request:
         headers: Optional[Dict[str, str]] = None,
         archive: Optional[str] = "",
         query_params: Optional[Dict[str, Any]] = None,
+        is_transformation_rules: bool = False,
     ):
         self.method = method
         self.gateway = gateway
@@ -453,6 +456,7 @@ class Request:
         self.headers = headers
         self.archive = archive
         self.query_params = query_params
+        self.is_transformation_rules = is_transformation_rules
 
 
 class Message(BaseModel):
@@ -492,6 +496,9 @@ class RemoteModelSpec(BaseModel):
     model_name: str
     input_rules: List[Dict[str, Any]]
     output_rules: List[Dict[str, Any]]
+
+    class Config:
+        protected_namespaces = ()
 
     def to_model_spec(self) -> ModelSpec:
         return ModelSpec(

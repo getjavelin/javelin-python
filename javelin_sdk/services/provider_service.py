@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 import httpx
 
@@ -155,19 +155,46 @@ class ProviderService:
         except ValueError:
             return Secrets(secrets=[])
 
-    async def get_model_specs(
+    def get_transformation_rules(
         self, provider_name: str, model_name: str
     ) -> Dict[str, Any]:
-        """Get model specifications from the provider configuration"""
-        response = await self.client._send_request_async(
-            Request(
-                method=HttpMethod.GET,
-                provider=provider_name,
-                query_params={"model": model_name},
-            )
-        )
-
+        """Get transformation rules from the provider configuration"""
         try:
-            return response.json()
-        except ValueError:
-            return {}
+            response = self.client._send_request_sync(
+                Request(
+                    method=HttpMethod.GET,
+                    provider=provider_name,
+                    query_params={"model_name": model_name},
+                    is_transformation_rules=True,
+                )
+            )
+
+            if response.status_code == 200:
+                return response.json()
+            return None
+
+        except Exception as e:
+            print(f"Failed to fetch transformation rules: {str(e)}")
+            return None
+
+    async def aget_transformation_rules(
+        self, provider_name: str, model_name: str
+    ) -> Dict[str, Any]:
+        """Get transformation rules from the provider configuration asynchronously"""
+        try:
+            response = await self.client._send_request_async(
+                Request(
+                    method=HttpMethod.GET,
+                    provider=provider_name,
+                    route="transformation-rules",
+                    query_params={"model_name": model_name},
+                )
+            )
+
+            if response.status_code == 200:
+                return response.json()
+            return None
+
+        except Exception as e:
+            print(f"Failed to fetch transformation rules: {str(e)}")
+            return None
