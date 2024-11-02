@@ -8,8 +8,6 @@ from javelin_sdk.models import (
     HttpMethod,
     JavelinConfig,
     Request,
-    RemoteModelSpec,
-    ModelSpec,
 )
 from javelin_sdk.services.gateway_service import GatewayService
 from javelin_sdk.services.provider_service import ProviderService
@@ -93,6 +91,7 @@ class JavelinClient:
             query=request.is_query,
             archive=request.archive,
             query_params=request.query_params,
+            is_transformation_rules=request.is_transformation_rules,
         )
         headers = {**self._headers, **(request.headers or {})}
         return url, headers
@@ -129,6 +128,7 @@ class JavelinClient:
         query: bool = False,
         archive: Optional[str] = "",
         query_params: Optional[Dict[str, Any]] = None,
+        is_transformation_rules: bool = False,
     ) -> str:
         url_parts = [self.base_url]
 
@@ -144,6 +144,8 @@ class JavelinClient:
             url_parts.extend(["admin", "providers"])
             if provider_name != "###":
                 url_parts.append(provider_name)
+            if is_transformation_rules:
+                url_parts.append("transformation-rules")
         elif route_name:
             url_parts.extend(["admin", "routes"])
             if route_name != "###":
@@ -233,6 +235,12 @@ class JavelinClient:
         lambda self, provider_name: self.provider_service.alialist_provider_secrets(
             provider_name
         )
+    )
+    get_transformation_rules = lambda self, provider_name, model_name: self.provider_service.get_transformation_rules(
+        provider_name, model_name
+    )
+    aget_transformation_rules = lambda self, provider_name, model_name: self.provider_service.aget_transformation_rules(
+        provider_name, model_name
     )
 
     # Route methods
@@ -337,16 +345,3 @@ class JavelinClient:
         )
         response = await self._send_request_async(request)
         return response
-
-    async def get_model_specs(self, provider: str, model: str) -> Optional[ModelSpec]:
-        """Get model specifications from provider configuration"""
-        try:
-            specs = await self.provider_service.get_model_specs(provider, model)
-            if specs:
-                remote_spec = RemoteModelSpec(
-                    provider=provider, model_name=model, **specs
-                )
-                return remote_spec.to_model_spec()
-        except Exception as e:
-            print(f"Failed to get remote model specs: {str(e)}")
-        return None

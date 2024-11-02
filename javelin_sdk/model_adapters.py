@@ -34,15 +34,8 @@ class TransformationRuleManager:
     def _fetch_remote_rules(self, provider: str, model: str) -> Optional[ModelSpec]:
         """Fetch transformation rules from remote service"""
         try:
-            print(
-                f"Attempting to fetch remote rules for provider={provider}, model={model}"
-            )
             response = self.client.get_transformation_rules(provider, model)
             if response:
-                print(
-                    f"Successfully received remote rules response for {provider}/{model}"
-                )
-
                 input_rules = response.get("input_rules", [])
                 output_rules = response.get("output_rules", [])
 

@@ -48,7 +48,7 @@ class BaseCompletions:
 
             # Get primary model info
             primary_model = route_info.models[0]
-            provider = route_info.provider
+            provider = primary_model.provider
             model_name = primary_model.name
 
             # Prepare request data
