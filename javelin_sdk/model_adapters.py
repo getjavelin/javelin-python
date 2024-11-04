@@ -260,3 +260,32 @@ class ModelTransformer:
             )
 
         return formatted_messages
+
+    def format_vertex_messages(self, messages: List[Dict[str, str]]) -> List[Dict[str, Any]]:
+        """Format messages for Vertex AI"""
+        if not messages:
+            return []
+        
+        formatted_messages = []
+        for msg in messages:
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            
+            if role == "system":
+                # Convert system to USER for Vertex AI
+                formatted_messages.append({
+                    "author": "USER",
+                    "content": content
+                })
+            elif role == "user":
+                formatted_messages.append({
+                    "author": "USER",
+                    "content": content
+                })
+            elif role == "assistant":
+                formatted_messages.append({
+                    "author": "MODEL",
+                    "content": content
+                })
+        
+        return formatted_messages
