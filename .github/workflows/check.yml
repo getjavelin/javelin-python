@@ -121,7 +121,7 @@ jobs:
         env:
           COMMIT_MESSAGE: "${{ steps.commit_message.outputs.message }}"
         run: |-
-          if [[ "${{ env.COMMIT_MESSAGE }}" =~ ^(feat|fix|devops): ]]; then
+          if [[ "${{ env.COMMIT_MESSAGE }}" =~ ^(feat:|fix:|devops:|Merge branch) ]]; then
             echo "Commit message is valid....!"
           else
             echo "Commit message does not contain required keywords....!"
