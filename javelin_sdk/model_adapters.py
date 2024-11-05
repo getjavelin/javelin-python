@@ -1,207 +1,291 @@
-import time
-import uuid
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Type, Union
+import logging
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, ValidationError
+import jmespath
 
-from javelin_sdk.models import Choice, Message, QueryResponse, Usage
+from .models import ArrayHandling, ModelSpec, TransformRule, TypeHint
 
-from .model_configs import BedrockTitanConfig, ModelConfig, ModelConfigFactory
-from .model_transformers import SchemaRegistry
+logger = logging.getLogger(__name__)
 
 
-# Define common fields here.
-class InputSchema(BaseModel):
-    pass
+class TransformationRuleManager:
+    def __init__(self, client):
+        """Initialize the transformation rule manager with both local and remote capabilities"""
+        self.client = client
+        self.cache = {}
+        self.cache_ttl = 3600
+        self.last_fetch = {}
 
-
-class OutputSchema(BaseModel):
-    pass
-
-
-class ModelAdapter(ABC):
-    @abstractmethod
-    def prepare_request(self, provider: str, model: str, **kwargs) -> Dict[str, Any]:
-        pass
-
-    @abstractmethod
-    def parse_response(
-        self, provider: str, model: str, response: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        pass
-
-
-class OpenAIAdapter(ModelAdapter):
-    def prepare_request(self, provider: str, model: str, **kwargs) -> Dict[str, Any]:
-        input_schema = SchemaRegistry.get_input_schema(provider, model)
-        validated_input = input_schema(model=model, **kwargs)
-        return validated_input.model_dump(exclude_none=True)
-
-    def parse_response(
-        self, provider: str, model: str, response: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        output_schema = SchemaRegistry.get_output_schema(provider, model)
-        try:
-            validated_output = output_schema(**response)
-            return validated_output.model_dump()
-        except ValidationError as e:
-            print(f"Validation error: {e}")
-
-
-class AzureOpenAIAdapter(OpenAIAdapter):
-    pass
-
-
-class BedrockAmazonAdapter(ModelAdapter):
-    def prepare_request(self, provider: str, model: str, **kwargs) -> Dict[str, Any]:
-        model_lower = model.lower()
-        model_config_type = ModelConfigFactory.get_config(model)
-        model_config = model_config_type()
-
-        # Use the model name from the config
-        model_name = model_config.name if hasattr(model_config, "name") else model_lower
-
-        input_schema = SchemaRegistry.get_input_schema(provider, model_name)
-
-        # Handle both messages and prompt inputs
-        if "messages" in kwargs:
-            prompt = self._convert_messages_to_prompt(kwargs["messages"])
-            kwargs["prompt"] = prompt
-            del kwargs["messages"]
-        elif "prompt" not in kwargs:
-            raise ValueError("Either 'messages' or 'prompt' must be provided")
-
-        model_input = self._map_to_model_input(kwargs, model_config)
+    def get_rules(self, provider: str, model: str) -> ModelSpec:
+        """Get transformation rules for a provider/model combination"""
+        model = model.lower()
 
         try:
-            validated_input = input_schema(**model_input)
-            return validated_input.model_dump(exclude_none=True)
-        except ValidationError as e:
-            print(f"Validation error: {e}")
-            raise ValueError(f"Invalid input for model {model}: {e}")
-
-    def _convert_messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
-        return "\n".join(f"{msg['role']}: {msg['content']}" for msg in messages)
-
-    def _map_to_model_input(
-        self, kwargs: Dict[str, Any], model_config: ModelConfig
-    ) -> Dict[str, Any]:
-        input_mapping = model_config.get_input_mapping()
-        model_input = {
-            model_param: kwargs.pop(generic_param)
-            for generic_param, model_param in input_mapping.items()
-            if generic_param in kwargs
-        }
-
-        if isinstance(model_config, BedrockTitanConfig):
-            return {
-                "inputText": kwargs.pop("prompt", ""),
-                "textGenerationConfig": model_input,
-            }
-
-        model_input["prompt"] = kwargs.pop("prompt", "")
-        model_input.update(kwargs)
-        return model_input
-
-    def parse_response(
-        self, provider: str, model: str, response: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        model_config_type = ModelConfigFactory.get_config(model)
-        model_config = model_config_type()
-        model_name = (
-            model_config.name if hasattr(model_config, "name") else model.lower()
-        )
-
-        output_schema = SchemaRegistry.get_output_schema(provider, model_name)
-
-        try:
-            validated_output = output_schema(**response)
-            parsed_response = validated_output.model_dump()
-
-            content = (
-                parsed_response.get("generation", "")
-                if model_name == "llama"
-                else (
-                    parsed_response.get("results", [{}])[0].get("outputText", "")
-                    if model_name == "titan"
-                    else parsed_response.get("completion", "")
-                )
+            rules = self._fetch_remote_rules(provider, model)
+            if rules:
+                return rules
+        except Exception as e:
+            logger.error(
+                f"Error fetching remote rules for {provider}/{model}: {str(e)}"
             )
 
-            choices = [
-                Choice(
-                    index=0,
-                    message={"role": "assistant", "content": content},
-                    finish_reason="stop",
+        raise ValueError(f"No transformation rules found for {provider}/{model}")
+
+    def _fetch_remote_rules(self, provider: str, model: str) -> Optional[ModelSpec]:
+        """Fetch transformation rules from remote service"""
+        try:
+            response = self.client.get_transformation_rules(provider, model)
+            if response:
+                input_rules = response.get("input_rules", [])
+                output_rules = response.get("output_rules", [])
+
+                return ModelSpec(
+                    input_rules=[TransformRule(**rule) for rule in input_rules],
+                    output_rules=[TransformRule(**rule) for rule in output_rules],
                 )
-            ]
+            print(f"No remote rules found for {provider}/{model}")
+            return None
+        except Exception as e:
+            logger.error(f"Failed to fetch remote rules: {str(e)}")
+            return None
 
-            usage = {
-                "prompt_tokens": parsed_response.get("prompt_token_count", 0),
-                "completion_tokens": parsed_response.get(
-                    "generation_token_count", len(content.split())
-                ),
-                "total_tokens": parsed_response.get("prompt_token_count", 0)
-                + parsed_response.get("generation_token_count", len(content.split())),
-            }
 
-            return QueryResponse(
-                id=f"chatcmpl-{uuid.uuid4()}",
-                object="chat.completion",
-                created=int(time.time()),
-                model=model,
-                choices=choices,
-                usage=usage,
-            ).model_dump()
+class ModelTransformer:
+    def __init__(self):
+        """Initialize the model transformer"""
+        pass  # No need to store rules anymore
 
-        except ValidationError as e:
-            print(f"Validation error: {e}")
-            # If validation fails, return a minimal valid response
-            return QueryResponse(
-                id=f"chatcmpl-{uuid.uuid4()}",
-                object="chat.completion",
-                created=int(time.time()),
-                model=model,
-                choices=[
-                    Choice(
-                        index=0,
-                        message={
-                            "role": "assistant",
-                            "content": "Error in response validation",
-                        },
-                        finish_reason="stop",
+    def transform(
+        self, data: Dict[str, Any], rules: List[TransformRule]
+    ) -> Dict[str, Any]:
+        """Transform data using provided rules"""
+        result = {}
+
+        for rule in rules:
+            try:
+                # Add additional data if specified
+                if rule.additional_data:
+                    result.update(rule.additional_data)
+                    continue
+
+                # Skip passthrough rules
+                if rule.type_hint == TypeHint.PASSTHROUGH:
+                    continue
+
+                # Check conditions
+                if rule.conditions and not self._check_conditions(
+                    rule.conditions, data
+                ):
+                    continue
+
+                # Get value using source path
+                value = self._get_value(rule.source_path, data)
+                if value is None:
+                    value = rule.default_value
+                    if value is None:
+                        continue
+
+                # Apply transformation if specified
+                if value is not None and rule.transform_function:
+                    transform_method = getattr(self, rule.transform_function, None)
+                    if transform_method:
+                        value = transform_method(value)
+
+                # Handle array operations
+                if rule.array_handling and isinstance(value, (list, tuple)):
+                    value = self._handle_array(value, rule.array_handling)
+
+                # Apply type conversion
+                if rule.type_hint and value is not None:
+                    value = self._convert_type(value, rule.type_hint)
+
+                # Set nested value
+                if value is not None:
+                    self._set_nested_value(result, rule.target_path, value)
+
+            except Exception as e:
+                logger.error(
+                    f"Error processing rule {rule.source_path} -> {rule.target_path}: {str(e)}"
+                )
+                continue
+
+        return result
+
+    def _check_conditions(self, conditions: List[str], data: Dict[str, Any]) -> bool:
+        """Check if all conditions are met"""
+        for condition in conditions:
+            try:
+                if "type ==" in condition:
+                    type_value = data.get("type", "")
+                    expected_type = (
+                        condition.split("type ==")[1].strip().strip("'").strip('"')
                     )
-                ],
-                usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
-            ).model_dump()
+                    # Handle both completion/completions
+                    if "completion" in expected_type and type_value in [
+                        "completion",
+                        "completions",
+                    ]:
+                        continue
+                    if type_value != expected_type:
+                        return False
+            except Exception as e:
+                logger.error(f"Error checking condition {condition}: {str(e)}")
+                return False
+        return True
 
+    def _get_value(self, path: str, data: Dict[str, Any]) -> Any:
+        """Get value from data using path"""
+        try:
+            # Direct access for simple paths
+            if path in data:
+                return data[path]
+            # Use jmespath for complex paths
+            return jmespath.search(path, data)
+        except Exception as e:
+            logger.error(f"Error getting value for path {path}: {str(e)}")
+            return None
 
-class ModelAdapterFactory:
-    _adapters = {}
+    def _handle_array(self, value: List[Any], handling: ArrayHandling) -> Any:
+        """Handle array operations"""
+        try:
+            if handling == ArrayHandling.JOIN:
+                return " ".join(str(v) for v in value if v is not None)
+            elif handling == ArrayHandling.FIRST:
+                return value[0] if value else None
+            elif handling == ArrayHandling.LAST:
+                return value[-1] if value else None
+        except Exception as e:
+            logger.error(f"Error handling array: {str(e)}")
+            return None
 
-    @classmethod
-    def register_adapter(cls, provider: str, model: str, adapter: Type[ModelAdapter]):
-        if provider not in cls._adapters:
-            cls._adapters[provider] = {}
-        cls._adapters[provider][model] = adapter
+    def _convert_type(self, value: Any, type_hint: TypeHint) -> Any:
+        """Convert value to specified type"""
+        try:
+            if type_hint == TypeHint.FLOAT:
+                return float(value)
+            elif type_hint == TypeHint.INTEGER:
+                return int(value)
+            elif type_hint == TypeHint.BOOLEAN:
+                return bool(value)
+            elif type_hint == TypeHint.STRING:
+                return str(value)
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Failed to convert {value} to {type_hint}: {str(e)}")
+            return value
+        return value
 
-    @classmethod
-    def get_adapter(cls, provider: str, model: str) -> ModelAdapter:
-        provider_lower = provider.lower().replace(" ", "")
-        model_lower = model.lower()
+    def _set_nested_value(self, obj: Dict[str, Any], path: str, value: Any) -> None:
+        """Set nested value in dictionary"""
+        parts = path.split(".")
+        current = obj
 
-        if provider_lower not in cls._adapters:
-            raise ValueError(f"Unsupported provider: {provider}")
+        for i, part in enumerate(parts[:-1]):
+            if "[" in part:
+                base_part = part.split("[")[0]
+                index = int(part.split("[")[1].split("]")[0])
+                if base_part not in current:
+                    current[base_part] = []
+                while len(current[base_part]) <= index:
+                    current[base_part].append({})
+                current = current[base_part][index]
+            else:
+                if part not in current:
+                    current[part] = {}
+                current = current[part]
 
-        if model_lower in cls._adapters[provider_lower]:
-            return cls._adapters[provider_lower][model_lower]()
-        elif "*" in cls._adapters[provider_lower]:
-            return cls._adapters[provider_lower]["*"]()
+        last_part = parts[-1]
+        if "[" in last_part:
+            base_part = last_part.split("[")[0]
+            index = int(last_part.split("[")[1].split("]")[0])
+            if base_part not in current:
+                current[base_part] = []
+            while len(current[base_part]) <= index:
+                current[base_part].append(None)
+            current[base_part][index] = value
         else:
-            raise ValueError(f"Unsupported model for provider {provider}: {model}")
+            current[last_part] = value
 
+    def format_messages(self, messages: List[Dict[str, str]]) -> str:
+        """Format messages into a single string"""
+        if not messages:
+            return ""
+        formatted_messages = []
+        for msg in messages:
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            if role == "system":
+                formatted_messages.append(f"System: {content}")
+            elif role == "user":
+                formatted_messages.append(f"Human: {content}")
+            elif role == "assistant":
+                formatted_messages.append(f"Assistant: {content}")
+        return "\n".join(formatted_messages)
 
-ModelAdapterFactory.register_adapter("openai", "*", OpenAIAdapter)
-ModelAdapterFactory.register_adapter("azureopenai", "*", AzureOpenAIAdapter)
-ModelAdapterFactory.register_adapter("amazon", "*", BedrockAmazonAdapter)
+    def format_claude_completion(self, prompt: str) -> List[Dict[str, str]]:
+        """Format completion prompt for Claude"""
+        return [{"role": "user", "content": prompt}]
+
+    def format_mistral_completion(self, prompt: str) -> List[Dict[str, str]]:
+        """Format completion prompt for Mistral"""
+        return [{"role": "user", "content": prompt}]
+
+    def format_claude_messages(
+        self, messages: List[Dict[str, str]]
+    ) -> List[Dict[str, str]]:
+        """Format messages for Claude by combining system and user messages"""
+        formatted_messages = []
+        system_messages = []
+
+        for msg in messages:
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+
+            if role == "system":
+                system_messages.append(content)
+            else:
+                if system_messages and role == "user":
+                    # Prepend system messages to first user message
+                    combined_content = "\n".join(system_messages) + "\n\n" + content
+                    formatted_messages.append(
+                        {"role": "user", "content": combined_content}
+                    )
+                    system_messages = []  # Clear after using
+                else:
+                    formatted_messages.append({"role": role, "content": content})
+
+        # Handle any remaining system messages
+        if system_messages and not formatted_messages:
+            formatted_messages.append(
+                {"role": "user", "content": "\n".join(system_messages)}
+            )
+
+        return formatted_messages
+
+    def format_vertex_messages(self, messages: List[Dict[str, str]]) -> List[Dict[str, Any]]:
+        """Format messages for Vertex AI"""
+        if not messages:
+            return []
+        
+        formatted_messages = []
+        for msg in messages:
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            
+            if role == "system":
+                # Convert system to USER for Vertex AI
+                formatted_messages.append({
+                    "author": "USER",
+                    "content": content
+                })
+            elif role == "user":
+                formatted_messages.append({
+                    "author": "USER",
+                    "content": content
+                })
+            elif role == "assistant":
+                formatted_messages.append({
+                    "author": "MODEL",
+                    "content": content
+                })
+        
+        return formatted_messages
