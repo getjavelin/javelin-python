@@ -3,7 +3,12 @@ from urllib.parse import urljoin
 
 import httpx
 
-from javelin_sdk.models import HttpMethod, JavelinConfig, Request
+from javelin_sdk.chat_completions import Chat, Completions
+from javelin_sdk.models import (
+    HttpMethod,
+    JavelinConfig,
+    Request,
+)
 from javelin_sdk.services.gateway_service import GatewayService
 from javelin_sdk.services.provider_service import ProviderService
 from javelin_sdk.services.route_service import RouteService
@@ -18,8 +23,7 @@ API_TIMEOUT = 10
 class JavelinClient:
     def __init__(self, config: JavelinConfig) -> None:
         self.config = config
-        api_version = config.api_version if config.api_version else API_BASE_PATH
-        self.base_url = urljoin(config.base_url, api_version)
+        self.base_url = urljoin(config.base_url, config.api_version or "/v1")
         self._headers = {
             "x-api-key": config.javelin_api_key,
         }
@@ -35,6 +39,9 @@ class JavelinClient:
         self.route_service = RouteService(self)
         self.secret_service = SecretService(self)
         self.template_service = TemplateService(self)
+
+        self.chat = Chat(self)
+        self.completions = Completions(self)
 
     @property
     def client(self):
@@ -84,6 +91,7 @@ class JavelinClient:
             query=request.is_query,
             archive=request.archive,
             query_params=request.query_params,
+            is_transformation_rules=request.is_transformation_rules,
         )
         headers = {**self._headers, **(request.headers or {})}
         return url, headers
@@ -120,6 +128,7 @@ class JavelinClient:
         query: bool = False,
         archive: Optional[str] = "",
         query_params: Optional[Dict[str, Any]] = None,
+        is_transformation_rules: bool = False,
     ) -> str:
         url_parts = [self.base_url]
 
@@ -135,6 +144,8 @@ class JavelinClient:
             url_parts.extend(["admin", "providers"])
             if provider_name != "###":
                 url_parts.append(provider_name)
+            if is_transformation_rules:
+                url_parts.append("transformation-rules")
         elif route_name:
             url_parts.extend(["admin", "routes"])
             if route_name != "###":
@@ -224,6 +235,12 @@ class JavelinClient:
         lambda self, provider_name: self.provider_service.alialist_provider_secrets(
             provider_name
         )
+    )
+    get_transformation_rules = lambda self, provider_name, model_name: self.provider_service.get_transformation_rules(
+        provider_name, model_name
+    )
+    aget_transformation_rules = lambda self, provider_name, model_name: self.provider_service.aget_transformation_rules(
+        provider_name, model_name
     )
 
     # Route methods
@@ -316,7 +333,6 @@ class JavelinClient:
             query_params={"page": 1, "limit": n},
         )
         response = self._send_request_sync(request)
-        print(response)
         return response
 
     async def aget_last_n_chronicle_records(

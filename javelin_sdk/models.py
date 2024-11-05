@@ -60,12 +60,46 @@ class Budget(BaseModel):
     currency: Optional[str] = Field(None, description="Currency for the budget")
 
 
+class ContentTypes(BaseModel):
+    operator: Optional[str] = Field(default=None, description="Content type operator")
+    restriction: Optional[str] = Field(
+        default=None, description="Content type restriction"
+    )
+    probability_threshold: Optional[float] = Field(
+        default=None, description="Content type probability threshold"
+    )
+
+
 class Dlp(BaseModel):
     enabled: Optional[bool] = Field(default=None, description="Whether DLP is enabled")
     strategy: Optional[str] = Field(default=None, description="DLP strategy")
     action: Optional[str] = Field(default=None, description="DLP action to take")
     risk_analysis: Optional[str] = Field(
         default=None, description="Risk analysis configuration"
+    )
+
+
+class PromptSafety(BaseModel):
+    enabled: Optional[bool] = Field(
+        default=None, description="Whether prompt safety is enabled"
+    )
+    reject_prompt: Optional[str] = Field(
+        default=None, description="Reject prompt for the route"
+    )
+    content_types: Optional[List[ContentTypes]] = Field(
+        default=None, description="List of content types"
+    )
+
+
+class ContentFilter(BaseModel):
+    enabled: Optional[bool] = Field(
+        default=None, description="Whether content filter is enabled"
+    )
+    reject_prompt: Optional[str] = Field(
+        default=None, description="Reject prompt for the route"
+    )
+    content_types: Optional[List[ContentTypes]] = Field(
+        default=None, description="List of content types"
     )
 
 
@@ -99,6 +133,12 @@ class RouteConfig(BaseModel):
     )
     budget: Optional[Budget] = Field(default=None, description="Budget configuration")
     dlp: Optional[Dlp] = Field(default=None, description="DLP configuration")
+    content_filter: Optional[ContentFilter] = Field(
+        default=None, description="Content Filter Description"
+    )
+    prompt_safety: Optional[PromptSafety] = Field(
+        default=None, description="Prompt Safety Description"
+    )
 
 
 class Model(BaseModel):
@@ -106,11 +146,11 @@ class Model(BaseModel):
     provider: str = Field(default=None, description="Provider of the model")
     suffix: str = Field(default=None, description="Suffix for the model")
     weight: Optional[int] = Field(default=None, description="Weight of the model")
-    virtualsecretname: Optional[str] = Field(None, description="Virtual secret name")
-    fallbackenabled: Optional[bool] = Field(
+    virtual_secret_name: Optional[str] = Field(None, description="Virtual secret name")
+    fallback_enabled: Optional[bool] = Field(
         None, description="Whether fallback is enabled"
     )
-    fallbackcodes: Optional[List[int]] = Field(None, description="Fallback codes")
+    fallback_codes: Optional[List[int]] = Field(None, description="Fallback codes")
 
 
 class Route(BaseModel):
@@ -129,6 +169,58 @@ class Routes(BaseModel):
     routes: List[Route] = Field(default=[], description="List of routes")
 
 
+class ArrayHandling(str, Enum):
+    JOIN = "join"
+    FIRST = "first"
+    LAST = "last"
+    FLATTEN = "flatten"
+
+
+class TypeHint(str, Enum):
+    STRING = "str"
+    INTEGER = "int"
+    FLOAT = "float"
+    BOOLEAN = "bool"
+    ARRAY = "array"
+    OBJECT = "object"
+    PASSTHROUGH = "passthrough"
+
+
+class TransformRule(BaseModel):
+    source_path: str
+    target_path: str
+    default_value: Any = None
+    transform_function: Optional[str] = None
+    conditions: Optional[List[str]] = None
+    array_handling: Optional[ArrayHandling] = None
+    type_hint: Optional[TypeHint] = None
+    additional_data: Optional[Dict[str, Any]] = None
+
+
+class ModelSpec(BaseModel):
+    input_rules: List[TransformRule] = Field(
+        default=[], description="Rules for input transformation"
+    )
+    output_rules: List[TransformRule] = Field(
+        default=[], description="Rules for output transformation"
+    )
+    input_schema: Dict[str, Any] = Field(
+        default={}, description="Input schema for validation"
+    )
+    output_schema: Dict[str, Any] = Field(
+        default={}, description="Output schema for validation"
+    )
+    supported_features: List[str] = Field(
+        default=[], description="List of supported features"
+    )
+    max_tokens: Optional[int] = Field(
+        default=None, description="Maximum tokens supported"
+    )
+    default_parameters: Dict[str, Any] = Field(
+        default={}, description="Default parameters"
+    )
+
+
 class ProviderConfig(BaseModel):
     api_base: str = Field(default=None, description="Base URL of the API")
     api_type: Optional[str] = Field(default=None, description="Type of the API")
@@ -139,6 +231,12 @@ class ProviderConfig(BaseModel):
     organization: Optional[str] = Field(
         default=None, description="Name of the organization"
     )
+    model_specs: Dict[str, ModelSpec] = Field(
+        default={}, description="Model specifications"
+    )
+
+    class Config:
+        protected_namespaces = ()
 
 
 class Provider(BaseModel):
@@ -280,7 +378,7 @@ class Usage(BaseModel):
 class Choice(BaseModel):
     finish_reason: str = Field(..., description="Reason for the completion finish")
     index: int = Field(..., description="Index of the choice")
-    message: Message = Field(..., description="Message details")
+    message: Dict[str, str] = Field(..., description="Message details")
 
 
 class QueryResponse(BaseModel):
@@ -345,6 +443,7 @@ class Request:
         headers: Optional[Dict[str, str]] = None,
         archive: Optional[str] = "",
         query_params: Optional[Dict[str, Any]] = None,
+        is_transformation_rules: bool = False,
     ):
         self.method = method
         self.gateway = gateway
@@ -357,3 +456,52 @@ class Request:
         self.headers = headers
         self.archive = archive
         self.query_params = query_params
+        self.is_transformation_rules = is_transformation_rules
+
+
+class Message(BaseModel):
+    role: str
+    content: str
+
+
+class ChatCompletion(BaseModel):
+    id: str
+    object: str = "chat.completion"
+    created: int
+    model: str
+    choices: List[Dict[str, Any]]
+    usage: Dict[str, int]
+
+
+class ModelConfig(BaseModel):
+    provider: str
+    name: str  # Changed from model_name to name
+    api_base: Optional[str] = None
+    api_key: Optional[str] = None
+
+    class Config:
+        protected_namespaces = ()  # This resolves the warning
+
+
+class JavelinConfig(BaseModel):
+    base_url: str = Field(default="https://api-dev.javelin.live")
+    javelin_api_key: str
+    javelin_virtualapikey: Optional[str] = None
+    llm_api_key: Optional[str] = None
+    api_version: Optional[str] = None
+
+
+class RemoteModelSpec(BaseModel):
+    provider: str
+    model_name: str
+    input_rules: List[Dict[str, Any]]
+    output_rules: List[Dict[str, Any]]
+
+    class Config:
+        protected_namespaces = ()
+
+    def to_model_spec(self) -> ModelSpec:
+        return ModelSpec(
+            input_rules=[TransformRule(**rule) for rule in self.input_rules],
+            output_rules=[TransformRule(**rule) for rule in self.output_rules],
+        )
