@@ -1,0 +1,172 @@
+name: PR Merge Check - Javelin Python
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - edited
+      - reopened
+    branches:
+      - "main"
+  merge_group:
+    types:
+      - checks_requested
+
+env:
+  env_var: ${{ vars.ENV_CONTEXT_VAR }}
+  DEVOPS_REPO: "javelin-cloud"
+
+jobs:
+  javelin-env:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setting up Repo Env
+        id: repo_env_setup
+        shell: bash
+        run: |-
+          echo "repository=$(basename ${{ github.repository }})" >> ${GITHUB_OUTPUT}
+
+      - name: Set Lowercase Repo Name
+        id: lc_repository
+        env:
+          REPO_NAME: ${{ steps.repo_env_setup.outputs.repository }}
+        shell: bash
+        run: echo "name=${REPO_NAME,,}" >> ${GITHUB_OUTPUT}
+    outputs:
+      svc_name: ${{ steps.lc_repository.outputs.name }}
+
+  javelin-sast-check:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dummy SAST
+        shell: bash
+        run: |-
+          echo "no SAST for this module"
+
+  javelin-sast-notify:
+    needs:
+      - javelin-env
+      - javelin-sast-check
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-latest
+    if: |
+      always() && (needs.javelin-sast-check.result != 'success')
+    env:
+      SVC_NAME: ${{ needs.javelin-env.outputs.svc_name }}
+      JOB_STATUS: ${{ needs.javelin-sast-check.result }}
+      JOB_STATUS_MARK: ":x:"
+      PR_URL: "https://github.com/${{ github.repository }}/pull/${{ github.event.number }}"
+      BUILD_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+      SLACK_PAYLOAD_JSON: slack-sast-payload.json
+    steps:
+      - name: DevOps Repository Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ github.repository_owner }}/${{ env.DEVOPS_REPO }}"
+          token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: false
+          ref: main
+          path: ${{ env.DEVOPS_REPO }}
+
+      - name: Slack Payload Template
+        shell: bash
+        run: |-
+          envsubst < ${{ env.DEVOPS_REPO }}/slack-notify/${{ env.SLACK_PAYLOAD_JSON }} > ${{ env.SLACK_PAYLOAD_JSON }}
+          cat ${{ env.SLACK_PAYLOAD_JSON }}
+
+      - name: Slack Notification
+        uses: slackapi/slack-github-action@v1.26.0
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          channel-id: "${{ vars.SLACK_CHANNEL_ID }}"
+          payload-file-path: "${{ env.SLACK_PAYLOAD_JSON }}"
+
+  javelin-commit-check:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Get the last commit message
+        id: commit_message
+        run: |
+          COMMIT_MESSAGE=$(git show -s --format=%s)
+          echo "message=${COMMIT_MESSAGE}" >> ${GITHUB_OUTPUT}
+
+      - name: Commit Message Check
+        shell: bash
+        env:
+          COMMIT_MESSAGE: "${{ steps.commit_message.outputs.message }}"
+        run: |-
+          if [[ "${{ env.COMMIT_MESSAGE }}" =~ ^(feat:|fix:|devops:|Merge branch) ]]; then
+            echo "Commit message is valid....!"
+          else
+            echo "Commit message does not contain required keywords....!"
+            exit 1
+          fi
+
+  javelin-commit-notify:
+    needs:
+      - javelin-env
+      - javelin-commit-check
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-latest
+    if: |
+      always() && (needs.javelin-commit-check.result != 'success')
+    env:
+      SVC_NAME: ${{ needs.javelin-env.outputs.svc_name }}
+      JOB_STATUS: ${{ needs.javelin-commit-check.result }}
+      JOB_STATUS_MARK: ":x:"
+      PR_URL: "https://github.com/${{ github.repository }}/pull/${{ github.event.number }}"
+      BUILD_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+      SLACK_PAYLOAD_JSON: slack-commit-payload.json
+    steps:
+      - name: DevOps Repository Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ github.repository_owner }}/${{ env.DEVOPS_REPO }}"
+          token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: false
+          ref: main
+          path: ${{ env.DEVOPS_REPO }}
+
+      - name: Slack Payload Template
+        shell: bash
+        run: |-
+          envsubst < ${{ env.DEVOPS_REPO }}/slack-notify/${{ env.SLACK_PAYLOAD_JSON }} > ${{ env.SLACK_PAYLOAD_JSON }}
+          cat ${{ env.SLACK_PAYLOAD_JSON }}
+
+      - name: Slack Notification
+        uses: slackapi/slack-github-action@v1.26.0
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          channel-id: "${{ vars.SLACK_CHANNEL_ID }}"
+          payload-file-path: "${{ env.SLACK_PAYLOAD_JSON }}"

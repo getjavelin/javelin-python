@@ -1,23 +1,43 @@
-style: "angular"
-
+# https://github.com/git-chglog/git-chglog
+bin: git
+style: "github"
 template: "CHANGELOG.tpl.md"
 
 info:
   title: "Changelog"
   repository_url: "https://github.com/getjavelin/javelin-python"
 
-tag:
-  pattern: "^(v\\d+\\.\\d+\\.\\d+)$" # Example for 'v1.2.3'-style tags
+options:
+  tag_filter_pattern: "^v"
+  sort: "semver"
 
-commit_groups:
-  title_maps:
-    feat: "Features"
-    fix: "Bug Fixes"
+  commits:
+    filters:
+      Type:
+        - feat
+        - fix
+        - devops
+    sort_by: "Scope"
 
-header:
-  pattern: "^(\\w*)(\\(.+\\))?: (.+)$"
-  pattern_maps:
-    - type
-    - scope
-    - subject
+  commit_groups:
+    group_by: "Type"
+    sort_by: "Title"
+    title_order:
+      - feat
+      - fix
+      - devops
+    title_maps:
+      feat: "Features"
+      fix: "Bug Fixes"
+      devops: "DevOps"
 
+  header:
+    pattern: "^(\\w*)(\\(.+\\))?: (.+)$"
+    pattern_maps:
+      - Type
+      - Scope
+      - Subject
+
+  notes:
+    keywords:
+      - BREAKING CHANGE
