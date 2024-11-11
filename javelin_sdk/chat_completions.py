@@ -37,7 +37,6 @@ class BaseCompletions:
             model_rules = self.rule_manager.get_rules(primary_model.provider, primary_model.name)
             
             transformed_request = self.transformer.transform(request_data, model_rules.input_rules)
-            print(f"Transformed request: {transformed_request}")
             
             model_response = self.client.query_route(route, query_body=transformed_request)
             return self.transformer.transform(model_response, model_rules.output_rules)
