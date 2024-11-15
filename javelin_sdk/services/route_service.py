@@ -119,6 +119,9 @@ class RouteService:
         response = self.client._send_request_sync(
             Request(method=HttpMethod.PUT, route=route.name, data=route.dict())
         )
+
+        ## Reload the route
+        self.reload_route(route.name)
         return self._process_route_response_ok(response)
 
     async def aupdate_route(self, route: Route) -> str:
@@ -126,6 +129,9 @@ class RouteService:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.PUT, route=route.name, data=route.dict())
         )
+
+        ## Reload the route
+        self.areload_route(route.name)
         return self._process_route_response_ok(response)
 
     def delete_route(self, route_name: str) -> str:
@@ -133,12 +139,18 @@ class RouteService:
         response = self.client._send_request_sync(
             Request(method=HttpMethod.DELETE, route=route_name)
         )
+
+        ## Reload the route
+        self.reload_route(route_name=route_name)
         return self._process_route_response_ok(response)
 
     async def adelete_route(self, route_name: str) -> str:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.DELETE, route=route_name)
         )
+
+        ## Reload the route
+        self.areload_route(route_name=route_name)
         return self._process_route_response_ok(response)
 
     def query_route(
@@ -176,3 +188,21 @@ class RouteService:
             )
         )
         return self._process_route_response_json(response)
+    
+    def reload_route(self, route_name: str) -> str:
+        """
+        Reload a route
+        """
+        response = self.client._send_request_sync(
+            Request(method=HttpMethod.POST, route=f"{route_name}/reload", data="", is_reload=True)
+        )
+        return response
+
+    async def areload_route(self, route_name: str) -> str:
+        """
+        Reload a route in an asynchronous way
+        """
+        response = await self.client._send_request_async(
+            Request(method=HttpMethod.POST, route=f"{route_name}/reload", data="", is_reload=True)
+        )
+        return response
