@@ -113,12 +113,18 @@ class ProviderService:
         response = self.client._send_request_sync(
             Request(method=HttpMethod.PUT, provider=provider.name, data=provider.dict())
         )
+
+        ## reload the provider
+        self.reload_provider(provider.name)
         return self._process_provider_response_ok(response)
 
     async def aupdate_provider(self, provider: Provider) -> str:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.PUT, provider=provider.name, data=provider.dict())
         )
+
+        ## reload the provider
+        self.areload_provider(provider.name)
         return self._process_provider_response_ok(response)
 
     def delete_provider(self, provider_name: str) -> str:
@@ -126,6 +132,9 @@ class ProviderService:
         response = self.client._send_request_sync(
             Request(method=HttpMethod.DELETE, provider=provider_name)
         )
+
+        ## reload the provider
+        self.reload_provider(provider_name=provider_name)
         return self._process_provider_response_ok(response)
 
     async def adelete_provider(self, provider_name: str) -> str:
@@ -133,6 +142,9 @@ class ProviderService:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.DELETE, provider=provider_name)
         )
+
+        ## reload the provider
+        self.areload_provider(provider_name=provider_name)
         return self._process_provider_response_ok(response)
 
     async def alist_provider_secrets(self, provider_name: str) -> Secrets:
@@ -198,3 +210,21 @@ class ProviderService:
         except Exception as e:
             print(f"Failed to fetch transformation rules: {str(e)}")
             return None
+
+    def reload_provider(self, provider_name: str) -> str:
+        """
+        Reload a provider
+        """
+        response = self.client._send_request_sync(
+            Request(method=HttpMethod.POST, provider=f"{provider_name}/reload", data="", is_reload=True)
+        )
+        return response
+
+    async def areload_provider(self, provider_name: str) -> str:
+        """
+        Reload a provider in an asynchronous way
+        """
+        response = await self.client._send_request_async(
+            Request(method=HttpMethod.POST, provider=f"{provider_name}/reload", data="", is_reload=True)
+        )
+        return response

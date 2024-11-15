@@ -95,24 +95,54 @@ class SecretService:
 
     def update_secret(self, secret: Secret) -> str:
         response = self.client._send_request_sync(
-            Request(method=HttpMethod.PUT, secret=secret.name, data=secret.dict())
+            Request(method=HttpMethod.PUT, secret=secret.api_key, data=secret.dict())
         )
+
+        ## Reload the secret
+        self.reload_secret(secret.api_key)
         return self._process_secret_response_ok(response)
 
     async def aupdate_secret(self, secret: Secret) -> str:
         response = await self.client._send_request_async(
-            Request(method=HttpMethod.PUT, secret=secret.name, data=secret.dict())
+            Request(method=HttpMethod.PUT, secret=secret.api_key, data=secret.dict())
         )
+
+        ## Reload the secret
+        self.areload_secret(secret.api_key)
         return self._process_secret_response_ok(response)
 
     def delete_secret(self, secret_name: str) -> str:
         response = self.client._send_request_sync(
             Request(method=HttpMethod.DELETE, secret=secret_name)
         )
+
+        ## Reload the secret
+        self.reload_secret(secret_name=secret_name)
         return self._process_secret_response_ok(response)
 
     async def adelete_secret(self, secret_name: str) -> str:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.DELETE, secret=secret_name)
         )
+
+        ## Reload the secret
+        self.areload_secret(secret_name=secret_name)
         return self._process_secret_response_ok(response)
+    
+    def reload_secret(self, secret_name: str) -> str:
+        """
+        Reload a secret
+        """
+        response = self.client._send_request_sync(
+            Request(method=HttpMethod.POST, secret=f"{secret_name}/reload", data="", is_reload=True)
+        )
+        return response
+
+    async def areload_secret(self, secret_name: str) -> str:
+        """
+        Reload a secret in an asynchronous way
+        """
+        response = await self.client._send_request_async(
+            Request(method=HttpMethod.POST, secret=f"{secret_name}/reload", data="", is_reload=True)
+        )
+        return response
