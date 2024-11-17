@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 
 import jmespath
 
-from .models import ArrayHandling, ModelSpec, TransformRule, TypeHint
+from .models import ArrayHandling, ModelSpec, TransformRule, TypeHint, EndpointType
 
 logger = logging.getLogger(__name__)
 
@@ -16,12 +16,12 @@ class TransformationRuleManager:
         self.cache_ttl = 3600
         self.last_fetch = {}
 
-    def get_rules(self, provider: str, model: str) -> ModelSpec:
+    def get_rules(self, provider: str, model: str, endpoint: EndpointType) -> ModelSpec:
         """Get transformation rules for a provider/model combination"""
         model = model.lower()
 
         try:
-            rules = self._fetch_remote_rules(provider, model)
+            rules = self._fetch_remote_rules(provider, model, endpoint)
             if rules:
                 return rules
         except Exception as e:
@@ -31,10 +31,10 @@ class TransformationRuleManager:
 
         raise ValueError(f"No transformation rules found for {provider}/{model}")
 
-    def _fetch_remote_rules(self, provider: str, model: str) -> Optional[ModelSpec]:
+    def _fetch_remote_rules(self, provider: str, model: str, endpoint: EndpointType) -> Optional[ModelSpec]:
         """Fetch transformation rules from remote service"""
         try:
-            response = self.client.get_transformation_rules(provider, model)
+            response = self.client.get_transformation_rules(provider, model, endpoint)
             if response:
                 input_rules = response.get("input_rules", [])
                 output_rules = response.get("output_rules", [])

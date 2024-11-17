@@ -10,7 +10,7 @@ from javelin_sdk.exceptions import (
     RateLimitExceededError,
     UnauthorizedError,
 )
-from javelin_sdk.models import HttpMethod, Provider, Providers, Request, Secrets
+from javelin_sdk.models import HttpMethod, Provider, Providers, Request, Secrets, EndpointType
 
 
 class ProviderService:
@@ -156,7 +156,7 @@ class ProviderService:
             return Secrets(secrets=[])
 
     def get_transformation_rules(
-        self, provider_name: str, model_name: str
+        self, provider_name: str, model_name: str, endpoint: EndpointType = EndpointType.UNKNOWN
     ) -> Dict[str, Any]:
         """Get transformation rules from the provider configuration"""
         try:
@@ -164,7 +164,10 @@ class ProviderService:
                 Request(
                     method=HttpMethod.GET,
                     provider=provider_name,
-                    query_params={"model_name": model_name},
+                    query_params={
+                        "model_name": model_name,
+                        "endpoint": endpoint.value
+                    },
                     is_transformation_rules=True,
                 )
             )
@@ -178,7 +181,7 @@ class ProviderService:
             return None
 
     async def aget_transformation_rules(
-        self, provider_name: str, model_name: str
+        self, provider_name: str, model_name: str, endpoint: EndpointType = EndpointType.UNKNOWN
     ) -> Dict[str, Any]:
         """Get transformation rules from the provider configuration asynchronously"""
         try:
@@ -187,7 +190,10 @@ class ProviderService:
                     method=HttpMethod.GET,
                     provider=provider_name,
                     route="transformation-rules",
-                    query_params={"model_name": model_name},
+                    query_params={
+                        "model_name": model_name,
+                        "endpoint": endpoint.value
+                    }
                 )
             )
 
