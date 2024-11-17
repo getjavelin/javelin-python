@@ -92,6 +92,7 @@ class JavelinClient:
             archive=request.archive,
             query_params=request.query_params,
             is_transformation_rules=request.is_transformation_rules,
+            is_reload=request.is_reload,
         )
         headers = {**self._headers, **(request.headers or {})}
         return url, headers
@@ -129,8 +130,10 @@ class JavelinClient:
         archive: Optional[str] = "",
         query_params: Optional[Dict[str, Any]] = None,
         is_transformation_rules: bool = False,
+        is_reload: bool = False,
     ) -> str:
         url_parts = [self.base_url]
+            
 
         if query:
             url_parts.append("query")
@@ -141,17 +144,26 @@ class JavelinClient:
             if gateway_name != "###":
                 url_parts.append(gateway_name)
         elif provider_name and not secret_name:
-            url_parts.extend(["admin", "providers"])
+            if is_reload:
+                url_parts.extend(["providers"])
+            else:
+                url_parts.extend(["admin", "providers"])
             if provider_name != "###":
                 url_parts.append(provider_name)
             if is_transformation_rules:
                 url_parts.append("transformation-rules")
         elif route_name:
-            url_parts.extend(["admin", "routes"])
+            if is_reload:
+                url_parts.extend(["routes"])
+            else:
+                url_parts.extend(["admin", "routes"])
             if route_name != "###":
                 url_parts.append(route_name)
         elif secret_name:
-            url_parts.extend(["admin", "providers"])
+            if is_reload:
+                url_parts.extend(["secrets"])
+            else:
+                url_parts.extend(["admin", "providers"])
             if provider_name != "###":
                 url_parts.append(provider_name)
             url_parts.append("secrets")
@@ -160,7 +172,10 @@ class JavelinClient:
             else:
                 url_parts.append("keys")
         elif template_name:
-            url_parts.extend(["admin", "processors", "dp", "templates"])
+            if is_reload:
+                url_parts.extend(["processors", "dp", "templates"])
+            else:
+                url_parts.extend(["admin", "processors", "dp", "templates"])
             if template_name != "###":
                 url_parts.append(template_name)
         elif archive:
