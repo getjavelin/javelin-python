@@ -2,8 +2,32 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 
 from javelin_sdk.model_adapters import ModelTransformer, TransformationRuleManager
-
+from javelin_sdk.models import EndpointType
 logger = logging.getLogger(__name__)
+
+def get_endpoint_type_from_suffix(url: str) -> EndpointType:
+    if not url:
+        return EndpointType.UNKNOWN
+    
+    lower_url = url.lower()
+
+    if '/chat/completions' in lower_url:
+        return EndpointType.CHAT
+
+    if 'embeddings' in lower_url:
+        return EndpointType.EMBED
+
+    if '/invoke' in lower_url:
+        if 'stream' in lower_url:
+            return EndpointType.INVOKE_STREAM
+        return EndpointType.INVOKE
+
+    if '/converse' in lower_url:
+        if 'stream' in lower_url:
+            return EndpointType.CONVERSE_STREAM
+        return EndpointType.CONVERSE
+
+    return EndpointType.UNKNOWN
 
 
 class BaseCompletions:
@@ -34,11 +58,13 @@ class BaseCompletions:
             )
             
             primary_model = route_info.models[0]
-            model_rules = self.rule_manager.get_rules(primary_model.provider, primary_model.name)
+            endpoint = get_endpoint_type_from_suffix(route_info.models[0].suffix)
+            model_rules = self.rule_manager.get_rules(primary_model.provider, primary_model.name, endpoint)
             
             transformed_request = self.transformer.transform(request_data, model_rules.input_rules)
             
             model_response = self.client.query_route(route, query_body=transformed_request)
+            
             return self.transformer.transform(model_response, model_rules.output_rules)
 
         except Exception as e:

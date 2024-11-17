@@ -107,7 +107,7 @@ class JavelinClient:
         self, client: Union[httpx.Client, httpx.AsyncClient], request: Request
     ) -> Union[httpx.Response, Coroutine[Any, Any, httpx.Response]]:
         url, headers = self._prepare_request(request)
-
+        
         if request.method == HttpMethod.GET:
             return client.get(url, headers=headers)
         elif request.method == HttpMethod.POST:
@@ -251,11 +251,11 @@ class JavelinClient:
             provider_name
         )
     )
-    get_transformation_rules = lambda self, provider_name, model_name: self.provider_service.get_transformation_rules(
-        provider_name, model_name
+    get_transformation_rules = lambda self, provider_name, model_name, endpoint: self.provider_service.get_transformation_rules(
+        provider_name, model_name, endpoint
     )
-    aget_transformation_rules = lambda self, provider_name, model_name: self.provider_service.aget_transformation_rules(
-        provider_name, model_name
+    aget_transformation_rules = lambda self, provider_name, model_name, endpoint: self.provider_service.aget_transformation_rules(
+        provider_name, model_name, endpoint
     )
 
     # Route methods

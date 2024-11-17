@@ -507,3 +507,16 @@ class RemoteModelSpec(BaseModel):
             input_rules=[TransformRule(**rule) for rule in self.input_rules],
             output_rules=[TransformRule(**rule) for rule in self.output_rules],
         )
+
+
+class EndpointType(str, Enum):
+    UNKNOWN = "unknown"
+    CHAT = "chat"
+    COMPLETION = "completion" 
+    EMBED = "embed"
+    INVOKE = "invoke"
+    CONVERSE = "converse"
+    STREAM = "stream"
+    INVOKE_STREAM = "invoke_stream"
+    CONVERSE_STREAM = "converse_stream"
+    ALL = "all"
