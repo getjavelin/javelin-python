@@ -14,6 +14,7 @@ from javelin_sdk.services.provider_service import ProviderService
 from javelin_sdk.services.route_service import RouteService
 from javelin_sdk.services.secret_service import SecretService
 from javelin_sdk.services.template_service import TemplateService
+from javelin_sdk.services.trace_service import TraceService
 
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
@@ -39,6 +40,7 @@ class JavelinClient:
         self.route_service = RouteService(self)
         self.secret_service = SecretService(self)
         self.template_service = TemplateService(self)
+        self.trace_service = TraceService(self)
 
         self.chat = Chat(self)
         self.completions = Completions(self)
@@ -88,6 +90,7 @@ class JavelinClient:
             route_name=request.route,
             secret_name=request.secret,
             template_name=request.template,
+            trace=request.trace,
             query=request.is_query,
             archive=request.archive,
             query_params=request.query_params,
@@ -126,6 +129,7 @@ class JavelinClient:
         route_name: Optional[str] = "",
         secret_name: Optional[str] = "",
         template_name: Optional[str] = "",
+        trace: Optional[str] = "",
         query: bool = False,
         archive: Optional[str] = "",
         query_params: Optional[Dict[str, Any]] = None,
@@ -178,6 +182,8 @@ class JavelinClient:
                 url_parts.extend(["admin", "processors", "dp", "templates"])
             if template_name != "###":
                 url_parts.append(template_name)
+        elif trace:
+            url_parts.extend(["admin", "traces"])
         elif archive:
             url_parts.extend(["admin", "archives"])
             if archive != "###":
@@ -339,6 +345,10 @@ class JavelinClient:
             strategy_name
         )
     )
+
+    ## Traces methods
+    get_traces = lambda self: self.trace_service.get_traces()
+    aget_traces = lambda self: self.trace_service.aget_traces()
 
     # Archive methods
     def get_last_n_chronicle_records(self, archive_name: str, n: int) -> Dict[str, Any]:
