@@ -2,6 +2,19 @@
 ## [Unreleased]
 
 
+<a name="v0.2.15"></a>
+## [v0.2.15] - 2024-11-17
+### Bug Fixes
+- call reload API after every updation/deletion
+
+### DevOps
+- Update CHANGELOG for v0.2.14
+
+### Pull Requests
+- Merge pull request [#72](https://github.com/getjavelin/javelin-python/issues/72) from getjavelin/ISSUE-272
+- Merge pull request [#69](https://github.com/getjavelin/javelin-python/issues/69) from getjavelin/cicd-changelog
+
+
 <a name="v0.2.14"></a>
 ## [v0.2.14] - 2024-11-11
 ### DevOps
@@ -158,7 +171,8 @@
 <a name="v0.1.5"></a>
 ## v0.1.5 - 2023-09-04
 
-[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.14...HEAD
+[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.15...HEAD
+[v0.2.15]: https://github.com/getjavelin/javelin-python/compare/v0.2.14...v0.2.15
 [v0.2.14]: https://github.com/getjavelin/javelin-python/compare/v0.2.13...v0.2.14
 [v0.2.13]: https://github.com/getjavelin/javelin-python/compare/v0.2.12...v0.2.13
 [v0.2.12]: https://github.com/getjavelin/javelin-python/compare/v0.2.11...v0.2.12
