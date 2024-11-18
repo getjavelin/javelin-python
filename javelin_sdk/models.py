@@ -438,6 +438,7 @@ class Request:
         route: Optional[str] = "",
         secret: Optional[str] = "",
         template: Optional[str] = "",
+        trace: Optional[str] = "",
         is_query: bool = False,
         data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -452,6 +453,7 @@ class Request:
         self.route = route
         self.secret = secret
         self.template = template
+        self.trace = trace
         self.is_query = is_query
         self.data = data
         self.headers = headers
