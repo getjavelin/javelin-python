@@ -1,29 +1,31 @@
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Generator
 
 from javelin_sdk.model_adapters import ModelTransformer, TransformationRuleManager
 from javelin_sdk.models import EndpointType
+
 logger = logging.getLogger(__name__)
+
 
 def get_endpoint_type_from_suffix(url: str) -> EndpointType:
     if not url:
         return EndpointType.UNKNOWN
-    
+
     lower_url = url.lower()
 
-    if '/chat/completions' in lower_url:
+    if "/chat/completions" in lower_url:
         return EndpointType.CHAT
 
-    if 'embeddings' in lower_url:
+    if "embeddings" in lower_url:
         return EndpointType.EMBED
 
-    if '/invoke' in lower_url:
-        if 'stream' in lower_url:
+    if "/invoke" in lower_url:
+        if "stream" in lower_url:
             return EndpointType.INVOKE_STREAM
         return EndpointType.INVOKE
 
-    if '/converse' in lower_url:
-        if 'stream' in lower_url:
+    if "/converse" in lower_url:
+        if "stream" in lower_url:
             return EndpointType.CONVERSE_STREAM
         return EndpointType.CONVERSE
 
@@ -44,27 +46,29 @@ class BaseCompletions:
         messages_or_prompt: Union[List[Dict[str, str]], str],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        stream: bool = False,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, Any] | Generator[str, None, None]:
         """Create and process a request"""
         try:
             route_info = self.client.route_service.get_route(route)
             request_data = self._build_request_data(
-                route_info.type,
-                messages_or_prompt,
-                temperature,
-                max_tokens,
-                kwargs
+                route_info.type, messages_or_prompt, temperature, max_tokens, kwargs
             )
-            
+
             primary_model = route_info.models[0]
             endpoint = get_endpoint_type_from_suffix(route_info.models[0].suffix)
-            model_rules = self.rule_manager.get_rules(primary_model.provider, primary_model.name, endpoint)
-            
-            transformed_request = self.transformer.transform(request_data, model_rules.input_rules)
-            
-            model_response = self.client.query_route(route, query_body=transformed_request)
-            
+            model_rules = self.rule_manager.get_rules(
+                primary_model.provider, primary_model.name, endpoint
+            )
+            transformed_request = self.transformer.transform(
+                request_data, model_rules.input_rules
+            )
+            model_response = self.client.query_route(
+                route, query_body=transformed_request, headers={}, stream=stream
+            )
+            if stream:
+                return model_response
             return self.transformer.transform(model_response, model_rules.output_rules)
 
         except Exception as e:
@@ -77,7 +81,7 @@ class BaseCompletions:
         messages_or_prompt: Union[List[Dict[str, str]], str],
         temperature: float,
         max_tokens: Optional[int],
-        additional_kwargs: Dict[str, Any]
+        additional_kwargs: Dict[str, Any],
     ) -> Dict[str, Any]:
         is_completions = route_type == "completions"
         request_data = {
@@ -103,11 +107,17 @@ class ChatCompletions(BaseCompletions):
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        stream: bool = False,
         **kwargs,
     ) -> Dict[str, Any]:
         """Create a chat completion request"""
         return self._create_request(
-            route, messages, temperature=temperature, max_tokens=max_tokens, **kwargs
+            route,
+            messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=stream,
+            **kwargs,
         )
 
 
@@ -120,11 +130,17 @@ class Completions(BaseCompletions):
         prompt: str,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        stream: bool = False,
         **kwargs,
     ) -> Dict[str, Any]:
         """Create a text completion request"""
         return self._create_request(
-            route, prompt, temperature=temperature, max_tokens=max_tokens, **kwargs
+            route,
+            prompt,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=stream,
+            **kwargs,
         )
 
 
