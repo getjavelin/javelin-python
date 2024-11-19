@@ -1,4 +1,7 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union, Generator, AsyncGenerator
+import json
+import time
+import asyncio
 
 import httpx
 
@@ -146,7 +149,8 @@ class RouteService:
         route_name: str,
         query_body: Dict[str, Any],
         headers: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+        stream: bool = False,
+    ) -> Union[Dict[str, Any], Generator[str, None, None]]:
         self._validate_route_name(route_name)
         response = self.client._send_request_sync(
             Request(
@@ -157,14 +161,33 @@ class RouteService:
                 headers=headers,
             )
         )
-        return self._process_route_response_json(response)
+        if not stream:
+            return self._process_route_response_json(response)
+
+        def generate_stream():
+            for line in response.iter_lines():
+                if line:
+                    try:
+                        data = json.loads(
+                            line.decode("utf-8") if isinstance(line, bytes) else line
+                        )
+                        if data.get("type") == "content_block_delta":
+                            if "delta" in data and "text" in data["delta"]:
+                                text = data["delta"]["text"]
+                                time.sleep(0.2)
+                                yield text
+                    except json.JSONDecodeError:
+                        continue
+
+        return generate_stream()
 
     async def aquery_route(
         self,
         route_name: str,
         query_body: Dict[str, Any],
         headers: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+        stream: bool = False,
+    ) -> Union[Dict[str, Any], AsyncGenerator[str, None]]:
         self._validate_route_name(route_name)
         response = await self.client._send_request_async(
             Request(
@@ -175,4 +198,22 @@ class RouteService:
                 headers=headers,
             )
         )
-        return self._process_route_response_json(response)
+        if not stream:
+            return self._process_route_response_json(response)
+
+        async def generate_stream():
+            async for line in response.aiter_lines():
+                if line:
+                    try:
+                        data = json.loads(
+                            line.decode("utf-8") if isinstance(line, bytes) else line
+                        )
+                        if data.get("type") == "content_block_delta":
+                            if "delta" in data and "text" in data["delta"]:
+                                text = data["delta"]["text"]
+                                time.sleep(0.2)
+                                yield text
+                    except json.JSONDecodeError:
+                        continue
+
+        return generate_stream()
