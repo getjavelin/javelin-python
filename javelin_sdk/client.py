@@ -14,6 +14,7 @@ from javelin_sdk.services.provider_service import ProviderService
 from javelin_sdk.services.route_service import RouteService
 from javelin_sdk.services.secret_service import SecretService
 from javelin_sdk.services.template_service import TemplateService
+from javelin_sdk.services.trace_service import TraceService
 
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
@@ -39,6 +40,7 @@ class JavelinClient:
         self.route_service = RouteService(self)
         self.secret_service = SecretService(self)
         self.template_service = TemplateService(self)
+        self.trace_service = TraceService(self)
 
         self.chat = Chat(self)
         self.completions = Completions(self)
@@ -88,10 +90,12 @@ class JavelinClient:
             route_name=request.route,
             secret_name=request.secret,
             template_name=request.template,
+            trace=request.trace,
             query=request.is_query,
             archive=request.archive,
             query_params=request.query_params,
             is_transformation_rules=request.is_transformation_rules,
+            is_reload=request.is_reload,
         )
         headers = {**self._headers, **(request.headers or {})}
         return url, headers
@@ -125,12 +129,15 @@ class JavelinClient:
         route_name: Optional[str] = "",
         secret_name: Optional[str] = "",
         template_name: Optional[str] = "",
+        trace: Optional[str] = "",
         query: bool = False,
         archive: Optional[str] = "",
         query_params: Optional[Dict[str, Any]] = None,
         is_transformation_rules: bool = False,
+        is_reload: bool = False,
     ) -> str:
         url_parts = [self.base_url]
+            
 
         if query:
             url_parts.append("query")
@@ -141,17 +148,26 @@ class JavelinClient:
             if gateway_name != "###":
                 url_parts.append(gateway_name)
         elif provider_name and not secret_name:
-            url_parts.extend(["admin", "providers"])
+            if is_reload:
+                url_parts.extend(["providers"])
+            else:
+                url_parts.extend(["admin", "providers"])
             if provider_name != "###":
                 url_parts.append(provider_name)
             if is_transformation_rules:
                 url_parts.append("transformation-rules")
         elif route_name:
-            url_parts.extend(["admin", "routes"])
+            if is_reload:
+                url_parts.extend(["routes"])
+            else:
+                url_parts.extend(["admin", "routes"])
             if route_name != "###":
                 url_parts.append(route_name)
         elif secret_name:
-            url_parts.extend(["admin", "providers"])
+            if is_reload:
+                url_parts.extend(["secrets"])
+            else:
+                url_parts.extend(["admin", "providers"])
             if provider_name != "###":
                 url_parts.append(provider_name)
             url_parts.append("secrets")
@@ -160,9 +176,14 @@ class JavelinClient:
             else:
                 url_parts.append("keys")
         elif template_name:
-            url_parts.extend(["admin", "processors", "dp", "templates"])
+            if is_reload:
+                url_parts.extend(["processors", "dp", "templates"])
+            else:
+                url_parts.extend(["admin", "processors", "dp", "templates"])
             if template_name != "###":
                 url_parts.append(template_name)
+        elif trace:
+            url_parts.extend(["admin", "traces"])
         elif archive:
             url_parts.extend(["admin", "archives"])
             if archive != "###":
@@ -324,6 +345,10 @@ class JavelinClient:
             strategy_name
         )
     )
+
+    ## Traces methods
+    get_traces = lambda self: self.trace_service.get_traces()
+    aget_traces = lambda self: self.trace_service.aget_traces()
 
     # Archive methods
     def get_last_n_chronicle_records(self, archive_name: str, n: int) -> Dict[str, Any]:
