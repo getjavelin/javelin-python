@@ -252,6 +252,7 @@ class Provider(BaseModel):
         default=None, description="Configuration for the provider"
     )
 
+    api_keys: Optional[List[Dict[str, Any]]] = Field(default=None, description='API keys associated with the provider')
 
 class Providers(BaseModel):
     providers: List[Provider] = Field(default=[], description="List of providers")
@@ -486,6 +487,11 @@ class ModelConfig(BaseModel):
     class Config:
         protected_namespaces = ()  # This resolves the warning
 
+    virtual_secret_key: Optional[str] = Field(default=None, description='Virtual secret name')
+    fallback_enabled: Optional[bool] = Field(default=None, description='Whether fallback is enabled')
+    suffix: Optional[str] = Field(default=None, description='Suffix for the model')
+    weight: Optional[int] = Field(default=None, description='Weight of the model')
+    fallback_codes: Optional[List[int]] = Field(default=None, description='Fallback codes')
 
 class JavelinConfig(BaseModel):
     base_url: str = Field(default="https://api-dev.javelin.live")
