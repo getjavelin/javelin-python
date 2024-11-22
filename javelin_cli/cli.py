@@ -9,6 +9,7 @@ import socketserver
 import threading
 import urllib.parse
 import random
+import sys
 
 import requests
 
@@ -40,7 +41,38 @@ from javelin_cli._internal.commands import (
 )
 
 
+def check_permissions():
+    """Check if user has superadmin permissions"""
+    home_dir = Path.home()
+    cache_file = home_dir / ".javelin" / "cache.json"
+    
+    if not cache_file.exists():
+        print("❌ Not authenticated. Please run 'javelin auth' first.")
+        sys.exit(1)
+        
+    try:
+        with open(cache_file) as f:
+            cache = json.load(f)
+            
+        # Check memberships
+        memberships = cache.get('memberships', {}).get('data', [])
+        for membership in memberships:
+            if membership.get('role') == 'org:superadmin':
+                return True
+                
+        print("❌ Permission denied: Javelin CLI requires superadmin privileges.")
+        print("Please contact your administrator for access.")
+        sys.exit(1)
+            
+    except Exception as e:
+        print(f"❌ Error reading credentials: {e}")
+        sys.exit(1)
+
+
 def main():
+    # Add permission check at the start
+    check_permissions()
+    
     # Fetch the version dynamically from the package
     package_version = importlib.metadata.version(
         "javelin-sdk"
