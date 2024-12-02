@@ -9,6 +9,7 @@ import socketserver
 import threading
 import urllib.parse
 import random
+import sys
 
 import requests
 
@@ -40,6 +41,33 @@ from javelin_cli._internal.commands import (
 )
 
 
+def check_permissions():
+    """Check if user has superadmin permissions"""
+    home_dir = Path.home()
+    cache_file = home_dir / ".javelin" / "cache.json"
+    
+    if not cache_file.exists():
+        print("❌ Not authenticated. Please run 'javelin auth' first.")
+        sys.exit(1)
+        
+    try:
+        with open(cache_file) as f:
+            cache = json.load(f)
+        # Check memberships
+        memberships = cache.get('memberships', {}).get('data', [])
+        for membership in memberships:
+            if membership.get('role') == 'org:superadmin':
+                return True
+                
+        print("❌ Permission denied: Javelin CLI requires superadmin privileges.")
+        print("Please contact your administrator for access.")
+        sys.exit(1)
+            
+    except Exception as e:
+        print(f"❌ Error reading credentials: {e}")
+        sys.exit(1)
+
+
 def main():
     # Fetch the version dynamically from the package
     package_version = importlib.metadata.version(
@@ -60,8 +88,7 @@ def main():
     # Auth command
     auth_parser = subparsers.add_parser("auth", help="Authenticate with Javelin.")
     auth_parser.add_argument("--force", action="store_true", help="Force re-authentication, overriding existing credentials")
-    auth_parser.set_defaults(func=authenticate)
-
+    auth_parser.set_defaults(func=authenticate)  
     # Gateway CRUD
     gateway_parser = subparsers.add_parser(
         "gateway",
@@ -347,7 +374,11 @@ def main():
     template_delete.set_defaults(func=delete_template)
 
     args = parser.parse_args()
+    
     if hasattr(args, "func"):
+        # Skip permission check for auth command
+        if args.func != authenticate:
+            check_permissions()
         args.func(args)
     else:
         parser.print_help()
