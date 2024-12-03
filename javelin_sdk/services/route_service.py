@@ -173,7 +173,10 @@ class RouteService:
         )
         if not stream:
             return self._process_route_response_json(response)
-
+        
+        if stream and response.status_code != 200:
+            return self._process_route_response_json(response)
+        
         def generate_stream():
             for line in response.iter_lines():
                 if line:
@@ -211,6 +214,9 @@ class RouteService:
         if not stream:
             return self._process_route_response_json(response)
 
+        if stream and response.status_code != 200:
+            return self._process_route_response_json(response)
+        
         async def generate_stream():
             async for line in response.aiter_lines():
                 if line:
