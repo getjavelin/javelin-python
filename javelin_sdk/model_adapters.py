@@ -40,8 +40,8 @@ class TransformationRuleManager:
                 output_rules = response.get("output_rules", [])
 
                 return ModelSpec(
-                    input_rules=[TransformRule(**rule) for rule in input_rules],
-                    output_rules=[TransformRule(**rule) for rule in output_rules],
+                    input_rules=[TransformRule(**rule) for rule in (input_rules or [])],
+                    output_rules=[TransformRule(**rule) for rule in (output_rules or [])],
                 )
             print(f"No remote rules found for {provider}/{model}")
             return None
