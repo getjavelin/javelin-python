@@ -2,6 +2,21 @@
 ## [Unreleased]
 
 
+<a name="v0.2.16"></a>
+## [v0.2.16] - 2024-12-03
+### Bug Fixes
+- handle empty input/output rules in ModelSpec initialization ([#79](https://github.com/getjavelin/javelin-python/issues/79))
+- support for traces in SDK
+
+### DevOps
+- Swagger Sync ([#59](https://github.com/getjavelin/javelin-python/issues/59))
+- Update CHANGELOG for v0.2.15
+
+### Pull Requests
+- Merge pull request [#75](https://github.com/getjavelin/javelin-python/issues/75) from getjavelin/ISSUE-71
+- Merge pull request [#74](https://github.com/getjavelin/javelin-python/issues/74) from getjavelin/cicd-changelog
+
+
 <a name="v0.2.15"></a>
 ## [v0.2.15] - 2024-11-17
 ### Bug Fixes
@@ -171,7 +186,8 @@
 <a name="v0.1.5"></a>
 ## v0.1.5 - 2023-09-04
 
-[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.15...HEAD
+[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.16...HEAD
+[v0.2.16]: https://github.com/getjavelin/javelin-python/compare/v0.2.15...v0.2.16
 [v0.2.15]: https://github.com/getjavelin/javelin-python/compare/v0.2.14...v0.2.15
 [v0.2.14]: https://github.com/getjavelin/javelin-python/compare/v0.2.13...v0.2.14
 [v0.2.13]: https://github.com/getjavelin/javelin-python/compare/v0.2.12...v0.2.13
