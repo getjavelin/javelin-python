@@ -2,6 +2,24 @@
 ## [Unreleased]
 
 
+<a name="v0.2.18"></a>
+## [v0.2.18] - 2024-12-04
+### Bug Fixes
+- add security filters field in route config
+
+### Pull Requests
+- Merge pull request [#84](https://github.com/getjavelin/javelin-python/issues/84) from getjavelin/ISSUE-83
+
+
+<a name="v0.2.17"></a>
+## [v0.2.17] - 2024-12-03
+### DevOps
+- Update CHANGELOG for v0.2.16
+
+### Pull Requests
+- Merge pull request [#80](https://github.com/getjavelin/javelin-python/issues/80) from getjavelin/cicd-changelog
+
+
 <a name="v0.2.16"></a>
 ## [v0.2.16] - 2024-12-03
 ### Bug Fixes
@@ -186,7 +204,9 @@
 <a name="v0.1.5"></a>
 ## v0.1.5 - 2023-09-04
 
-[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.16...HEAD
+[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.18...HEAD
+[v0.2.18]: https://github.com/getjavelin/javelin-python/compare/v0.2.17...v0.2.18
+[v0.2.17]: https://github.com/getjavelin/javelin-python/compare/v0.2.16...v0.2.17
 [v0.2.16]: https://github.com/getjavelin/javelin-python/compare/v0.2.15...v0.2.16
 [v0.2.15]: https://github.com/getjavelin/javelin-python/compare/v0.2.14...v0.2.15
 [v0.2.14]: https://github.com/getjavelin/javelin-python/compare/v0.2.13...v0.2.14
