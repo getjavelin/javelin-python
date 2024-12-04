@@ -184,7 +184,6 @@ class RouteService:
         def generate_stream():
             for line in response.iter_lines():
                 if line:
-                    print("line", line)
                     try:
                         data = json.loads(
                             line.decode("utf-8") if isinstance(line, bytes) else line
