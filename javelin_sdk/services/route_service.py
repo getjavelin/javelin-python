@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional, Union, Generator, AsyncGenerator
 import json
 import time
 import httpx
+from jsonpath_ng import parse
 
 from javelin_sdk.exceptions import (
     BadRequest,
@@ -160,6 +161,7 @@ class RouteService:
         query_body: Dict[str, Any],
         headers: Optional[Dict[str, str]] = None,
         stream: bool = False,
+        stream_response_path: Optional[str] = None,
     ) -> Union[Dict[str, Any], Generator[str, None, None]]:
         self._validate_route_name(route_name)
         response = self.client._send_request_sync(
@@ -177,16 +179,20 @@ class RouteService:
         if stream and response.status_code != 200:
             return self._process_route_response_json(response)
         
+        jsonpath_expr = parse(stream_response_path)
+        
         def generate_stream():
             for line in response.iter_lines():
                 if line:
+                    print("line", line)
                     try:
                         data = json.loads(
                             line.decode("utf-8") if isinstance(line, bytes) else line
                         )
-                        if data.get("type") == "content_block_delta":
-                            if "delta" in data and "text" in data["delta"]:
-                                text = data["delta"]["text"]
+                        matches = jsonpath_expr.find(data)
+                        if matches:
+                            text = matches[0].value
+                            if text:
                                 time.sleep(0.2)
                                 yield text
                     except json.JSONDecodeError:
@@ -200,6 +206,7 @@ class RouteService:
         query_body: Dict[str, Any],
         headers: Optional[Dict[str, str]] = None,
         stream: bool = False,
+        stream_response_path: Optional[str] = None,
     ) -> Union[Dict[str, Any], AsyncGenerator[str, None]]:
         self._validate_route_name(route_name)
         response = await self.client._send_request_async(
@@ -217,6 +224,8 @@ class RouteService:
         if stream and response.status_code != 200:
             return self._process_route_response_json(response)
         
+        jsonpath_expr = parse(stream_response_path)
+        
         async def generate_stream():
             async for line in response.aiter_lines():
                 if line:
@@ -224,10 +233,10 @@ class RouteService:
                         data = json.loads(
                             line.decode("utf-8") if isinstance(line, bytes) else line
                         )
-                        if data.get("type") == "content_block_delta":
-                            if "delta" in data and "text" in data["delta"]:
-                                text = data["delta"]["text"]
-                                time.sleep(0.2)
+                        matches = jsonpath_expr.find(data)
+                        if matches:
+                            text = matches[0].value
+                            if text:
                                 yield text
                     except json.JSONDecodeError:
                         continue

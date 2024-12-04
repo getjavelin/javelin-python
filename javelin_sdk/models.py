@@ -218,6 +218,15 @@ class ModelSpec(BaseModel):
     output_rules: List[TransformRule] = Field(
         default=[], description="Rules for output transformation"
     )
+    response_body_path: str = Field(
+        default="delta.text", description="Path to extract text from streaming response"
+    )
+    request_body_path: Optional[str] = Field(
+        default=None, description="Path to extract request body"
+    )
+    error_message_path: Optional[str] = Field(
+        default=None, description="Path to extract error messages"
+    )
     input_schema: Dict[str, Any] = Field(
         default={}, description="Input schema for validation"
     )
@@ -232,6 +241,9 @@ class ModelSpec(BaseModel):
     )
     default_parameters: Dict[str, Any] = Field(
         default={}, description="Default parameters"
+    )
+    stream_response_path: Optional[str] = Field(
+        default=None, description="Path to extract text from streaming response"
     )
 
 
