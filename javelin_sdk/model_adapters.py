@@ -38,11 +38,14 @@ class TransformationRuleManager:
             if response:
                 input_rules = response.get("input_rules", [])
                 output_rules = response.get("output_rules", [])
+                stream_response_path = response.get("stream_response_path", None)
 
                 return ModelSpec(
                     input_rules=[TransformRule(**rule) for rule in (input_rules or [])],
                     output_rules=[TransformRule(**rule) for rule in (output_rules or [])],
+                    stream_response_path=stream_response_path
                 )
+            
             print(f"No remote rules found for {provider}/{model}")
             return None
         except Exception as e:

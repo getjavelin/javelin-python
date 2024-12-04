@@ -65,7 +65,11 @@ class BaseCompletions:
                 request_data, model_rules.input_rules
             )
             model_response = self.client.query_route(
-                route, query_body=transformed_request, headers={}, stream=stream
+                route, 
+                query_body=transformed_request, 
+                headers={}, 
+                stream=stream,
+                stream_response_path=model_rules.stream_response_path
             )
             if stream:
                 return model_response

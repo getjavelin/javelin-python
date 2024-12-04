@@ -277,11 +277,11 @@ class JavelinClient:
     adelete_route = lambda self, route_name: self.route_service.adelete_route(
         route_name
     )
-    query_route = lambda self, route_name, query_body, headers=None, stream=False: self.route_service.query_route(
-        route_name=route_name, query_body=query_body, headers=headers, stream=stream
+    query_route = lambda self, route_name, query_body, headers=None, stream=False, stream_response_path=None: self.route_service.query_route(
+        route_name=route_name, query_body=query_body, headers=headers, stream=stream, stream_response_path=stream_response_path
     )
-    aquery_route = lambda self, route_name, query_body, headers=None, stream=False: self.route_service.aquery_route(
-        route_name, query_body, headers, stream
+    aquery_route = lambda self, route_name, query_body, headers=None, stream=False, stream_response_path=None: self.route_service.aquery_route(
+        route_name, query_body, headers, stream, stream_response_path
     )
     query_llama = lambda self, route_name, query_body: self.route_service.query_llama(
         route_name, query_body

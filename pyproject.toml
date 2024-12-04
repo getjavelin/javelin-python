@@ -3,7 +3,7 @@
 
 [tool.poetry]
 name = "javelin-sdk"
-version = "RELEASE_VERSION"
+version = "0.2.30"
 description = "Python client for Javelin"
 authors = ["Sharath Rajasekar <sharath@getjavelin.io>"]
 readme = "README.md"
@@ -22,6 +22,7 @@ httpx = "^0.24.0"
 pydantic = "^2.9.2"
 requests = "^2.31.0"
 jmespath = "^1.0.1"
+jsonpath-ng = "^1.7.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.3.1"
