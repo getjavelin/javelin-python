@@ -90,6 +90,17 @@ class PromptSafety(BaseModel):
         default=None, description="List of content types"
     )
 
+class SecurityFilters(BaseModel):
+    enabled: Optional[bool] = Field(
+        default=None, description="Whether security filters are enabled"
+    )
+    reject_prompt: Optional[str] = Field(
+        default=None, description="Reject prompt for the route"
+    )
+    content_types: Optional[List[ContentTypes]] = Field(
+        default=None, description="List of content types"
+    )
+
 
 class ContentFilter(BaseModel):
     enabled: Optional[bool] = Field(
@@ -138,6 +149,9 @@ class RouteConfig(BaseModel):
     )
     prompt_safety: Optional[PromptSafety] = Field(
         default=None, description="Prompt Safety Description"
+    )
+    security_filters: Optional[SecurityFilters] = Field(
+        default=None, description="Security Filters Description"
     )
 
 

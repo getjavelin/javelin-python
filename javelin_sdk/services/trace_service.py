@@ -38,10 +38,6 @@ class TraceService:
             raise RateLimitExceededError(response=response)
         elif response.status_code != 200:
             raise InternalServerError(response=response)
-        else:
-            raise Exception(
-                "Unexpected response status code: {}".format(response.status_code)
-            )
 
     def get_traces(self) -> any:
         request = Request(
