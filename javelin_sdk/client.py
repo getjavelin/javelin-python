@@ -51,7 +51,7 @@ class JavelinClient:
             self._client = httpx.Client(
                 base_url=self.base_url,
                 headers=self._headers,
-                timeout=API_TIMEOUT,
+                timeout= self.config.timeout if self.config.timeout else API_TIMEOUT,
             )
         return self._client
 

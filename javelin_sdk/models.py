@@ -525,7 +525,7 @@ class JavelinConfig(BaseModel):
     javelin_virtualapikey: Optional[str] = None
     llm_api_key: Optional[str] = None
     api_version: Optional[str] = None
-
+    timeout: Optional[float] = None
 
 class RemoteModelSpec(BaseModel):
     provider: str
