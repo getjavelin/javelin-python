@@ -15,7 +15,7 @@ class GatewayConfig(BaseModel):
         default=None,
         description="The foundational URL where all API requests are directed. It acts as the root from which endpoint paths are extended",
     )
-    api_key_value: Optional[str] = Field(
+    api_key: Optional[str] = Field(
         default=None,
         description="The API key used for authenticating requests to the API endpoints specified by the base_url",
     )
@@ -521,7 +521,7 @@ class ModelConfig(BaseModel):
 
 class JavelinConfig(BaseModel):
     base_url: str = Field(default="https://api-dev.javelin.live")
-    javelin_api_key: str
+    javelin_api_key: Optional[str] = None
     javelin_virtualapikey: Optional[str] = None
     llm_api_key: Optional[str] = None
     api_version: Optional[str] = None
