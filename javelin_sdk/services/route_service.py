@@ -1,6 +1,8 @@
-from typing import Any, Dict, List, Optional
-
+from typing import Any, Dict, List, Optional, Union, Generator, AsyncGenerator
+import json
+import time
 import httpx
+from jsonpath_ng import parse
 
 from javelin_sdk.exceptions import (
     BadRequest,
@@ -119,6 +121,9 @@ class RouteService:
         response = self.client._send_request_sync(
             Request(method=HttpMethod.PUT, route=route.name, data=route.dict())
         )
+
+        ## Reload the route
+        self.reload_route(route.name)
         return self._process_route_response_ok(response)
 
     async def aupdate_route(self, route: Route) -> str:
@@ -126,6 +131,9 @@ class RouteService:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.PUT, route=route.name, data=route.dict())
         )
+
+        ## Reload the route
+        self.areload_route(route.name)
         return self._process_route_response_ok(response)
 
     def delete_route(self, route_name: str) -> str:
@@ -133,12 +141,18 @@ class RouteService:
         response = self.client._send_request_sync(
             Request(method=HttpMethod.DELETE, route=route_name)
         )
+
+        ## Reload the route
+        self.reload_route(route_name=route_name)
         return self._process_route_response_ok(response)
 
     async def adelete_route(self, route_name: str) -> str:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.DELETE, route=route_name)
         )
+
+        ## Reload the route
+        self.areload_route(route_name=route_name)
         return self._process_route_response_ok(response)
 
     def query_route(
@@ -146,7 +160,9 @@ class RouteService:
         route_name: str,
         query_body: Dict[str, Any],
         headers: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+        stream: bool = False,
+        stream_response_path: Optional[str] = None,
+    ) -> Union[Dict[str, Any], Generator[str, None, None]]:
         self._validate_route_name(route_name)
         response = self.client._send_request_sync(
             Request(
@@ -157,14 +173,40 @@ class RouteService:
                 headers=headers,
             )
         )
-        return self._process_route_response_json(response)
+        if not stream:
+            return self._process_route_response_json(response)
+        
+        if stream and response.status_code != 200:
+            return self._process_route_response_json(response)
+        
+        jsonpath_expr = parse(stream_response_path)
+        
+        def generate_stream():
+            for line in response.iter_lines():
+                if line:
+                    try:
+                        data = json.loads(
+                            line.decode("utf-8") if isinstance(line, bytes) else line
+                        )
+                        matches = jsonpath_expr.find(data)
+                        if matches:
+                            text = matches[0].value
+                            if text:
+                                time.sleep(0.2)
+                                yield text
+                    except json.JSONDecodeError:
+                        continue
+
+        return generate_stream()
 
     async def aquery_route(
         self,
         route_name: str,
         query_body: Dict[str, Any],
         headers: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+        stream: bool = False,
+        stream_response_path: Optional[str] = None,
+    ) -> Union[Dict[str, Any], AsyncGenerator[str, None]]:
         self._validate_route_name(route_name)
         response = await self.client._send_request_async(
             Request(
@@ -175,4 +217,45 @@ class RouteService:
                 headers=headers,
             )
         )
-        return self._process_route_response_json(response)
+        if not stream:
+            return self._process_route_response_json(response)
+
+        if stream and response.status_code != 200:
+            return self._process_route_response_json(response)
+        
+        jsonpath_expr = parse(stream_response_path)
+        
+        async def generate_stream():
+            async for line in response.aiter_lines():
+                if line:
+                    try:
+                        data = json.loads(
+                            line.decode("utf-8") if isinstance(line, bytes) else line
+                        )
+                        matches = jsonpath_expr.find(data)
+                        if matches:
+                            text = matches[0].value
+                            if text:
+                                yield text
+                    except json.JSONDecodeError:
+                        continue
+
+        return generate_stream()
+    
+    def reload_route(self, route_name: str) -> str:
+        """
+        Reload a route
+        """
+        response = self.client._send_request_sync(
+            Request(method=HttpMethod.POST, route=f"{route_name}/reload", data="", is_reload=True)
+        )
+        return response
+
+    async def areload_route(self, route_name: str) -> str:
+        """
+        Reload a route in an asynchronous way
+        """
+        response = await self.client._send_request_async(
+            Request(method=HttpMethod.POST, route=f"{route_name}/reload", data="", is_reload=True)
+        )
+        return response

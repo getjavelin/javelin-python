@@ -111,6 +111,12 @@ class TemplateNotFoundError(JavelinClientError):
     ) -> None:
         super().__init__(message=message, response=response)
 
+class TraceNotFoundError(JavelinClientError):
+    def __init__(
+        self, response: Optional[Response] = None, message: str = "Trace not found"
+    ) -> None:
+        super().__init__(message=message, response=response)
+
 
 class TemplateAlreadyExistsError(JavelinClientError):
     def __init__(

@@ -15,7 +15,7 @@ class GatewayConfig(BaseModel):
         default=None,
         description="The foundational URL where all API requests are directed. It acts as the root from which endpoint paths are extended",
     )
-    api_key_value: Optional[str] = Field(
+    api_key: Optional[str] = Field(
         default=None,
         description="The API key used for authenticating requests to the API endpoints specified by the base_url",
     )
@@ -90,6 +90,17 @@ class PromptSafety(BaseModel):
         default=None, description="List of content types"
     )
 
+class SecurityFilters(BaseModel):
+    enabled: Optional[bool] = Field(
+        default=None, description="Whether security filters are enabled"
+    )
+    reject_prompt: Optional[str] = Field(
+        default=None, description="Reject prompt for the route"
+    )
+    content_types: Optional[List[ContentTypes]] = Field(
+        default=None, description="List of content types"
+    )
+
 
 class ContentFilter(BaseModel):
     enabled: Optional[bool] = Field(
@@ -138,6 +149,9 @@ class RouteConfig(BaseModel):
     )
     prompt_safety: Optional[PromptSafety] = Field(
         default=None, description="Prompt Safety Description"
+    )
+    security_filters: Optional[SecurityFilters] = Field(
+        default=None, description="Security Filters Description"
     )
 
 
@@ -204,6 +218,15 @@ class ModelSpec(BaseModel):
     output_rules: List[TransformRule] = Field(
         default=[], description="Rules for output transformation"
     )
+    response_body_path: str = Field(
+        default="delta.text", description="Path to extract text from streaming response"
+    )
+    request_body_path: Optional[str] = Field(
+        default=None, description="Path to extract request body"
+    )
+    error_message_path: Optional[str] = Field(
+        default=None, description="Path to extract error messages"
+    )
     input_schema: Dict[str, Any] = Field(
         default={}, description="Input schema for validation"
     )
@@ -218,6 +241,9 @@ class ModelSpec(BaseModel):
     )
     default_parameters: Dict[str, Any] = Field(
         default={}, description="Default parameters"
+    )
+    stream_response_path: Optional[str] = Field(
+        default=None, description="Path to extract text from streaming response"
     )
 
 
@@ -252,6 +278,7 @@ class Provider(BaseModel):
         default=None, description="Configuration for the provider"
     )
 
+    api_keys: Optional[List[Dict[str, Any]]] = Field(default=None, description='API keys associated with the provider')
 
 class Providers(BaseModel):
     providers: List[Provider] = Field(default=[], description="List of providers")
@@ -438,12 +465,14 @@ class Request:
         route: Optional[str] = "",
         secret: Optional[str] = "",
         template: Optional[str] = "",
+        trace: Optional[str] = "",
         is_query: bool = False,
         data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
         archive: Optional[str] = "",
         query_params: Optional[Dict[str, Any]] = None,
         is_transformation_rules: bool = False,
+        is_reload: bool = False,
     ):
         self.method = method
         self.gateway = gateway
@@ -451,12 +480,14 @@ class Request:
         self.route = route
         self.secret = secret
         self.template = template
+        self.trace = trace
         self.is_query = is_query
         self.data = data
         self.headers = headers
         self.archive = archive
         self.query_params = query_params
         self.is_transformation_rules = is_transformation_rules
+        self.is_reload = is_reload
 
 
 class Message(BaseModel):
@@ -482,6 +513,11 @@ class ModelConfig(BaseModel):
     class Config:
         protected_namespaces = ()  # This resolves the warning
 
+    virtual_secret_key: Optional[str] = Field(default=None, description='Virtual secret name')
+    fallback_enabled: Optional[bool] = Field(default=None, description='Whether fallback is enabled')
+    suffix: Optional[str] = Field(default=None, description='Suffix for the model')
+    weight: Optional[int] = Field(default=None, description='Weight of the model')
+    fallback_codes: Optional[List[int]] = Field(default=None, description='Fallback codes')
 
 class JavelinConfig(BaseModel):
     base_url: str = Field(default="https://api-dev.javelin.live")
@@ -489,7 +525,7 @@ class JavelinConfig(BaseModel):
     javelin_virtualapikey: Optional[str] = None
     llm_api_key: Optional[str] = None
     api_version: Optional[str] = None
-
+    timeout: Optional[float] = None
 
 class RemoteModelSpec(BaseModel):
     provider: str
@@ -505,3 +541,16 @@ class RemoteModelSpec(BaseModel):
             input_rules=[TransformRule(**rule) for rule in self.input_rules],
             output_rules=[TransformRule(**rule) for rule in self.output_rules],
         )
+
+
+class EndpointType(str, Enum):
+    UNKNOWN = "unknown"
+    CHAT = "chat"
+    COMPLETION = "completion" 
+    EMBED = "embed"
+    INVOKE = "invoke"
+    CONVERSE = "converse"
+    STREAM = "stream"
+    INVOKE_STREAM = "invoke_stream"
+    CONVERSE_STREAM = "converse_stream"
+    ALL = "all"
