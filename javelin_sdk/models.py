@@ -521,7 +521,7 @@ class ModelConfig(BaseModel):
 
 class JavelinConfig(BaseModel):
     base_url: str = Field(default="https://api-dev.javelin.live")
-    javelin_api_key: Optional[str] = None
+    javelin_api_key: str
     javelin_virtualapikey: Optional[str] = None
     llm_api_key: Optional[str] = None
     api_version: Optional[str] = None
