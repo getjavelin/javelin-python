@@ -15,7 +15,7 @@ class GatewayConfig(BaseModel):
         default=None,
         description="The foundational URL where all API requests are directed. It acts as the root from which endpoint paths are extended",
     )
-    api_key_value: Optional[str] = Field(
+    api_key: Optional[str] = Field(
         default=None,
         description="The API key used for authenticating requests to the API endpoints specified by the base_url",
     )
