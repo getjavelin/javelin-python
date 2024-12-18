@@ -16,7 +16,7 @@ jobs:
     permissions:
       contents: 'read'
       id-token: 'write'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -62,7 +62,7 @@ jobs:
     permissions:
       contents: 'read'
       id-token: 'write'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Validate Release
         env:
@@ -83,7 +83,7 @@ jobs:
     permissions:
       contents: 'read'
       id-token: 'write'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -135,7 +135,7 @@ jobs:
     permissions:
       contents: 'read'
       id-token: 'write'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -169,7 +169,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
-          commit-message: 'devops: Update CHANGELOG for ${{ github.event.release.tag_name }}'
+          commit-message: 'devops: Update CHANGELOG for ${{ github.event.release.tag_name }} - [skip ci]'
           title: 'CHANGELOG for ${{ github.event.release.tag_name }}'
           committer: GitHub Action <action@github.com>
           author: GitHub Action <action@github.com>
@@ -193,7 +193,7 @@ jobs:
     permissions:
       contents: 'read'
       id-token: 'write'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: always()
     env:
       CHGLOG_PR_URL: ${{ needs.javelin-chglog.outputs.pr_url }}
