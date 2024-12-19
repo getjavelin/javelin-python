@@ -143,7 +143,8 @@ jobs:
         env:
           COMMIT_MESSAGE: "${{ steps.commit_message.outputs.message }}"
         run: |-
-          if [[ "${{ env.COMMIT_MESSAGE }}" =~ ^(${{ env.PR_CHECK_PREFIX }}) ]]; then
+          CLEAN_COMMIT_MESSAGE=$(echo '${{ env.COMMIT_MESSAGE }}' | sed "s|\"||g")
+          if [[ "${CLEAN_COMMIT_MESSAGE}" =~ ^(${{ env.PR_CHECK_PREFIX }}) ]]; then
             echo "Commit message is valid....!"
           else
             echo "Commit message does not contain required keywords....!"
