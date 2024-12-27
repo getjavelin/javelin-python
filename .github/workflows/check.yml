@@ -16,6 +16,7 @@ on:
 env:
   env_var: ${{ vars.ENV_CONTEXT_VAR }}
   DEVOPS_REPO: "javelin-cloud"
+  DEVOPS_BRANCH: "main"
 
 jobs:
   javelin-env:
@@ -49,7 +50,7 @@ jobs:
           token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
           fetch-depth: 0
           persist-credentials: false
-          ref: main
+          ref: ${{ env.DEVOPS_BRANCH }}
           path: ${{ env.DEVOPS_REPO }}
 
       - name: Get Build Config
@@ -99,7 +100,7 @@ jobs:
           token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
           fetch-depth: 0
           persist-credentials: false
-          ref: main
+          ref: ${{ env.DEVOPS_BRANCH }}
           path: ${{ env.DEVOPS_REPO }}
 
       - name: Slack Payload Template
@@ -177,7 +178,7 @@ jobs:
           token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
           fetch-depth: 0
           persist-credentials: false
-          ref: main
+          ref: ${{ env.DEVOPS_BRANCH }}
           path: ${{ env.DEVOPS_REPO }}
 
       - name: Slack Payload Template
