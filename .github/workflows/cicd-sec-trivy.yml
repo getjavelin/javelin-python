@@ -1,4 +1,4 @@
-name: CICD Trivy Scan - Javelin Cloud
+name: CICD Trivy Scan - Javelin Python
 
 on:
   push:
