@@ -83,8 +83,9 @@ jobs:
         if: ${{ env.GH_SEC_REPORT == 'true' }}
         uses: aquasecurity/trivy-action@0.29.0
         with:
-          scan-type: "fs"
           ignore-unfixed: true
+          scan-type: "fs"
+          cache: "true"
           format: "sarif"
           output: "${{ env.TRIVY_REPORT_FILE }}.sarif"
           severity: "${{ env.TRIVY_SEVERITY }}"
@@ -99,20 +100,35 @@ jobs:
         if: ${{ env.GH_SEC_REPORT == 'false' }}
         uses: aquasecurity/trivy-action@0.29.0
         with:
-          scan-type: "fs"
           ignore-unfixed: true
+          scan-type: "fs"
+          cache: "true"
           format: "table"
           output: "${{ env.TRIVY_REPORT_FILE }}.txt"
           severity: "${{ env.TRIVY_SEVERITY }}"
 
-      - name: Upload Report - Text Security Report
+      - name: Report Check - Text Security Report
         if: ${{ env.GH_SEC_REPORT == 'false' }}
+        id: report_check
+        shell: bash
+        run: |-
+          if [[ -s ${{ env.TRIVY_REPORT_FILE }}.txt ]] ; then
+            echo "report_file=available" >> ${GITHUB_OUTPUT}
+          else
+            echo "report_file=unavailable" >> ${GITHUB_OUTPUT}
+          fi
+          cat ${{ env.TRIVY_REPORT_FILE }}.txt
+
+      - name: Upload Report - Text Security Report
+        if: ${{ env.GH_SEC_REPORT == 'false' && steps.report_check.outputs.report_file  == 'available' }}
         uses: actions/upload-artifact@v4
         with:
           name: "${{ env.TRIVY_REPORT_FILE }}"
           path: "${{ env.TRIVY_REPORT_FILE }}.txt"
           if-no-files-found: error
           retention-days: 1
+    outputs:
+      report_status: ${{ steps.report_check.outputs.report_file }}
 
   javelin-trivy-notify:
     needs:
@@ -123,12 +139,12 @@ jobs:
       id-token: 'write'
     runs-on: ubuntu-24.04
     if: |
-      always()
+      always() && (needs.javelin-trivy-scan.outputs.report_status == 'available')
     env:
       SVC_NAME: ${{ needs.javelin-env.outputs.svc_name }}
-      JOB_STATUS: ${{ needs.javelin-trivy-scan.result }}
-      JOB_STATUS_FAIL_MARK: ":x:"
-      JOB_STATUS_SUCCESS_MARK: ":white_check_mark:"
+      JOB_STATUS: "failure"
+      REPORT_INFO: "Please check the attachment"
+      JOB_STATUS_MARK: ":x:"
       COMMIT_AUTHOR: ${{ github.event.commits[0].author.name }}
       COMMIT_SHA: ${{ needs.javelin-env.outputs.short_sha }}
       SLACK_CHANNEL_ID: ${{ needs.javelin-env.outputs.slack_scan_channel_id }}
@@ -157,24 +173,10 @@ jobs:
         id: slack_template
         shell: bash
         run: |-
-          if [[ ${{ needs.javelin-trivy-scan.result }} == "success" ]] ; then
-            export JOB_STATUS_MARK=${JOB_STATUS_SUCCESS_MARK}
-          else
-            export JOB_STATUS_MARK=${JOB_STATUS_FAIL_MARK}
-          fi
           if [[ ${{ env.GH_SEC_REPORT }} == 'true' ]] ; then
             export PAYLOAD_JSON="slack-trivy-scan-sec-payload.json"
           else
             export PAYLOAD_JSON="slack-trivy-scan-file-payload.json"
-          fi
-          if [[ -f ${{ env.TRIVY_REPORT_FILE }}.txt ]] ; then
-            if [[ -s ${{ env.TRIVY_REPORT_FILE }}.txt ]] ; then
-              export REPORT_INFO="Please check the attachment"
-              echo "report_file=available" >> ${GITHUB_OUTPUT}
-            else
-              export REPORT_INFO="No vulnerabilities found"
-              echo "report_file=not-available" >> ${GITHUB_OUTPUT}
-            fi
           fi
           envsubst < ${{ env.DEVOPS_REPO }}/slack-notify/${PAYLOAD_JSON} > ${{ env.SLACK_PAYLOAD_JSON }}
           cat ${{ env.SLACK_PAYLOAD_JSON }}
@@ -188,7 +190,7 @@ jobs:
           payload-file-path: "${{ env.SLACK_PAYLOAD_JSON }}"
 
       - name: Upload Report Slack - Text Security Report
-        if: ${{ env.GH_SEC_REPORT == 'false' && steps.slack_template.outputs.report_file == 'available' }}
+        if: ${{ env.GH_SEC_REPORT == 'false' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           method: files.uploadV2
@@ -199,3 +201,9 @@ jobs:
             initial_comment: "The Trivy Scan Result (${{ env.COMMIT_SHA }})"
             file: "${{ env.TRIVY_REPORT_FILE }}.txt"
             filename: "${{ env.TRIVY_REPORT_FILE }}-${{ env.COMMIT_SHA }}.txt"
+
+      - name: Failing the Job
+        shell: bash
+        run: |-
+          echo "Vulnerabilities Found.....!"
+          exit 1
