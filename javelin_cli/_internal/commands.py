@@ -1,5 +1,7 @@
 import json
 import os
+import asyncio
+
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -28,6 +30,7 @@ from javelin_sdk.models import (
     Secrets,
     Template,
     Templates,
+    Customer, AWSConfig, AzureConfig, UsageResponse, AlertResponse,Request,HttpMethod,
 )
 
 
@@ -86,6 +89,123 @@ def get_javelin_client():
 
     return JavelinClient(config)
 
+
+#aispm commands
+def create_customer(args):
+    try:
+        client = get_javelin_client()
+        customer = Customer(
+            name=args.name,
+            description=args.description,
+            metrics_interval=args.metrics_interval,
+            security_interval=args.security_interval
+        )
+        response = client._send_request_sync(Request(
+            method=HttpMethod.POST,
+            route="v1/admin/aispm/customer",
+            data=customer.dict()
+        ))
+        print(f"Customer '{args.name}' created successfully.")
+    except Exception as e:
+        print(f"Error creating customer: {e}")
+
+def get_customer(args):
+    try:
+        client = get_javelin_client()
+        route = "v1/admin/aispm/customer" 
+        print(f"Making request to: {client.config.base_url}{route}")
+        print(f"Headers: {client._headers}")  # Access _headers directly
+        
+        response = client._send_request_sync(Request(
+            method=HttpMethod.GET,
+            route=route
+        ))
+        print(f"Status: {response.status_code}")
+        print(f"Response: {response.content.decode('utf-8')}")
+    except Exception as e:
+        print(f"Error getting customer: {e}")
+
+def configure_aws(args):
+    try:
+        client = get_javelin_client()
+        config = json.loads(args.config)
+        configs = [AWSConfig(**config)]
+        result = client.aispm.configure_aws(configs)
+        print(f"AWS configuration created successfully.")
+    except Exception as e:
+        print(f"Error configuring AWS: {e}")
+
+def get_aws_config(args):
+    try:
+        client = get_javelin_client()
+        request = Request(
+            method=HttpMethod.GET,
+            route="v1/admin/aispm/config/aws"
+        )
+        response = client._send_request_sync(request)
+        print(json.dumps(response.json(), indent=2))
+    except Exception as e:
+        print(f"Error getting AWS config: {e}")
+
+def delete_aws_config(args):
+    try:
+        client = get_javelin_client()
+        request = Request(
+            method=HttpMethod.DELETE,
+            route=f"v1/admin/aispm/config/aws/{args.name}"
+        )
+        response = client._send_request_sync(request)
+        print(f"AWS configuration '{args.name}' deleted successfully.")
+    except Exception as e:
+        print(f"Error deleting AWS config: {e}")
+
+def get_azure_config(args):
+    try:
+        client = get_javelin_client()
+        request = Request(
+            method=HttpMethod.GET,
+            route="v1/admin/aispm/config/azure"
+        )
+        response = client._send_request_sync(request)
+        print(json.dumps(response.json(), indent=2))
+    except Exception as e:
+        print(f"Error getting Azure config: {e}")
+
+def configure_azure(args):
+    try:
+        client = get_javelin_client()
+        config = json.loads(args.config)
+        configs = [AzureConfig(**config)]
+        result = client.aispm.configure_azure(configs)
+        print(f"Azure configuration created successfully.")
+    except Exception as e:
+        print(f"Error configuring Azure: {e}")
+
+def get_usage(args):
+    try:
+        client = get_javelin_client()
+        usage = client.aispm.get_usage(
+            provider=args.provider,
+            cloud_account=args.account,
+            model=args.model,
+            region=args.region
+        )
+        print(json.dumps(usage.dict(), indent=2))
+    except Exception as e:
+        print(f"Error getting usage: {e}")
+
+def get_alerts(args):
+    try:
+        client = get_javelin_client()
+        alerts = client.aispm.get_alerts(
+            provider=args.provider,
+            cloud_account=args.account,
+            model=args.model,
+            region=args.region
+        )
+        print(json.dumps(alerts.dict(), indent=2))
+    except Exception as e:
+        print(f"Error getting alerts: {e}")
 
 def create_gateway(args):
     try:

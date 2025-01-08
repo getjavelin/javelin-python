@@ -38,8 +38,29 @@ from javelin_cli._internal.commands import (
     update_route,
     update_secret,
     update_template,
+    create_customer,
+    get_customer,
+    configure_aws,
+    configure_azure,
+    get_usage,
+    get_alerts,
+    get_aws_config,
+    get_azure_config,
+    delete_aws_config
 )
 
+
+
+#def check_permissions():
+#    """Check if user has permissions"""
+#    home_dir = Path.home()
+#    cache_file = home_dir / ".javelin" / "cache.json"
+
+#    if not cache_file.exists():
+#        print("❌ Not authenticated. Please run 'javelin auth' first.")
+#        sys.exit(1)
+    
+#    return True # Skip role check
 
 def check_permissions():
     """Check if user has superadmin permissions"""
@@ -89,6 +110,80 @@ def main():
     auth_parser = subparsers.add_parser("auth", help="Authenticate with Javelin.")
     auth_parser.add_argument("--force", action="store_true", help="Force re-authentication, overriding existing credentials")
     auth_parser.set_defaults(func=authenticate)  
+    #aispm CRUD 
+    # AISPM commands
+    aispm_parser = subparsers.add_parser("aispm", help="Manage AISPM functionality")
+    aispm_subparsers = aispm_parser.add_subparsers()
+
+    # Customer commands
+    customer_parser = aispm_subparsers.add_parser("customer", help="Manage customers")
+    customer_subparsers = customer_parser.add_subparsers()
+
+    customer_create = customer_subparsers.add_parser("create", help="Create customer")
+    customer_create.add_argument("--name", required=True, help="Customer name")
+    customer_create.add_argument("--description", help="Customer description")
+    customer_create.add_argument("--metrics-interval", default="5m", help="Metrics interval")
+    customer_create.add_argument("--security-interval", default="1m", help="Security interval")
+    customer_create.set_defaults(func=create_customer)
+
+    customer_get = customer_subparsers.add_parser("get", help="Get customer details")
+    customer_get.set_defaults(func=get_customer)
+
+
+    # Cloud config commands
+    config_parser = aispm_subparsers.add_parser("config", help="Manage cloud configurations")
+    config_subparsers = config_parser.add_subparsers()
+
+    aws_parser = config_subparsers.add_parser("aws", help="Configure AWS")
+
+    azure_parser = config_subparsers.add_parser("azure", help="Configure Azure")
+    
+    #azure_parser.add_argument("--config", type=str, required=True, help="Azure config JSON")
+    #azure_parser.set_defaults(func=configure_azure)
+
+    
+    aws_subparsers = aws_parser.add_subparsers()
+
+    # GET AWS Config
+    aws_get_parser = aws_subparsers.add_parser("get", help="Get AWS configuration")
+    aws_get_parser.set_defaults(func=get_aws_config)
+
+    # Existing AWS Config (for creating)
+    aws_config_parser = aws_subparsers.add_parser("create", help="Configure AWS")
+    aws_config_parser.add_argument("--config", type=str, required=True, help="AWS config JSON")
+    aws_config_parser.set_defaults(func=configure_aws)
+
+    aws_delete_parser = aws_subparsers.add_parser("delete", help="Delete AWS configuration")
+    aws_delete_parser.add_argument("--name", type=str, required=True, help="Name of AWS configuration to delete")
+    aws_delete_parser.set_defaults(func=delete_aws_config)
+
+    azure_subparsers = azure_parser.add_subparsers(dest='azure_command')
+
+# Get Azure Config
+    azure_get_parser = azure_subparsers.add_parser("get", help="Get Azure configuration")
+    azure_get_parser.set_defaults(func=get_azure_config)
+
+    # Create Azure Config
+    azure_create_parser = azure_subparsers.add_parser("create", help="Configure Azure")
+    azure_create_parser.add_argument("--config", type=str, required=True, help="Azure config JSON")
+    azure_create_parser.set_defaults(func=configure_azure)
+
+
+    # Usage metrics 
+    usage_parser = aispm_subparsers.add_parser("usage", help="Get usage metrics")
+    usage_parser.add_argument("--provider", help="Cloud provider")
+    usage_parser.add_argument("--account", help="Cloud account name")
+    usage_parser.add_argument("--model", help="Model ID")
+    usage_parser.add_argument("--region", help="Region")
+    usage_parser.set_defaults(func=get_usage)
+
+    # Alerts
+    alerts_parser = aispm_subparsers.add_parser("alerts", help="Get alerts")
+    alerts_parser.add_argument("--provider", help="Cloud provider")
+    alerts_parser.add_argument("--account", help="Cloud account name") 
+    alerts_parser.add_argument("--model", help="Model ID")
+    alerts_parser.add_argument("--region", help="Region")
+    alerts_parser.set_defaults(func=get_alerts)
     # Gateway CRUD
     gateway_parser = subparsers.add_parser(
         "gateway",
@@ -372,6 +467,8 @@ def main():
         "--name", type=str, required=True, help="Name of the template to delete"
     )
     template_delete.set_defaults(func=delete_template)
+
+    
 
     args = parser.parse_args()
     
