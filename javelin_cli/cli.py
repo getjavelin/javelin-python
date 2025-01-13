@@ -51,18 +51,18 @@ from javelin_cli._internal.commands import (
 
 
 
-#def check_permissions():
-#    """Check if user has permissions"""
-#    home_dir = Path.home()
-#    cache_file = home_dir / ".javelin" / "cache.json"
-
-#    if not cache_file.exists():
-#        print("❌ Not authenticated. Please run 'javelin auth' first.")
-#        sys.exit(1)
-    
-#    return True # Skip role check
-
 def check_permissions():
+    """Check if user has permissions"""
+    home_dir = Path.home()
+    cache_file = home_dir / ".javelin" / "cache.json"
+
+    if not cache_file.exists():
+        print("❌ Not authenticated. Please run 'javelin auth' first.")
+        sys.exit(1)
+    
+    return True # Skip role check
+
+#def check_permissions():
     """Check if user has superadmin permissions"""
     home_dir = Path.home()
     cache_file = home_dir / ".javelin" / "cache.json"

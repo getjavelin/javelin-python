@@ -34,6 +34,48 @@ from javelin_sdk.models import (
 )
 
 
+def get_javelin_client_aispm():
+    # Path to cache.json file
+    home_dir = Path.home()
+    json_file_path = home_dir / ".javelin" / "cache.json"
+
+    # Load cache.json
+    if not json_file_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {json_file_path}")
+
+    with open(json_file_path, "r") as json_file:
+        cache_data = json.load(json_file)
+
+    # Retrieve the list of gateways
+    gateways = cache_data.get("memberships", {}).get("data", [{}])[0].get("organization", {}).get("public_metadata", {}).get("Gateways", [])
+    if not gateways:
+        raise ValueError("No gateways found in the configuration.")
+
+    # Automatically select the first gateway (index 0)
+    selected_gateway = gateways[0]
+    base_url = selected_gateway["base_url"]
+    javelin_api_key = selected_gateway["api_key_value"]
+
+    # Ensure the API key is set before initializing
+    if not javelin_api_key or javelin_api_key == "":
+        raise UnauthorizedError(
+            response=None,
+            message=(
+                "Please provide a valid Javelin API Key. "
+                "When you sign into Javelin, you can find your API Key in the "
+                "Account->Developer settings"
+            ),
+        )
+
+    # Initialize and return the JavelinClient
+    config = JavelinConfig(
+        base_url=base_url,
+        javelin_api_key=javelin_api_key,
+    )
+
+    return JavelinClient(config)
+
+
 def get_javelin_client():
     # Path to cache.json file
     home_dir = Path.home()
@@ -93,7 +135,7 @@ def get_javelin_client():
 #aispm commands
 def create_customer(args):
     try:
-        client = get_javelin_client()
+        client = get_javelin_client_aispm()
         customer = Customer(
             name=args.name,
             description=args.description,
@@ -111,7 +153,7 @@ def create_customer(args):
 
 def get_customer(args):
     try:
-        client = get_javelin_client()
+        client = get_javelin_client_aispm()
         route = "v1/admin/aispm/customer" 
         print(f"Making request to: {client.config.base_url}{route}")
         print(f"Headers: {client._headers}")  # Access _headers directly
@@ -127,7 +169,7 @@ def get_customer(args):
 
 def configure_aws(args):
     try:
-        client = get_javelin_client()
+        client = get_javelin_client_aispm()
         config = json.loads(args.config)
         configs = [AWSConfig(**config)]
         result = client.aispm.configure_aws(configs)
@@ -137,7 +179,7 @@ def configure_aws(args):
 
 def get_aws_config(args):
     try:
-        client = get_javelin_client()
+        client = get_javelin_client_aispm()
         request = Request(
             method=HttpMethod.GET,
             route="v1/admin/aispm/config/aws"
@@ -149,7 +191,7 @@ def get_aws_config(args):
 
 def delete_aws_config(args):
     try:
-        client = get_javelin_client()
+        client = get_javelin_client_aispm()
         request = Request(
             method=HttpMethod.DELETE,
             route=f"v1/admin/aispm/config/aws/{args.name}"
@@ -161,7 +203,7 @@ def delete_aws_config(args):
 
 def get_azure_config(args):
     try:
-        client = get_javelin_client()
+        client = get_javelin_client_aispm()
         request = Request(
             method=HttpMethod.GET,
             route="v1/admin/aispm/config/azure"
@@ -173,7 +215,7 @@ def get_azure_config(args):
 
 def configure_azure(args):
     try:
-        client = get_javelin_client()
+        client = get_javelin_client_aispm()
         config = json.loads(args.config)
         configs = [AzureConfig(**config)]
         result = client.aispm.configure_azure(configs)
@@ -183,7 +225,7 @@ def configure_azure(args):
 
 def get_usage(args):
     try:
-        client = get_javelin_client()
+        client = get_javelin_client_aispm()
         usage = client.aispm.get_usage(
             provider=args.provider,
             cloud_account=args.account,
@@ -196,7 +238,7 @@ def get_usage(args):
 
 def get_alerts(args):
     try:
-        client = get_javelin_client()
+        client = get_javelin_client_aispm()
         alerts = client.aispm.get_alerts(
             provider=args.provider,
             cloud_account=args.account,
