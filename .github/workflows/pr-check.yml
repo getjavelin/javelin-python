@@ -1,0 +1,261 @@
+name: PR Merge Check - Javelin Python
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - edited
+      - reopened
+    branches:
+      - "main"
+  merge_group:
+    types:
+      - checks_requested
+
+env:
+  env_var: ${{ vars.ENV_CONTEXT_VAR }}
+  DEVOPS_REPO: "javelin-cloud"
+  DEVOPS_BRANCH: "main"
+  PY_LINT_CFG: ".flake8"
+  GO_LINT_CFG: ".golangci.yml"
+  NODE_LINT_CFG: "eslint.config.js"
+  LINT_REPORT_FILE: "lint-report"
+  PY_VER: 3.11.8
+  GO_VER: 1.23.3
+  NODE_VER: 20
+
+jobs:
+  javelin-env:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setting up Repo Env
+        id: repo_env_setup
+        shell: bash
+        run: |-
+          echo "repository=$(basename ${{ github.repository }})" >> ${GITHUB_OUTPUT}
+          echo "shortsha=$(git rev-parse --short=7 HEAD)" >> ${GITHUB_OUTPUT}
+          if [[ -f "pyproject.toml" ]] ; then
+            echo "lint_lan=python" >> ${GITHUB_OUTPUT}
+          elif [[ -f "package.json" ]] ; then
+            echo "lint_lan=javascript" >> ${GITHUB_OUTPUT}
+          elif [[ -f "go.mod" ]] ; then
+            echo "lint_lan=go" >> ${GITHUB_OUTPUT}
+          fi
+
+      - name: Set Lowercase Repo Name
+        id: lc_repository
+        env:
+          REPO_NAME: ${{ steps.repo_env_setup.outputs.repository }}
+        shell: bash
+        run: echo "name=${REPO_NAME,,}" >> ${GITHUB_OUTPUT}
+
+      - name: DevOps Repository Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ github.repository_owner }}/${{ env.DEVOPS_REPO }}"
+          token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ env.DEVOPS_BRANCH }}
+          path: ${{ env.DEVOPS_REPO }}
+
+      - name: Get Build Config
+        id: build_config
+        shell: bash
+        run: |-
+          pr_check_prefix=$(cat ${{ env.DEVOPS_REPO }}/app-config/javelin-default/check-config.json | jq -r '.pr_check.keywords')
+          slack_release_channel_id=$(cat ${{ env.DEVOPS_REPO }}/app-config/javelin-default/notify-config.json | jq -r '.slack.release.channel_id')
+          echo "pr_check_prefix=${pr_check_prefix}" >> ${GITHUB_OUTPUT}
+          echo "slack_release_channel_id=${slack_release_channel_id}" >> ${GITHUB_OUTPUT}
+    outputs:
+      lint_lan: ${{ steps.repo_env_setup.outputs.lint_lan }}
+      svc_name: ${{ steps.lc_repository.outputs.name }}
+      short_sha: ${{ steps.repo_env_setup.outputs.shortsha }}
+      pr_check_prefix: ${{ steps.build_config.outputs.pr_check_prefix }}
+      slack_release_channel_id: ${{ steps.build_config.outputs.slack_release_channel_id }}
+
+  javelin-sast-check:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Dummy SAST
+        shell: bash
+        run: |-
+          echo "no SAST for this module"
+
+  javelin-commit-check:
+    needs:
+      - javelin-env
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-24.04
+    env:
+      PR_CHECK_PREFIX: ${{ needs.javelin-env.outputs.pr_check_prefix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Get the last commit message
+        id: commit_message
+        run: |
+          COMMIT_MESSAGE=$(git show -s --format=%s)
+          echo "message=${COMMIT_MESSAGE}" >> ${GITHUB_OUTPUT}
+
+      - name: Commit Message Check
+        shell: bash
+        env:
+          COMMIT_MESSAGE: "${{ steps.commit_message.outputs.message }}"
+        run: |-
+          CLEAN_COMMIT_MESSAGE=$(echo '${{ env.COMMIT_MESSAGE }}' | sed "s|\"||g")
+          if [[ "${CLEAN_COMMIT_MESSAGE}" =~ ^(${{ env.PR_CHECK_PREFIX }}) ]]; then
+            echo "Commit message is valid....!"
+          else
+            echo "Commit message does not contain required keywords....!"
+            exit 1
+          fi
+
+  javelin-lint-check:
+    needs:
+      - javelin-env
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Python Version
+        if: ${{ needs.javelin-env.outputs.lint_lan == 'python' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PY_VER }}
+          cache: 'pip'
+
+      - name: Python Lint Check
+        if: ${{ needs.javelin-env.outputs.lint_lan == 'python' }}
+        shell: bash
+        run: |-
+          pip install flake8
+          flake8 . --config=${{ env.PY_LINT_CFG }} --output-file=${{ env.LINT_REPORT_FILE }}.json
+
+      - name: Setup Node Version
+        if: ${{ needs.javelin-env.outputs.lint_lan == 'javascript' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VER }}
+          cache: "npm"
+
+      - name: JavaScript Lint Check
+        if: ${{ needs.javelin-env.outputs.lint_lan == 'javascript' }}
+        shell: bash
+        run: |-
+          npm install eslint@latest
+          # npm init @eslint/config@latest
+          npx eslint . --config ${{ env.NODE_LINT_CFG }} --format json --output-file ${{ env.LINT_REPORT_FILE }}.json
+
+      - name: Setup Golang Version
+        if: ${{ needs.javelin-env.outputs.lint_lan == 'go' }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VER }}
+          cache: true
+
+      - name: Go Lint Check
+        if: ${{ needs.javelin-env.outputs.lint_lan == 'go' }}
+        uses: golangci/golangci-lint-action@v6
+        with:
+          args: --config=${{ env.GO_LINT_CFG }}
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          working-directory: .
+
+      - name: Upload Lint Report
+        if: ${{ always() && (needs.javelin-env.outputs.lint_lan == 'python' || needs.javelin-env.outputs.lint_lan == 'javascript' || needs.javelin-env.outputs.lint_lan == 'go') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.LINT_REPORT_FILE }}
+          path: ${{ env.LINT_REPORT_FILE }}.json
+          retention-days: 1
+
+  javelin-notify:
+    needs:
+      - javelin-env
+      - javelin-sast-check
+      - javelin-commit-check
+      - javelin-lint-check
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-24.04
+    if: ${{ always() && (needs.javelin-sast-check.result != 'success' || needs.javelin-commit-check.result != 'success' || needs.javelin-lint-check.result != 'success') }}
+    env:
+      SVC_NAME: ${{ needs.javelin-env.outputs.svc_name }}
+      COMMIT_SHA: ${{ needs.javelin-env.outputs.short_sha }}
+      SLACK_CHANNEL_ID: ${{ needs.javelin-env.outputs.slack_release_channel_id }}
+      JOB_STATUS: "failure"
+      JOB_STATUS_MARK: ":x:"
+      SAST_JOB_STATUS: ${{ needs.javelin-sast-check.result }}
+      COMMIT_JOB_STATUS: ${{ needs.javelin-commit-check.result }}
+      LINT_JOB_STATUS: ${{ needs.javelin-lint-check.result }}
+      PR_URL: "https://github.com/${{ github.repository }}/pull/${{ github.event.number }}"
+      BUILD_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+      SLACK_PAYLOAD_JSON: slack-pr-check-payload.json
+    steps:
+      - name: DevOps Repository Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ github.repository_owner }}/${{ env.DEVOPS_REPO }}"
+          token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ env.DEVOPS_BRANCH }}
+          path: ${{ env.DEVOPS_REPO }}
+
+      - name: Download Report
+        uses: actions/download-artifact@v4
+        with:
+          name: "${{ env.LINT_REPORT_FILE }}"
+
+      - name: Slack Payload Template
+        shell: bash
+        run: |-
+          envsubst < ${{ env.DEVOPS_REPO }}/slack-notify/${{ env.SLACK_PAYLOAD_JSON }} > ${{ env.SLACK_PAYLOAD_JSON }}
+          cat ${{ env.SLACK_PAYLOAD_JSON }}
+
+      - name: Slack Notification
+        id: slack_notify
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload-file-path: "${{ env.SLACK_PAYLOAD_JSON }}"
+
+      - name: Upload Report to Slack
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: files.uploadV2
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel_id: "${{ env.SLACK_CHANNEL_ID }}"
+            thread_ts: ${{ steps.slack_notify.outputs.ts }}
+            initial_comment: "The Lint Result (${{ env.COMMIT_SHA }})"
+            file: "${{ env.LINT_REPORT_FILE }}.json"
+            filename: "${{ env.LINT_REPORT_FILE }}-${{ env.COMMIT_SHA }}.json"
