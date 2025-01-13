@@ -187,7 +187,7 @@ jobs:
           working-directory: .
 
       - name: Upload Lint Report
-        if: ${{ always() && (needs.javelin-env.outputs.lint_lan == 'python' || needs.javelin-env.outputs.lint_lan == 'javascript' || needs.javelin-env.outputs.lint_lan == 'javascript') }}
+        if: ${{ always() && (needs.javelin-env.outputs.lint_lan == 'python' || needs.javelin-env.outputs.lint_lan == 'javascript' || needs.javelin-env.outputs.lint_lan == 'go') }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.LINT_REPORT_FILE }}
