@@ -132,40 +132,42 @@ def get_javelin_client():
     return JavelinClient(config)
 
 
-#aispm commands
 def create_customer(args):
-    try:
-        client = get_javelin_client_aispm()
-        customer = Customer(
-            name=args.name,
-            description=args.description,
-            metrics_interval=args.metrics_interval,
-            security_interval=args.security_interval
-        )
-        response = client._send_request_sync(Request(
-            method=HttpMethod.POST,
-            route="v1/admin/aispm/customer",
-            data=customer.dict()
-        ))
-        print(f"Customer '{args.name}' created successfully.")
-    except Exception as e:
-        print(f"Error creating customer: {e}")
+    client = get_javelin_client_aispm()
+    customer = Customer(
+        name=args.name,
+        description=args.description,
+        metrics_interval=args.metrics_interval,
+        security_interval=args.security_interval
+    )
+    return client.aispm.create_customer(customer)
+
+
+
 
 def get_customer(args):
+    """
+    Gets customer details using the AISPM service.
+    """
     try:
         client = get_javelin_client_aispm()
-        route = "v1/admin/aispm/customer" 
-        print(f"Making request to: {client.config.base_url}{route}")
-        print(f"Headers: {client._headers}")  # Access _headers directly
+        response = client.aispm.get_customer()
         
-        response = client._send_request_sync(Request(
-            method=HttpMethod.GET,
-            route=route
-        ))
-        print(f"Status: {response.status_code}")
-        print(f"Response: {response.content.decode('utf-8')}")
+        # Pretty print the response for CLI output
+        formatted_response = {
+            "name": response.name,
+            "description": response.description,
+            "metrics_interval": response.metrics_interval,
+            "security_interval": response.security_interval,
+            "status": response.status,
+            "created_at": response.created_at.isoformat(),
+            "modified_at": response.modified_at.isoformat()
+        }
+        
+        print(json.dumps(formatted_response, indent=2))
     except Exception as e:
         print(f"Error getting customer: {e}")
+
 
 def configure_aws(args):
     try:
@@ -178,16 +180,17 @@ def configure_aws(args):
         print(f"Error configuring AWS: {e}")
 
 def get_aws_config(args):
+    """
+    Gets AWS configurations using the AISPM service.
+    """
     try:
         client = get_javelin_client_aispm()
-        request = Request(
-            method=HttpMethod.GET,
-            route="v1/admin/aispm/config/aws"
-        )
-        response = client._send_request_sync(request)
-        print(json.dumps(response.json(), indent=2))
+        response = client.aispm.get_aws_configs()
+        # Simply print the JSON response
+        print(json.dumps(response, indent=2))
+
     except Exception as e:
-        print(f"Error getting AWS config: {e}")
+        print(f"Error getting AWS configurations: {e}")
 
 def delete_aws_config(args):
     try:

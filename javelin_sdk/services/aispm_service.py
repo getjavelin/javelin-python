@@ -30,6 +30,8 @@ class AISPMService:
        print(f"Raw response: {response.text}")
        self._handle_response(response) 
        return CustomerResponse(**response.json())
+   
+   
 
    def get_customer(self) -> CustomerResponse:
        request = Request(
@@ -71,6 +73,18 @@ class AISPMService:
        self._handle_response(response)
        return [CloudConfigResponse(**config) for config in response.json()]
 
+   def get_aws_configs(self) -> Dict:
+       """
+       Retrieves AWS configurations.
+       """
+       request = Request(
+           method=HttpMethod.GET,
+           route="v1/admin/aispm/config/aws"
+       )
+       response = self.client._send_request_sync(request)
+       self._handle_response(response)
+       return response.json()
+
    def configure_gcp(self, configs: List[GCPConfig]) -> List[CloudConfigResponse]:
        request = Request(
            method=HttpMethod.POST,
@@ -80,7 +94,7 @@ class AISPMService:
        response = self.client._send_request_sync(request)
        self._handle_response(response)
        return [CloudConfigResponse(**config) for config in response.json()]
-       
+
    # Usage Methods
    def get_usage(self,
                      provider: Optional[str] = None,
