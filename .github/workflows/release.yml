@@ -13,7 +13,7 @@ env:
   PY_VER: 3.11.8
 
 jobs:
-  javelin-prebuild:
+  javelin-env:
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -53,11 +53,14 @@ jobs:
         shell: bash
         run: |-
           chglog_pr_reviewers=$(cat ${{ env.DEVOPS_REPO }}/app-config/javelin-default/release-config.json | jq -r '.changelog.pr_reviewers')
+          slack_release_channel_id=$(cat ${{ env.DEVOPS_REPO }}/app-config/javelin-default/notify-config.json | jq -r '.slack.release.channel_id')
           echo "chglog_pr_reviewers=${chglog_pr_reviewers}" >> ${GITHUB_OUTPUT}
+          echo "slack_release_channel_id=${slack_release_channel_id}" >> ${GITHUB_OUTPUT}
     outputs:
       short_sha: ${{ steps.repo_env_setup.outputs.shortsha }}
       lc_repository: ${{ steps.lc_repository.outputs.name }}
       chglog_pr_reviewers: ${{ steps.build_config.outputs.chglog_pr_reviewers }}
+      slack_release_channel_id: ${{ steps.build_config.outputs.slack_scan_channel_id }}
 
   javelin-validate:
     permissions:
@@ -131,7 +134,7 @@ jobs:
 
   javelin-chglog:
     needs:
-      - javelin-prebuild
+      - javelin-env
       - javelin-package
     permissions:
       contents: 'read'
@@ -181,14 +184,14 @@ jobs:
           branch: cicd-changelog
           delete-branch: true
           add-paths: CHANGELOG.md
-          reviewers: ${{ needs.javelin-prebuild.outputs.chglog_pr_reviewers }}
+          reviewers: ${{ needs.javelin-env.outputs.chglog_pr_reviewers }}
     outputs:
       pr_url: ${{ steps.create_pr.outputs.pull-request-url }}
       pr_num: ${{ steps.create_pr.outputs.pull-request-number }}
 
   javelin-package-notify:
     needs:
-      - javelin-prebuild
+      - javelin-env
       - javelin-package
       - javelin-chglog
     permissions:
@@ -199,14 +202,15 @@ jobs:
     env:
       CHGLOG_PR_URL: ${{ needs.javelin-chglog.outputs.pr_url }}
       CHGLOG_PR_NUM: ${{ needs.javelin-chglog.outputs.pr_num }}
-      SVC_NAME: ${{ needs.javelin-prebuild.outputs.lc_repository }}
+      SVC_NAME: ${{ needs.javelin-env.outputs.lc_repository }}
       JOB_STATUS: ${{ needs.javelin-package.result }}
       JOB_STATUS_FAIL_MARK: ":x:"
+      SLACK_CHANNEL_ID: ${{ needs.javelin-env.outputs.slack_release_channel_id }}
       JOB_STATUS_SUCCESS_MARK: ":white_check_mark:"
       TAG_NAME: ${{ github.event.release.tag_name }}
       RELEASE_NAME: ${{ github.event.release.name }}
       RELEASE_AUTHOR: ${{ github.event.release.author.login }}
-      PR_REVIEWERS: ${{ needs.javelin-prebuild.outputs.chglog_pr_reviewers }}
+      PR_REVIEWERS: ${{ needs.javelin-env.outputs.chglog_pr_reviewers }}
       BUILD_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       SLACK_PAYLOAD_JSON: slack-package-payload.json
     steps:
@@ -232,9 +236,8 @@ jobs:
           cat ${{ env.SLACK_PAYLOAD_JSON }}
 
       - name: Slack Notification
-        uses: slackapi/slack-github-action@v1.26.0
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        uses: slackapi/slack-github-action@v2.0.0
         with:
-          channel-id: "${{ vars.SLACK_CHANNEL_ID }}"
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
           payload-file-path: "${{ env.SLACK_PAYLOAD_JSON }}"
