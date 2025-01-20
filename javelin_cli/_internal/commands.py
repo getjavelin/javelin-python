@@ -57,16 +57,7 @@ def get_javelin_client_aispm():
     javelin_api_key = selected_gateway["api_key_value"]
 
     # Ensure the API key is set before initializing
-    if not javelin_api_key or javelin_api_key == "":
-        raise UnauthorizedError(
-            response=None,
-            message=(
-                "Please provide a valid Javelin API Key. "
-                "When you sign into Javelin, you can find your API Key in the "
-                "Account->Developer settings"
-            ),
-        )
-
+   
     # Initialize and return the JavelinClient
     config = JavelinConfig(
         base_url=base_url,
@@ -192,27 +183,28 @@ def get_aws_config(args):
     except Exception as e:
         print(f"Error getting AWS configurations: {e}")
 
+# Add these functions to commands.py
+
 def delete_aws_config(args):
+    """
+    Deletes an AWS configuration.
+    """
     try:
         client = get_javelin_client_aispm()
-        request = Request(
-            method=HttpMethod.DELETE,
-            route=f"v1/admin/aispm/config/aws/{args.name}"
-        )
-        response = client._send_request_sync(request)
+        client.aispm.delete_aws_config(args.name)
         print(f"AWS configuration '{args.name}' deleted successfully.")
     except Exception as e:
         print(f"Error deleting AWS config: {e}")
 
 def get_azure_config(args):
+    """
+    Gets Azure configurations using the AISPM service.
+    """
     try:
         client = get_javelin_client_aispm()
-        request = Request(
-            method=HttpMethod.GET,
-            route="v1/admin/aispm/config/azure"
-        )
-        response = client._send_request_sync(request)
-        print(json.dumps(response.json(), indent=2))
+        response = client.aispm.get_azure_config()
+        # Format and print the response nicely
+        print(json.dumps(response, indent=2))
     except Exception as e:
         print(f"Error getting Azure config: {e}")
 

@@ -73,6 +73,9 @@ class AISPMService:
        self._handle_response(response)
        return [CloudConfigResponse(**config) for config in response.json()]
 
+
+    
+
    def get_aws_configs(self) -> Dict:
        """
        Retrieves AWS configurations.
@@ -163,3 +166,38 @@ class AISPMService:
            return error.get("error", str(response.content))
        except json.JSONDecodeError:
            return str(response.content)
+
+   def delete_aws_config(self, name: str) -> None:
+       """
+       Deletes an AWS configuration by name.
+       
+       Args:
+           name (str): The name of the AWS configuration to delete
+       
+       Raises:
+           Exception: If the API request fails
+       """
+       request = Request(
+           method=HttpMethod.DELETE,
+           route=f"v1/admin/aispm/config/aws/{name}"
+       )
+       response = self.client._send_request_sync(request)
+       self._handle_response(response)
+
+   def get_azure_config(self) -> Dict:
+       """
+       Retrieves Azure configurations.
+       
+       Returns:
+           Dict: The Azure configuration data
+           
+       Raises:
+           Exception: If the API request fails
+       """
+       request = Request(
+           method=HttpMethod.GET,
+           route="v1/admin/aispm/config/azure"
+       )
+       response = self.client._send_request_sync(request)
+       self._handle_response(response)
+       return response.json()

@@ -115,12 +115,7 @@ class JavelinClient:
         return url, headers
 
     def _send_request_sync(self, request: Request) -> httpx.Response:
-        url, headers = self._prepare_request(request)
-        #print(f"Making request to: {url}")
-        #print(f"With headers: {headers}")
         response = self._core_send_request(self.client, request) 
-        #print(f"Response status: {response.status_code}")
-        #print(f"Response body: {response.text}")
         return response
 
 
