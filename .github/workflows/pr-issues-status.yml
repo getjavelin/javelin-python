@@ -130,44 +130,44 @@ jobs:
       #     PR_ISSUE_STATUS_ID=$(gh project field-list ${{ env.PROJECT_NUMBER }} --owner ${{ github.repository_owner }} -L ${{ env.OUTPUT_LIMIT }} --format json | jq -r '.fields[] | select(.id == "${ISSUE_FIELD_ID}") | .options[] | select(.name == "${{ env.PR_ISSUE_STATUS }}") | .id')
       #     gh project item-edit --id "${{ env.GLOBAL_ISSUE_ID }}" --field-id "${ISSUE_FIELD_ID}" --single-select-option-id "${PR_ISSUE_STATUS_ID}" --project-id "${PROJECT_ID}"
 
-  javelin-notify:
-    needs:
-      - javelin-env
-      - javelin-issue-status
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-    runs-on: ubuntu-24.04
-    if: ${{ always() && (github.event.pull_request.merged == true) && (needs.javelin-issue-status.result != 'success') }}
-    env:
-      SVC_NAME: ${{ needs.javelin-env.outputs.svc_name }}
-      SLACK_CHANNEL_ID: ${{ needs.javelin-env.outputs.slack_release_channel_id }}
-      JOB_STATUS: ${{ needs.javelin-issue-status.result }}
-      JOB_STATUS_MARK: ":x:"
-      PR_URL: "https://github.com/${{ github.repository }}/pull/${{ github.event.number }}"
-      BUILD_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-      PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-      SLACK_PAYLOAD_JSON: slack-pr-issue-status-payload.json
-    steps:
-      - name: DevOps Repository Checkout
-        uses: actions/checkout@v4
-        with:
-          repository: "${{ github.repository_owner }}/${{ env.DEVOPS_REPO }}"
-          token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
-          fetch-depth: 0
-          persist-credentials: false
-          ref: ${{ env.DEVOPS_BRANCH }}
-          path: ${{ env.DEVOPS_REPO }}
+  # javelin-notify:
+  #   needs:
+  #     - javelin-env
+  #     - javelin-issue-status
+  #   permissions:
+  #     contents: 'read'
+  #     id-token: 'write'
+  #   runs-on: ubuntu-24.04
+  #   if: ${{ always() && (github.event.pull_request.merged == true) && (needs.javelin-issue-status.result != 'success') }}
+  #   env:
+  #     SVC_NAME: ${{ needs.javelin-env.outputs.svc_name }}
+  #     SLACK_CHANNEL_ID: ${{ needs.javelin-env.outputs.slack_release_channel_id }}
+  #     JOB_STATUS: ${{ needs.javelin-issue-status.result }}
+  #     JOB_STATUS_MARK: ":x:"
+  #     PR_URL: "https://github.com/${{ github.repository }}/pull/${{ github.event.number }}"
+  #     BUILD_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+  #     PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+  #     SLACK_PAYLOAD_JSON: slack-pr-issue-status-payload.json
+  #   steps:
+  #     - name: DevOps Repository Checkout
+  #       uses: actions/checkout@v4
+  #       with:
+  #         repository: "${{ github.repository_owner }}/${{ env.DEVOPS_REPO }}"
+  #         token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+  #         fetch-depth: 0
+  #         persist-credentials: false
+  #         ref: ${{ env.DEVOPS_BRANCH }}
+  #         path: ${{ env.DEVOPS_REPO }}
 
-      - name: Slack Payload Template
-        shell: bash
-        run: |-
-          envsubst < ${{ env.DEVOPS_REPO }}/slack-notify/${{ env.SLACK_PAYLOAD_JSON }} > ${{ env.SLACK_PAYLOAD_JSON }}
-          cat ${{ env.SLACK_PAYLOAD_JSON }}
+  #     - name: Slack Payload Template
+  #       shell: bash
+  #       run: |-
+  #         envsubst < ${{ env.DEVOPS_REPO }}/slack-notify/${{ env.SLACK_PAYLOAD_JSON }} > ${{ env.SLACK_PAYLOAD_JSON }}
+  #         cat ${{ env.SLACK_PAYLOAD_JSON }}
 
-      - name: Slack Notification
-        uses: slackapi/slack-github-action@v2.0.0
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          payload-file-path: "${{ env.SLACK_PAYLOAD_JSON }}"
+  #     - name: Slack Notification
+  #       uses: slackapi/slack-github-action@v2.0.0
+  #       with:
+  #         method: chat.postMessage
+  #         token: ${{ secrets.SLACK_BOT_TOKEN }}
+  #         payload-file-path: "${{ env.SLACK_PAYLOAD_JSON }}"
