@@ -84,9 +84,9 @@ jobs:
         id: get_issue_number
         shell: bash
         run: |-
-          ISSUE_NUMBER=$(echo "${{ github.event.pull_request.title }}" | grep -oE "#[0-9]+" | sed 's/#//')
-          if [[ -z "${ISSUE_NUMBER}" ]] ; then
-            ISSUE_NUMBER=$(echo "${{ github.event.pull_request.body }}" | grep -oE "#[0-9]+" | sed 's/#//')
+          ISSUE_NUMBER=$(echo "${{ github.event.pull_request.title }}" | grep -oE "#[0-9]+" | sed 's/#//') || true
+          if [[ -z "${ISSUE_NUMBER}" ]] && [[ ! -z "${{ github.event.pull_request.body }}" ]] ; then
+            ISSUE_NUMBER=$(echo "${{ github.event.pull_request.body }}" | grep -oE "#[0-9]+" | sed 's/#//') || true
           fi
           if [[ ! -z "${ISSUE_NUMBER}" ]] ; then
             echo "issue_number=${ISSUE_NUMBER}" >> ${GITHUB_OUTPUT}
