@@ -15,6 +15,8 @@ from javelin_sdk.services.route_service import RouteService
 from javelin_sdk.services.secret_service import SecretService
 from javelin_sdk.services.template_service import TemplateService
 from javelin_sdk.services.trace_service import TraceService
+from javelin_sdk.services.aispm_service import AISPMService
+
 
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
@@ -44,6 +46,9 @@ class JavelinClient:
 
         self.chat = Chat(self)
         self.completions = Completions(self)
+
+        self.aispm = AISPMService(self)
+
 
     @property
     def client(self):
@@ -84,24 +89,36 @@ class JavelinClient:
             self._client.close()
 
     def _prepare_request(self, request: Request) -> tuple:
-        url = self._construct_url(
-            gateway_name=request.gateway,
-            provider_name=request.provider,
-            route_name=request.route,
-            secret_name=request.secret,
-            template_name=request.template,
-            trace=request.trace,
-            query=request.is_query,
-            archive=request.archive,
-            query_params=request.query_params,
-            is_transformation_rules=request.is_transformation_rules,
-            is_reload=request.is_reload,
-        )
+        if request.route.startswith("v1/admin/aispm"):
+            url = f"{self.config.base_url.rstrip('/')}/{request.route}"
+            if request.query_params:
+                query_string = "&".join(f"{k}={v}" for k, v in request.query_params.items())
+                url += f"?{query_string}"
+                
+
+        else:
+            url = self._construct_url(
+                gateway_name=request.gateway,
+                provider_name=request.provider,
+                route_name=request.route,
+                secret_name=request.secret,
+                template_name=request.template,
+                trace=request.trace,
+                query=request.is_query,
+                archive=request.archive,
+                query_params=request.query_params,
+                is_transformation_rules=request.is_transformation_rules,
+                is_reload=request.is_reload,
+            )
+
         headers = {**self._headers, **(request.headers or {})}
         return url, headers
 
     def _send_request_sync(self, request: Request) -> httpx.Response:
-        return self._core_send_request(self.client, request)
+        response = self._core_send_request(self.client, request) 
+        return response
+
+
 
     async def _send_request_async(self, request: Request) -> httpx.Response:
         return await self._core_send_request(self.aclient, request)
@@ -195,6 +212,15 @@ class JavelinClient:
 
         if query_params:
             query_string = "&".join(f"{k}={v}" for k, v in query_params.items())
+            url += f"?{query_string}"
+
+        return url
+
+    def _construct_aispm_url(self, request: Request) -> str:
+        url = request.route
+
+        if request.query_params:
+            query_string = "&".join(f"{k}={v}" for k, v in request.query_params.items())
             url += f"?{query_string}"
 
         return url
