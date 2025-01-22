@@ -1,0 +1,173 @@
+name: PR Issue Status - Javelin Python
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - "main"
+
+env:
+  env_var: ${{ vars.ENV_CONTEXT_VAR }}
+  DEVOPS_REPO: "javelin-cloud"
+  DEVOPS_BRANCH: "main"
+  PROJECT_NAME: "Javelin"
+  ISSUE_FIELD_NAME: "Status"
+  PR_ISSUE_STATUS: "Merged"
+
+jobs:
+  javelin-env:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setting up Repo Env
+        id: repo_env_setup
+        shell: bash
+        run: |-
+          echo "repository=$(basename ${{ github.repository }})" >> ${GITHUB_OUTPUT}
+
+      - name: Set Lowercase Repo Name
+        id: lc_repository
+        env:
+          REPO_NAME: ${{ steps.repo_env_setup.outputs.repository }}
+        shell: bash
+        run: echo "name=${REPO_NAME,,}" >> ${GITHUB_OUTPUT}
+
+      - name: DevOps Repository Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ github.repository_owner }}/${{ env.DEVOPS_REPO }}"
+          token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ env.DEVOPS_BRANCH }}
+          path: ${{ env.DEVOPS_REPO }}
+
+      - name: Get Build Config
+        id: build_config
+        shell: bash
+        run: |-
+          slack_release_channel_id=$(cat ${{ env.DEVOPS_REPO }}/app-config/javelin-default/notify-config.json | jq -r '.slack.release.channel_id')
+          echo "slack_release_channel_id=${slack_release_channel_id}" >> ${GITHUB_OUTPUT}
+    outputs:
+      svc_name: ${{ steps.lc_repository.outputs.name }}
+      slack_release_channel_id: ${{ steps.build_config.outputs.slack_release_channel_id }}
+
+  javelin-issue-status:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+      issues: 'write'
+      repository-projects: 'write'
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-24.04
+    steps:
+      - name: DevOps Repository Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ github.repository_owner }}/${{ env.DEVOPS_REPO }}"
+          token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ env.DEVOPS_BRANCH }}
+          path: ${{ env.DEVOPS_REPO }}
+
+      - name: Extract Issue Number
+        id: get_issue_number
+        shell: bash
+        run: |-
+          ISSUE_NUMBER=$(echo "${{ github.event.pull_request.title }}" | grep -oE "#[0-9]+" | sed 's/#//') || true
+          if [[ -z "${ISSUE_NUMBER}" ]] && [[ ! -z "${{ github.event.pull_request.body }}" ]] ; then
+            ISSUE_NUMBER=$(echo "${{ github.event.pull_request.body }}" | grep -oE "#[0-9]+" | sed 's/#//') || true
+          fi
+          if [[ ! -z "${ISSUE_NUMBER}" ]] ; then
+            echo "issue_number=${ISSUE_NUMBER}" >> ${GITHUB_OUTPUT}
+          fi
+
+      - name: Extract Global Issue Number
+        id: get_global_issue_number
+        if: steps.get_issue_number.outputs.issue_number
+        env:
+          GH_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN_CLASSIC }}
+          ISSUE_NUMBER: ${{ steps.get_issue_number.outputs.issue_number }}
+        run: |-
+          cd ${{ env.DEVOPS_REPO }}/reference/scripts
+          chmod a+x issue-tracker.sh
+          GLOBAL_ISSUE_ID=$(./issue-tracker.sh ${{ env.PROJECT_NAME }} ${{ github.repository }} ${{ env.ISSUE_NUMBER }} id)
+          PROJECT_NUMBER=$(gh project list --owner ${{ github.repository_owner }} --format json | jq -r '.projects[] | select(.title == "${{ env.PROJECT_NAME }}") | .number')
+          echo "project_number=${PROJECT_NUMBER}" >> ${GITHUB_OUTPUT}
+          echo "global_issue_id=${GLOBAL_ISSUE_ID}" >> ${GITHUB_OUTPUT}
+
+      - name: Update Issue Status
+        if: steps.get_global_issue_number.outputs.global_issue_id
+        uses: titoportas/update-project-fields@v0.1.0
+        with:
+          project-url: https://github.com/orgs/${{ github.repository_owner }}/projects/${{ steps.get_global_issue_number.outputs.project_number }}
+          github-token: ${{ secrets.DEVOPS_GITHUB_TOKEN_CLASSIC }}
+          item-id: ${{ steps.get_global_issue_number.outputs.global_issue_id }}
+          field-keys: ${{ env.ISSUE_FIELD_NAME }}
+          field-values: ${{ env.PR_ISSUE_STATUS }}
+
+      # - name: Update Issue Status
+      #   if: steps.get_global_issue_number.outputs.global_issue_id
+      #   env:
+      #     GH_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN_CLASSIC }}
+      #     ISSUE_NUMBER: ${{ steps.get_issue_number.outputs.issue_number }}
+      #     GLOBAL_ISSUE_ID: ${{ steps.get_global_issue_number.outputs.global_issue_id }}
+      #     PROJECT_NUMBER: ${{ steps.get_global_issue_number.outputs.project_number }}
+      #     OUTPUT_LIMIT: "10000"
+      #   run: |-
+      #     PROJECT_ID=$(gh project list --owner ${{ github.repository_owner }} --format json | jq -r '.projects[] | select(.title == "${{ env.PROJECT_NAME }}") | .id')
+      #     ISSUE_FIELD_ID=$(gh project field-list ${{ env.PROJECT_NUMBER }} --owner ${{ github.repository_owner }} -L ${{ env.OUTPUT_LIMIT }} --format json | jq -r '.fields[] | select(.name == "${{ env.ISSUE_FIELD_NAME }}") | .id')
+      #     PR_ISSUE_STATUS_ID=$(gh project field-list ${{ env.PROJECT_NUMBER }} --owner ${{ github.repository_owner }} -L ${{ env.OUTPUT_LIMIT }} --format json | jq -r '.fields[] | select(.id == "${ISSUE_FIELD_ID}") | .options[] | select(.name == "${{ env.PR_ISSUE_STATUS }}") | .id')
+      #     gh project item-edit --id "${{ env.GLOBAL_ISSUE_ID }}" --field-id "${ISSUE_FIELD_ID}" --single-select-option-id "${PR_ISSUE_STATUS_ID}" --project-id "${PROJECT_ID}"
+
+  javelin-notify:
+    needs:
+      - javelin-env
+      - javelin-issue-status
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-24.04
+    if: ${{ always() && (github.event.pull_request.merged == true) && (needs.javelin-issue-status.result != 'success') }}
+    env:
+      SVC_NAME: ${{ needs.javelin-env.outputs.svc_name }}
+      SLACK_CHANNEL_ID: ${{ needs.javelin-env.outputs.slack_release_channel_id }}
+      JOB_STATUS: ${{ needs.javelin-issue-status.result }}
+      JOB_STATUS_MARK: ":x:"
+      PR_URL: "https://github.com/${{ github.repository }}/pull/${{ github.event.number }}"
+      BUILD_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+      SLACK_PAYLOAD_JSON: slack-pr-issue-status-payload.json
+    steps:
+      - name: DevOps Repository Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ github.repository_owner }}/${{ env.DEVOPS_REPO }}"
+          token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ env.DEVOPS_BRANCH }}
+          path: ${{ env.DEVOPS_REPO }}
+
+      - name: Slack Payload Template
+        shell: bash
+        run: |-
+          envsubst < ${{ env.DEVOPS_REPO }}/slack-notify/${{ env.SLACK_PAYLOAD_JSON }} > ${{ env.SLACK_PAYLOAD_JSON }}
+          cat ${{ env.SLACK_PAYLOAD_JSON }}
+
+      - name: Slack Notification
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload-file-path: "${{ env.SLACK_PAYLOAD_JSON }}"

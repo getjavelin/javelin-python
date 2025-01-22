@@ -187,7 +187,7 @@ class JavelinClient:
                 url_parts.extend(["admin", "providers"])
             if provider_name != "###":
                 url_parts.append(provider_name)
-            url_parts.append("secrets")
+            url_parts.append("keyvault")
             if secret_name != "###":
                 url_parts.append(secret_name)
             else:
@@ -319,17 +319,17 @@ class JavelinClient:
     # Secret methods
     create_secret = lambda self, secret: self.secret_service.create_secret(secret)
     acreate_secret = lambda self, secret: self.secret_service.acreate_secret(secret)
-    get_secret = lambda self, secret_name: self.secret_service.get_secret(secret_name)
-    aget_secret = lambda self, secret_name: self.secret_service.aget_secret(secret_name)
+    get_secret = lambda self, secret_name, provider_name: self.secret_service.get_secret(secret_name, provider_name)
+    aget_secret = lambda self, secret_name, provider_name: self.secret_service.aget_secret(secret_name, provider_name)
     list_secrets = lambda self: self.secret_service.list_secrets()
     alist_secrets = lambda self: self.secret_service.alist_secrets()
     update_secret = lambda self, secret: self.secret_service.update_secret(secret)
     aupdate_secret = lambda self, secret: self.secret_service.aupdate_secret(secret)
-    delete_secret = lambda self, secret_name: self.secret_service.delete_secret(
-        secret_name
+    delete_secret = lambda self, secret_name, provider_name: self.secret_service.delete_secret(
+        secret_name, provider_name
     )
-    adelete_secret = lambda self, secret_name: self.secret_service.adelete_secret(
-        secret_name
+    adelete_secret = lambda self, secret_name, provider_name: self.secret_service.adelete_secret(
+        secret_name, provider_name
     )
 
     # Template methods
