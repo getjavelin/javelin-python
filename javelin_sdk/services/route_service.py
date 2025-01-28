@@ -155,6 +155,56 @@ class RouteService:
         self.areload_route(route_name=route_name)
         return self._process_route_response_ok(response)
 
+    def _process_stream_line(self, line_str: str, jsonpath_expr, is_bedrock: bool = False) -> Optional[str]:
+        """Process a single line from the stream response and extract text if available."""
+        try:
+            if 'message-type' in line_str:
+                if 'bytes' in line_str:
+                    try:
+                        json_start = line_str.find('{')
+                        json_end = line_str.rfind('}') + 1
+                        if json_start != -1 and json_end != -1:
+                            json_str = line_str[json_start:json_end]
+                            data = json.loads(json_str)
+                            
+                            if 'bytes' in data:
+                                import base64
+                                bytes_data = base64.b64decode(data['bytes'])
+                                decoded_data = json.loads(bytes_data)
+                                
+                                matches = jsonpath_expr.find(decoded_data)
+                                if matches and matches[0].value:
+                                    return matches[0].value
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        json_start = line_str.find('{')
+                        json_end = line_str.rfind('}') + 1
+                        if json_start != -1 and json_end != -1:
+                            json_str = line_str[json_start:json_end]
+                            data = json.loads(json_str)
+                            if 'delta' in data and 'text' in data['delta']:
+                                return data['delta']['text']
+                    except Exception:
+                        pass
+
+            # Handle SSE data format
+            elif line_str.startswith('data: '):
+                try:
+                    if line_str.strip() != 'data: [DONE]':
+                        json_str = line_str.replace('data: ', '')
+                        data = json.loads(json_str)
+                        matches = jsonpath_expr.find(data)
+                        if matches and matches[0].value:
+                            return matches[0].value
+                except Exception:
+                    pass
+
+        except Exception:
+            pass
+        return None
+
     def query_route(
         self,
         route_name: str,
@@ -163,7 +213,9 @@ class RouteService:
         stream: bool = False,
         stream_response_path: Optional[str] = None,
     ) -> Union[Dict[str, Any], Generator[str, None, None]]:
+        """Query a route synchronously."""
         self._validate_route_name(route_name)
+        
         response = self.client._send_request_sync(
             Request(
                 method=HttpMethod.POST,
@@ -173,10 +225,8 @@ class RouteService:
                 headers=headers,
             )
         )
-        if not stream:
-            return self._process_route_response_json(response)
         
-        if stream and response.status_code != 200:
+        if not stream or response.status_code != 200:
             return self._process_route_response_json(response)
         
         jsonpath_expr = parse(stream_response_path)
@@ -184,19 +234,11 @@ class RouteService:
         def generate_stream():
             for line in response.iter_lines():
                 if line:
-                    try:
-                        data = json.loads(
-                            line.decode("utf-8") if isinstance(line, bytes) else line
-                        )
-                        matches = jsonpath_expr.find(data)
-                        if matches:
-                            text = matches[0].value
-                            if text:
-                                time.sleep(0.2)
-                                yield text
-                    except json.JSONDecodeError:
-                        continue
-
+                    line_str = line.decode('utf-8') if isinstance(line, bytes) else line
+                    text = self._process_stream_line(line_str, jsonpath_expr)
+                    if text:
+                        yield text
+                    
         return generate_stream()
 
     async def aquery_route(
@@ -207,7 +249,9 @@ class RouteService:
         stream: bool = False,
         stream_response_path: Optional[str] = None,
     ) -> Union[Dict[str, Any], AsyncGenerator[str, None]]:
+        """Query a route asynchronously."""
         self._validate_route_name(route_name)
+        
         response = await self.client._send_request_async(
             Request(
                 method=HttpMethod.POST,
@@ -217,10 +261,8 @@ class RouteService:
                 headers=headers,
             )
         )
-        if not stream:
-            return self._process_route_response_json(response)
-
-        if stream and response.status_code != 200:
+        
+        if not stream or response.status_code != 200:
             return self._process_route_response_json(response)
         
         jsonpath_expr = parse(stream_response_path)
@@ -228,18 +270,11 @@ class RouteService:
         async def generate_stream():
             async for line in response.aiter_lines():
                 if line:
-                    try:
-                        data = json.loads(
-                            line.decode("utf-8") if isinstance(line, bytes) else line
-                        )
-                        matches = jsonpath_expr.find(data)
-                        if matches:
-                            text = matches[0].value
-                            if text:
-                                yield text
-                    except json.JSONDecodeError:
-                        continue
-
+                    line_str = line.decode('utf-8') if isinstance(line, bytes) else line
+                    text = self._process_stream_line(line_str, jsonpath_expr, is_bedrock=True)
+                    if text:
+                        yield text
+                    
         return generate_stream()
     
     def reload_route(self, route_name: str) -> str:
