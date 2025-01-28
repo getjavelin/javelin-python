@@ -64,6 +64,9 @@ class BaseCompletions:
             transformed_request = self.transformer.transform(
                 request_data, model_rules.input_rules
             )
+            
+            if stream and ( endpoint == EndpointType.CHAT or endpoint == EndpointType.COMPLETION):
+                transformed_request["stream"] = True
             model_response = self.client.query_route(
                 route, 
                 query_body=transformed_request, 
