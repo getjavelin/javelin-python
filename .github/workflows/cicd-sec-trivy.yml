@@ -1,0 +1,209 @@
+name: CICD Trivy Scan - Javelin Python
+
+on:
+  push:
+    branches:
+      - "main"
+
+env:
+  env_var: ${{ vars.ENV_CONTEXT_VAR }}
+  DEVOPS_REPO: "javelin-cloud"
+  DEVOPS_BRANCH: "main"
+  GH_SEC_REPORT: false
+  TRIVY_REPORT_FILE: "trivy-scan-result"
+
+jobs:
+  javelin-env:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setting up Repo Env
+        id: repo_env_setup
+        shell: bash
+        run: |-
+          echo "repository=$(basename ${{ github.repository }})" >> ${GITHUB_OUTPUT}
+          echo "shortsha=$(git rev-parse --short=7 HEAD)" >> ${GITHUB_OUTPUT}
+
+      - name: Set Lowercase Repo Name
+        id: lc_repository
+        env:
+          REPO_NAME: ${{ steps.repo_env_setup.outputs.repository }}
+        shell: bash
+        run: echo "name=${REPO_NAME,,}" >> ${GITHUB_OUTPUT}
+
+      - name: DevOps Repository Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ github.repository_owner }}/${{ env.DEVOPS_REPO }}"
+          token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ env.DEVOPS_BRANCH }}
+          path: ${{ env.DEVOPS_REPO }}
+
+      - name: Get Build Config
+        id: build_config
+        shell: bash
+        run: |-
+          trivy_severity=$(cat ${{ env.DEVOPS_REPO }}/app-config/javelin-default/sec-config.json | jq -r '.trivy.severity')
+          slack_scan_channel_id=$(cat ${{ env.DEVOPS_REPO }}/app-config/javelin-default/notify-config.json | jq -r '.slack.scan.channel_id')
+          echo "trivy_severity=${trivy_severity}" >> ${GITHUB_OUTPUT}
+          echo "slack_scan_channel_id=${slack_scan_channel_id}" >> ${GITHUB_OUTPUT}
+    outputs:
+      svc_name: ${{ steps.lc_repository.outputs.name }}
+      short_sha: ${{ steps.repo_env_setup.outputs.shortsha }}
+      trivy_severity: ${{ steps.build_config.outputs.trivy_severity }}
+      slack_scan_channel_id: ${{ steps.build_config.outputs.slack_scan_channel_id }}
+
+  javelin-trivy-scan:
+    needs:
+      - javelin-env
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+      actions: 'read'
+      security-events: 'write'
+    runs-on: ubuntu-24.04
+    env:
+      TRIVY_SEVERITY: ${{ needs.javelin-env.outputs.trivy_severity }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Trivy Scan - GitHub Security Report
+        if: ${{ env.GH_SEC_REPORT == 'true' }}
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          ignore-unfixed: true
+          scan-type: "fs"
+          cache: "true"
+          format: "sarif"
+          output: "${{ env.TRIVY_REPORT_FILE }}.sarif"
+          severity: "${{ env.TRIVY_SEVERITY }}"
+
+      - name: Upload Report - GitHub Security Report
+        if: ${{ env.GH_SEC_REPORT == 'true' }}
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: "${{ env.TRIVY_REPORT_FILE }}.sarif"
+
+      - name: Trivy Scan - Text Security Report
+        if: ${{ env.GH_SEC_REPORT == 'false' }}
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          ignore-unfixed: true
+          scan-type: "fs"
+          cache: "true"
+          format: "table"
+          output: "${{ env.TRIVY_REPORT_FILE }}.txt"
+          severity: "${{ env.TRIVY_SEVERITY }}"
+
+      - name: Report Check - Text Security Report
+        if: ${{ env.GH_SEC_REPORT == 'false' }}
+        id: report_check
+        shell: bash
+        run: |-
+          if [[ -s ${{ env.TRIVY_REPORT_FILE }}.txt ]] ; then
+            echo "report_file=available" >> ${GITHUB_OUTPUT}
+          else
+            echo "report_file=unavailable" >> ${GITHUB_OUTPUT}
+          fi
+          cat ${{ env.TRIVY_REPORT_FILE }}.txt
+
+      - name: Upload Report - Text Security Report
+        if: ${{ env.GH_SEC_REPORT == 'false' && steps.report_check.outputs.report_file  == 'available' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ env.TRIVY_REPORT_FILE }}"
+          path: "${{ env.TRIVY_REPORT_FILE }}.txt"
+          if-no-files-found: error
+          retention-days: 1
+    outputs:
+      report_status: ${{ steps.report_check.outputs.report_file }}
+
+  javelin-trivy-notify:
+    needs:
+      - javelin-env
+      - javelin-trivy-scan
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-24.04
+    if: |
+      always() && (needs.javelin-trivy-scan.outputs.report_status == 'available')
+    env:
+      SVC_NAME: ${{ needs.javelin-env.outputs.svc_name }}
+      JOB_STATUS: "failure"
+      REPORT_INFO: "Please check the attachment"
+      JOB_STATUS_MARK: ":x:"
+      COMMIT_AUTHOR: ${{ github.event.commits[0].author.name }}
+      COMMIT_SHA: ${{ needs.javelin-env.outputs.short_sha }}
+      SLACK_CHANNEL_ID: ${{ needs.javelin-env.outputs.slack_scan_channel_id }}
+      COMMIT_URL: ${{ github.event.head_commit.url }}
+      BUILD_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      GH_SEC_URL: "${{ github.server_url }}/${{ github.repository }}/security"
+      SLACK_PAYLOAD_JSON: slack-trivy-scan-payload.json
+    steps:
+      - name: DevOps Repository Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: "${{ github.repository_owner }}/${{ env.DEVOPS_REPO }}"
+          token: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ env.DEVOPS_BRANCH }}
+          path: ${{ env.DEVOPS_REPO }}
+
+      - name: Download Report - Text Security Report
+        if: ${{ env.GH_SEC_REPORT == 'false' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: "${{ env.TRIVY_REPORT_FILE }}"
+
+      - name: Slack Payload Template
+        id: slack_template
+        shell: bash
+        run: |-
+          if [[ ${{ env.GH_SEC_REPORT }} == 'true' ]] ; then
+            export PAYLOAD_JSON="slack-trivy-scan-sec-payload.json"
+          else
+            export PAYLOAD_JSON="slack-trivy-scan-file-payload.json"
+          fi
+          envsubst < ${{ env.DEVOPS_REPO }}/slack-notify/${PAYLOAD_JSON} > ${{ env.SLACK_PAYLOAD_JSON }}
+          cat ${{ env.SLACK_PAYLOAD_JSON }}
+
+      - name: Slack Notification
+        uses: slackapi/slack-github-action@v2.0.0
+        id: slack_notify
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload-file-path: "${{ env.SLACK_PAYLOAD_JSON }}"
+
+      - name: Upload Report Slack - Text Security Report
+        if: ${{ env.GH_SEC_REPORT == 'false' }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: files.uploadV2
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel_id: "${{ env.SLACK_CHANNEL_ID }}"
+            thread_ts: ${{ steps.slack_notify.outputs.ts }}
+            initial_comment: "The Trivy Scan Result (${{ env.COMMIT_SHA }})"
+            file: "${{ env.TRIVY_REPORT_FILE }}.txt"
+            filename: "${{ env.TRIVY_REPORT_FILE }}-${{ env.COMMIT_SHA }}.txt"
+
+      - name: Failing the Job
+        shell: bash
+        run: |-
+          echo "Vulnerabilities Found.....!"
+          exit 1
