@@ -2,6 +2,64 @@
 ## [Unreleased]
 
 
+<a name="v0.2.20"></a>
+## [v0.2.20] - 2025-01-31
+### Bug Fixes
+- release version build break
+- parse newly updated streaming responses
+- support CRUD operation secret
+- supporing the bot commit message pr checks
+- revert changes for javelin-api-key
+- update key field api_key_value field
+
+### DevOps
+- Patching the pr issue status change pipeline
+- Patching the pr issue status change pipeline
+- Adding pipeline for PR issue status update
+- Bumping the version of slack plugins and patching the pipeline
+- Patching the PR checks pipeline
+- Adding lint checks in the PR checks pipeline
+- Patching the testing pipeline
+- Patching the testing pipeline
+- Patching the Trivy Scan Pipeline
+- Patching the Changelog PR commit message
+- Adding the trivy scan
+- Adding the trivy scan
+- Patching the pipeline with a dynamic variable for devops repo branch
+- Patching the cicd pipeline for PR checks
+- Patching the pipeline to use ubuntu-24.04 OS in action
+- Update CHANGELOG for v0.2.19
+
+### Features
+- setting up boto3 client with javelin for runtime-operation. scope custom header registration to Bedrock runtime operations only
+- Adding example files for Azure OpenAI and Javelin stream/non-stream tests In Python and JS code
+- Enhance CrewwAI and Javelin integration with refined workflow
+- Adding usage guide for RAG with Javelin
+
+### Pull Requests
+- Merge pull request [#115](https://github.com/getjavelin/javelin-python/issues/115) from getjavelin/fix_streaming_responses
+- Merge pull request [#114](https://github.com/getjavelin/javelin-python/issues/114) from getjavelin/issue-20-boto-helper-sdk-integration
+- Merge pull request [#113](https://github.com/getjavelin/javelin-python/issues/113) from getjavelin/invoke-converse-branch
+- Merge pull request [#112](https://github.com/getjavelin/javelin-python/issues/112) from getjavelin/crew-javelin-branch
+- Merge pull request [#111](https://github.com/getjavelin/javelin-python/issues/111) from getjavelin/rag-javelin-branch
+- Merge pull request [#110](https://github.com/getjavelin/javelin-python/issues/110) from getjavelin/fix_streaming_responses
+- Merge pull request [#109](https://github.com/getjavelin/javelin-python/issues/109) from getjavelin/cicd-patch
+- Merge pull request [#108](https://github.com/getjavelin/javelin-python/issues/108) from getjavelin/cicd-patch
+- Merge pull request [#106](https://github.com/getjavelin/javelin-python/issues/106) from getjavelin/cicd-patch
+- Merge pull request [#105](https://github.com/getjavelin/javelin-python/issues/105) from getjavelin/ISSUE-15
+- Merge pull request [#103](https://github.com/getjavelin/javelin-python/issues/103) from getjavelin/cicd-patch
+- Merge pull request [#98](https://github.com/getjavelin/javelin-python/issues/98) from getjavelin/cicd-patch
+- Merge pull request [#97](https://github.com/getjavelin/javelin-python/issues/97) from getjavelin/cicd-patch
+- Merge pull request [#96](https://github.com/getjavelin/javelin-python/issues/96) from getjavelin/cicd-patch
+- Merge pull request [#95](https://github.com/getjavelin/javelin-python/issues/95) from getjavelin/cicd-patch
+- Merge pull request [#94](https://github.com/getjavelin/javelin-python/issues/94) from getjavelin/cicd-patch
+- Merge pull request [#93](https://github.com/getjavelin/javelin-python/issues/93) from getjavelin/cicd-patch
+- Merge pull request [#92](https://github.com/getjavelin/javelin-python/issues/92) from getjavelin/cicd-patch
+- Merge pull request [#91](https://github.com/getjavelin/javelin-python/issues/91) from getjavelin/cicd-patch
+- Merge pull request [#90](https://github.com/getjavelin/javelin-python/issues/90) from getjavelin/ISSUE-89
+- Merge pull request [#88](https://github.com/getjavelin/javelin-python/issues/88) from getjavelin/cicd-changelog
+
+
 <a name="v0.2.19"></a>
 ## [v0.2.19] - 2024-12-05
 ### DevOps
@@ -213,7 +271,8 @@
 <a name="v0.1.5"></a>
 ## v0.1.5 - 2023-09-04
 
-[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.19...HEAD
+[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.20...HEAD
+[v0.2.20]: https://github.com/getjavelin/javelin-python/compare/v0.2.19...v0.2.20
 [v0.2.19]: https://github.com/getjavelin/javelin-python/compare/v0.2.18...v0.2.19
 [v0.2.18]: https://github.com/getjavelin/javelin-python/compare/v0.2.17...v0.2.18
 [v0.2.17]: https://github.com/getjavelin/javelin-python/compare/v0.2.16...v0.2.17
