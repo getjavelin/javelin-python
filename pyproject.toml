@@ -1,6 +1,3 @@
-[project.urls]
-"Homepage" = "https://getjavelin.io"
-
 [tool.poetry]
 name = "javelin-sdk"
 version = "RELEASE_VERSION"
@@ -12,6 +9,7 @@ packages = [
     { include = "javelin_cli" },
     { include = "javelin_sdk" },
 ]
+homepage = "https://getjavelin.io"
 
 [tool.poetry.scripts]
 javelin = "javelin_cli.cli:main"
