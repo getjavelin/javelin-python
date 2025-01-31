@@ -1,14 +1,10 @@
 from typing import Any, Coroutine, Dict, Optional, Union
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse, urlunparse
 
 import httpx
 
 from javelin_sdk.chat_completions import Chat, Completions
-from javelin_sdk.models import (
-    HttpMethod,
-    JavelinConfig,
-    Request,
-)
+from javelin_sdk.models import HttpMethod, JavelinConfig, Request
 from javelin_sdk.services.gateway_service import GatewayService
 from javelin_sdk.services.provider_service import ProviderService
 from javelin_sdk.services.route_service import RouteService
@@ -22,6 +18,10 @@ API_TIMEOUT = 10
 
 
 class JavelinClient:
+    BEDROCK_RUNTIME_OPERATIONS = frozenset(
+        {"InvokeModel", "InvokeModelWithResponseStream", "Converse", "ConverseStream"}
+    )
+
     def __init__(self, config: JavelinConfig) -> None:
         self.config = config
         self.base_url = urljoin(config.base_url, config.api_version or "/v1")
@@ -51,7 +51,7 @@ class JavelinClient:
             self._client = httpx.Client(
                 base_url=self.base_url,
                 headers=self._headers,
-                timeout= self.config.timeout if self.config.timeout else API_TIMEOUT,
+                timeout=self.config.timeout if self.config.timeout else API_TIMEOUT,
             )
         return self._client
 
@@ -83,6 +83,67 @@ class JavelinClient:
         if self._client:
             self._client.close()
 
+    def register_bedrock_runtime(self, client: Any) -> Any:
+        """
+        Register an AWS Bedrock Runtime client
+        for request interception and modification.
+
+        Args:
+            client: A boto3 bedrock-runtime client instance
+        Returns:
+            The modified boto3 client with registered event handlers
+        Raises:
+            AssertionError: If client is None or not a valid bedrock-runtime client
+            ValueError: If URL parsing/manipulation fails
+
+        Example:
+            >>> bedrock = boto3.client('bedrock-runtime')
+            >>> modified_client = javelin_client.register_bedrock_client(bedrock)
+            >>> javelin_client.register_bedrock_client(bedrock)
+            >>> bedrock.invoke_model(
+        """
+        if client is None:
+            raise AssertionError("Bedrock Runtime client cannot be None")
+
+        # Validate client type and attributes
+        if not all(
+            [
+                hasattr(client, "meta"),
+                hasattr(client.meta, "service_model"),
+                getattr(client.meta.service_model, "service_name", None)
+                == "bedrock-runtime",
+            ]
+        ):
+            raise AssertionError(
+                "Invalid client type. Expected boto3 bedrock-runtime client, got: "
+                f"{type(client).__name__}"
+            )
+
+        def add_custom_headers(request: Any, **kwargs) -> None:
+            """Add Javelin headers to each request."""
+            request.headers.update(self._headers)
+
+        def override_endpoint_url(request: Any, **kwargs) -> None:
+            """Redirect Bedrock operations to Javelin endpoint while preserving path/query."""
+            try:
+                original_url = urlparse(request.url)
+                redirected_url = original_url._replace(
+                    scheme="https",
+                    netloc=urlparse(self.base_url).netloc,
+                    path=f"/v1{original_url.path}",
+                )
+                request.url = urlunparse(redirected_url)
+            except Exception as e:
+                raise ValueError(f"Failed to override endpoint URL: {str(e)}") from e
+
+        # Register header modification & URL override for specific operations
+        for op in self.BEDROCK_RUNTIME_OPERATIONS:
+            event_name = f"before-send.bedrock-runtime.{op}"
+            client.meta.events.register(event_name, add_custom_headers)
+            client.meta.events.register(event_name, override_endpoint_url)
+
+        return client
+
     def _prepare_request(self, request: Request) -> tuple:
         url = self._construct_url(
             gateway_name=request.gateway,
@@ -110,7 +171,7 @@ class JavelinClient:
         self, client: Union[httpx.Client, httpx.AsyncClient], request: Request
     ) -> Union[httpx.Response, Coroutine[Any, Any, httpx.Response]]:
         url, headers = self._prepare_request(request)
-        
+
         if request.method == HttpMethod.GET:
             return client.get(url, headers=headers)
         elif request.method == HttpMethod.POST:
@@ -137,7 +198,6 @@ class JavelinClient:
         is_reload: bool = False,
     ) -> str:
         url_parts = [self.base_url]
-            
 
         if query:
             url_parts.append("query")
@@ -278,7 +338,11 @@ class JavelinClient:
         route_name
     )
     query_route = lambda self, route_name, query_body, headers=None, stream=False, stream_response_path=None: self.route_service.query_route(
-        route_name=route_name, query_body=query_body, headers=headers, stream=stream, stream_response_path=stream_response_path
+        route_name=route_name,
+        query_body=query_body,
+        headers=headers,
+        stream=stream,
+        stream_response_path=stream_response_path,
     )
     aquery_route = lambda self, route_name, query_body, headers=None, stream=False, stream_response_path=None: self.route_service.aquery_route(
         route_name, query_body, headers, stream, stream_response_path
@@ -293,17 +357,29 @@ class JavelinClient:
     # Secret methods
     create_secret = lambda self, secret: self.secret_service.create_secret(secret)
     acreate_secret = lambda self, secret: self.secret_service.acreate_secret(secret)
-    get_secret = lambda self, secret_name, provider_name: self.secret_service.get_secret(secret_name, provider_name)
-    aget_secret = lambda self, secret_name, provider_name: self.secret_service.aget_secret(secret_name, provider_name)
+    get_secret = (
+        lambda self, secret_name, provider_name: self.secret_service.get_secret(
+            secret_name, provider_name
+        )
+    )
+    aget_secret = (
+        lambda self, secret_name, provider_name: self.secret_service.aget_secret(
+            secret_name, provider_name
+        )
+    )
     list_secrets = lambda self: self.secret_service.list_secrets()
     alist_secrets = lambda self: self.secret_service.alist_secrets()
     update_secret = lambda self, secret: self.secret_service.update_secret(secret)
     aupdate_secret = lambda self, secret: self.secret_service.aupdate_secret(secret)
-    delete_secret = lambda self, secret_name, provider_name: self.secret_service.delete_secret(
-        secret_name, provider_name
+    delete_secret = (
+        lambda self, secret_name, provider_name: self.secret_service.delete_secret(
+            secret_name, provider_name
+        )
     )
-    adelete_secret = lambda self, secret_name, provider_name: self.secret_service.adelete_secret(
-        secret_name, provider_name
+    adelete_secret = (
+        lambda self, secret_name, provider_name: self.secret_service.adelete_secret(
+            secret_name, provider_name
+        )
     )
 
     # Template methods
