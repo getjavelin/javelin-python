@@ -122,90 +122,86 @@ class JavelinClient:
             """Add Javelin headers to each request."""
             request.headers.update(self._headers)
 
-def override_endpoint_url(self, request: Any, **kwargs) -> None:
-    """
-    Redirect Bedrock operations to the Javelin endpoint while preserving path and query.
+        def override_endpoint_url(request: Any, **kwargs) -> None:
+            """
+            Redirect Bedrock operations to the Javelin endpoint while preserving path and query.
+            
+            This function extracts an ARN from the URL path. It assumes that the ARN appears immediately
+            after the '/model/' segment. The ARN is reconstructed by joining tokens until it has at least
+            five colons (i.e. six colon-separated parts). For example, given a path like:
+            
+                /model/arn:aws:bedrock:us-east-1:339712941790:application-inference-profile/tie4rq2lhyhf/invoke
+            
+            the extracted ARN will be:
+            
+                arn:aws:bedrock:us-east-1:339712941790:application-inference-profile/tie4rq2lhyhf
+            
+            If an ARN is found, this function:
+            1. Retrieves an inference profile using the ARN.
+            2. Extracts a model identifier from the profile response.
+            3. Retrieves foundation model details using that model identifier.
+            4. Extracts the modelId.
+            
+            If the modelId contains a date version (e.g. "anthropic.claude-3-haiku-20240307-v1:0"),
+            the date portion (i.e. "-20240307") is removed so that the x-javelin-route becomes
+            "anthropic.claude-3-haiku-v1:0".
+            
+            Finally, the request URL is updated to point to the Javelin endpoint as defined by `base_url`,
+            and the original path is modified to prepend "/v1".
+            
+            Raises:
+                ValueError: If any part of the process fails.
+            """
+            try:
+                original_url = urlparse(request.url)
+                arn = None
 
-    This method extracts an ARN from the URL path. It assumes that the ARN appears immediately
-    after the '/model/' segment. The ARN is reconstructed by joining tokens until it has at least
-    five colons (i.e. six colon-separated parts). For example, given a path like:
-    
-        /v1/model/arn:aws:bedrock:us-east-1:339712941790:application-inference-profile/tie4rq2lhyhf/invoke
-    
-    the extracted ARN will be:
-    
-        arn:aws:bedrock:us-east-1:339712941790:application-inference-profile/tie4rq2lhyhf
+                # Locate the ARN in the URL path by finding the '/model/' segment.
+                if "/model/" in original_url.path:
+                    remainder = original_url.path.split("/model/", 1)[1]
+                    tokens = [token for token in remainder.split("/") if token]
+                    if tokens and tokens[0].startswith("arn:aws:bedrock:"):
+                        candidate_arn = tokens[0]
+                        i = 1
+                        while candidate_arn.count(":") < 5 and i < len(tokens):
+                            candidate_arn += "/" + tokens[i]
+                            i += 1
+                        arn = candidate_arn
 
-    If an ARN is found, this method:
-      1. Retrieves an inference profile using the ARN.
-      2. Extracts a model identifier from the profile.
-      3. Retrieves foundation model details using that model identifier.
-      4. Extracts the modelId.
-      
-    If the modelId contains a date version (e.g. "anthropic.claude-3-haiku-20240307-v1:0"),
-    the date portion (i.e. "-20240307") is removed so that the x-javelin-route becomes
-    "anthropic.claude-3-haiku-v1:0".
+                if arn:
+                    # Retrieve the inference profile using the ARN.
+                    get_profile_response = client.get_inference_profile(
+                        inferenceProfileIdentifier=arn
+                    )
+                    # Extract the model identifier from the profile response.
+                    model_identifier = get_profile_response["models"][0]["modelArn"]
+                    # Retrieve foundation model details using the model identifier.
+                    foundation_model_response = client.get_foundation_model(
+                        modelIdentifier=model_identifier
+                    )
+                    model_id = foundation_model_response["modelDetails"]["modelId"]
 
-    Finally, the request URL is updated to point to the Javelin endpoint as defined by self.base_url.
+                    # If the model_id contains a date version, remove the date portion.
+                    model_id = re.sub(r'-\d{8}(?=-)', '', model_id)
+                    # Add the (possibly transformed) model_id as a custom header.
+                    request.headers["x-javelin-route"] = model_id
 
-    Raises:
-        ValueError: If any part of the process fails.
-    """
-    try:
-        original_url = urlparse(request.url)
-        arn = None
+                # Update the request URL to use the Javelin endpoint.
+                new_netloc = urlparse(self.base_url).netloc
+                # Prepend "/v1" to the original path.
+                updated_path = f"/v1{original_url.path}"
+                updated_url = original_url._replace(scheme="https", netloc=new_netloc, path=updated_path)
+                request.url = urlunparse(updated_url)
 
-        # Locate the ARN in the URL path by finding the '/model/' segment.
-        if "/model/" in original_url.path:
-            # Everything after '/model/' is considered.
-            remainder = original_url.path.split("/model/", 1)[1]
-            # Split into tokens. For example:
-            #   "arn:aws:bedrock:us-east-1:339712941790:application-inference-profile/tie4rq2lhyhf/invoke"
-            # becomes:
-            #   ["arn:aws:bedrock:us-east-1:339712941790:application-inference-profile", "tie4rq2lhyhf", "invoke"]
-            tokens = [token for token in remainder.split("/") if token]
-            if tokens and tokens[0].startswith("arn:aws:bedrock:"):
-                candidate_arn = tokens[0]
-                i = 1
-                # Continue appending tokens until the candidate ARN has at least 5 colons
-                # (indicating the standard AWS ARN structure with six parts).
-                while candidate_arn.count(":") < 5 and i < len(tokens):
-                    candidate_arn += "/" + tokens[i]
-                    i += 1
-                arn = candidate_arn
+            except Exception as e:
+                raise ValueError(f"Failed to override endpoint URL: {str(e)}") from e
+    # Register header modification & URL override for specific operations
+        for op in self.BEDROCK_RUNTIME_OPERATIONS:
+            event_name = f"before-send.bedrock-runtime.{op}"
+            client.meta.events.register(event_name, add_custom_headers)
+            client.meta.events.register(event_name, override_endpoint_url)
 
-        if arn:
-            # Retrieve the inference profile using the ARN.
-            get_profile_response = self.bedrock_client.get_inference_profile(
-                inferenceProfileIdentifier=arn
-            )
-            # Extract the model identifier from the profile response.
-            model_identifier = get_profile_response["models"][0]["modelArn"]
-            # Retrieve foundation model details using the model identifier.
-            foundation_model_response = self.bedrock_client.get_foundation_model(
-                modelIdentifier=model_identifier
-            )
-            model_id = foundation_model_response["modelDetails"]["modelId"]
-
-            # If the model_id contains a date version, remove the date portion.
-            # For example, transform:
-            #   "anthropic.claude-3-haiku-20240307-v1:0"  ->  "anthropic.claude-3-haiku-v1:0"
-            #
-            # The regex below finds a hyphen followed by exactly 8 digits when it's immediately
-            # followed by another hyphen, and removes that hyphen and the 8 digits.
-            model_id = re.sub(r'-\d{8}(?=-)', '', model_id)
-
-            # Add the (possibly transformed) model_id as a custom header.
-            request.headers["x-javelin-route"] = model_id
-
-        # Update the request URL to use the Javelin endpoint.
-        # Replace the scheme and netloc based on self.base_url while preserving path and query.
-        new_netloc = urlparse(self.base_url).netloc
-        updated_url = original_url._replace(scheme="https", netloc=new_netloc)
-        request.url = urlunparse(updated_url)
-
-    except Exception as e:
-        raise ValueError(f"Failed to override endpoint URL: {str(e)}") from e
+        return client
 
     def _prepare_request(self, request: Request) -> tuple:
         url = self._construct_url(
