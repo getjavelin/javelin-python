@@ -210,9 +210,11 @@ class JavelinClient:
                     request.headers["x-javelin-model"] = model_id
 
                 # Update the request URL to use the Javelin endpoint.
-                new_netloc = urlparse(self.base_url).netloc
+                parsed_base = urlparse(self.base_url)
+                new_scheme = parsed_base.scheme
+                new_netloc = parsed_base.netloc
                 updated_path = f"/v1{original_url.path}"
-                updated_url = original_url._replace(scheme="https", netloc=new_netloc, path=updated_path)
+                updated_url = original_url._replace(scheme=new_scheme, netloc=new_netloc, path=updated_path)
                 request.url = urlunparse(updated_url)
 
             except Exception as e:
