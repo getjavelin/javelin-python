@@ -1,7 +1,9 @@
+import functools
 from typing import Any, Coroutine, Dict, Optional, Union
 from urllib.parse import urljoin, urlparse, urlunparse, unquote
 import httpx
 import re
+
 from javelin_sdk.chat_completions import Chat, Completions
 from javelin_sdk.models import HttpMethod, JavelinConfig, Request
 from javelin_sdk.services.gateway_service import GatewayService
@@ -19,7 +21,10 @@ class JavelinClient:
     BEDROCK_RUNTIME_OPERATIONS = frozenset(
         {"InvokeModel", "InvokeModelWithResponseStream", "Converse", "ConverseStream"}
     )
+    PROFILE_ARN_PATTERN = re.compile(r'/model/arn:aws:bedrock:[^:]+:\d+:application-inference-profile/[^/]+')
+    MODEL_ARN_PATTERN = re.compile(r'/model/arn:aws:bedrock:[^:]+::foundation-model/[^/]+')
 
+    
     def __init__(self, config: JavelinConfig) -> None:
         self.config = config
         self.base_url = urljoin(config.base_url, config.api_version or "/v1")
@@ -85,12 +90,12 @@ class JavelinClient:
     def close(self):
         if self._client:
             self._client.close()
-
+            
     def register_bedrock(self, 
-                        bedrock_runtime_client: Any, 
-                        bedrock_client: Any,
-                        bedrock_session: Any = None,
-                        route_name: str = None) -> None:
+                    bedrock_runtime_client: Any, 
+                    bedrock_client: Any = None,
+                    bedrock_session: Any = None,
+                    route_name: str = None) -> None:
         """
         Register an AWS Bedrock Runtime client
         for request interception and modification.
@@ -119,9 +124,7 @@ class JavelinClient:
         else:
             if bedrock_runtime_client is None:
                 raise AssertionError("Bedrock Runtime client cannot be None")
-            if bedrock_client is None:
-                raise AssertionError("Bedrock client cannot be None")
-
+            
         # Store the bedrock client
         self.bedrock_client = bedrock_client
         self.bedrock_session = bedrock_session
@@ -145,23 +148,45 @@ class JavelinClient:
                 f"{type(bedrock_runtime_client).__name__}"
             )
 
-        # Validate bedrock client type and attributes
-        if not all(
-            [
-                hasattr(bedrock_client, "meta"),
-                hasattr(bedrock_client.meta, "service_model"),
-                getattr(bedrock_client.meta.service_model, "service_name", None)
-                == "bedrock",
-            ]
-        ): raise AssertionError(
-                "Invalid client type. Expected boto3 bedrock client, got: "
-                f"{type(bedrock_client).__name__}"
-            )
-
         def add_custom_headers(request: Any, **kwargs) -> None:
             """Add Javelin headers to each request."""
             request.headers.update(self._headers)
 
+        """
+        We don't want to make a request to the bedrock client for each request.
+        So we cache the results of the inference profile and 
+        foundation model requests.
+        """
+        @functools.lru_cache()
+        def get_inference_model(inference_profile_identifier: str) -> str:
+            try:
+                # Get the inference profile response            
+                response = self.bedrock_client.get_inference_profile(
+                    inferenceProfileIdentifier=inference_profile_identifier
+                )
+                model_identifier = response["models"][0]["modelArn"]
+
+                # Get the foundation model response
+                foundation_model_response = self.bedrock_client.get_foundation_model(
+                    modelIdentifier=model_identifier
+                )
+                model_id = foundation_model_response["modelDetails"]["modelId"]
+                return model_id
+            except Exception as e:
+                # Fail silently if the model is not found
+                return None
+        
+        @functools.lru_cache()
+        def get_foundation_model(model_identifier: str) -> str:
+            try:
+                response = self.bedrock_client.get_foundation_model(
+                    modelIdentifier=model_identifier
+                )
+                return response["modelDetails"]["modelId"]
+            except Exception as e:
+                # Fail silently if the model is not found
+                return None
+                    
         def override_endpoint_url(request: Any, **kwargs) -> None:
             """
             Redirect Bedrock operations to the Javelin endpoint while preserving path and query.
@@ -170,11 +195,11 @@ class JavelinClient:
             the header 'x-javelin-route' is set to self.default_bedrock_route.
             
             - In all cases, the function extracts an identifier from the URL path (after '/model/').
-            If the identifier starts with 'arn:aws:bedrock:', it attempts to resolve a model ID:
                 a. First, by treating it as a profile ARN (via get_inference_profile) and then retrieving
                 the model ARN and foundation model details.
-                b. If that fails, by treating it directly as a model ARN.
-            If the identifier is not an ARN, it is assumed to be a model ID.
+                b. If that fails, by treating it directly as a model ARN and getting the foundation model detail
+            
+            - If it fails to find a model ID, it will try to extract it the model id from the path
             
             - Once the model ID is found, any date portion is removed, and the header
             'x-javelin-model' is set with this model ID.
@@ -186,82 +211,62 @@ class JavelinClient:
                 ValueError: If any part of the process fails.
             """
             try:
+                
                 original_url = urlparse(request.url)
                 
                 # If default routing is enabled and a default route is provided, set the x-javelin-route header.
                 if self.use_default_bedrock_route and self.default_bedrock_route:
                     request.headers["x-javelin-route"] = self.default_bedrock_route
 
-                # Always attempt to extract an identifier from the URL path after '/model/'.
-                identifier = None
-                if "/model/" in original_url.path:
-                    remainder = original_url.path.split("/model/", 1)[1]                    
-                    # Always unquote, whether or not it's actually encoded.
-                    remainder = unquote(remainder)          
-                    print(f"remainder: {remainder}")
 
-                    tokens = [token for token in remainder.split("/") if token]
-                    if tokens:
-                        identifier = tokens[0]
-                        # If the identifier starts with "arn:aws:bedrock:", combine tokens if necessary.
-                        if identifier.startswith("arn:aws:bedrock:"):
-                            i = 1
-                            while identifier.count(":") < 6 and i < len(tokens):
-                                identifier += "/" + tokens[i]
-                                i += 1
-
+                path = original_url.path
+                path = unquote(path)
+                
                 model_id = None
-                if identifier and identifier.startswith("arn:aws:bedrock:"):
-                    # First, try treating the identifier as a profile ARN.
-                    try:
-                        get_profile_response = self.bedrock_client.get_inference_profile(
-                            inferenceProfileIdentifier=identifier
-                        )
-                        model_identifier = get_profile_response["models"][0]["modelArn"]
-                        print(f"model_identifier@profilearn: {model_identifier}")
-                        foundation_model_response = self.bedrock_client.get_foundation_model(
-                            modelIdentifier=model_identifier
-                        )
-                        model_id = foundation_model_response["modelDetails"]["modelId"]
-                        print(f"model_id@profilearn: {model_id}")
-                    except Exception:
-                        # If the profile ARN approach fails, try treating it directly as a model ARN.
-                        try:
-                            foundation_model_response = self.bedrock_client.get_foundation_model(
-                                modelIdentifier=identifier
-                            )
-                            model_id = foundation_model_response["modelDetails"]["modelId"]
-                            print(f"model_id@modelarn: {model_id}")
-                        except Exception as inner:
-                            raise ValueError(
-                                f"Failed to process ARN {identifier} as either profile or model ARN: {inner}"
-                            ) from inner
-                elif identifier:
-                    # If the identifier does not start with an ARN prefix, assume it's a model ID.
-                    model_id = identifier
-                    print(f"model_id@modelid: {model_id}")
+                
+                # Check for inference profile ARN 
+                if re.match(self.PROFILE_ARN_PATTERN, path):
+                    match = re.match(self.PROFILE_ARN_PATTERN, path)
+                    model_id = get_inference_model(match.group(0).replace("/model/", ""))
+
+                # Check for model ARN
+                elif re.match(self.MODEL_ARN_PATTERN, path):
+                    match = re.match(self.MODEL_ARN_PATTERN, path)
+                    model_id = get_foundation_model(match.group(0).replace("/model/", ""))
+                    
+                # If the model ID is not found, try to extract it from the path
+                if model_id is None:
+                    path = path.replace("/model/", "")
+                    # Get the the last index of / in the path
+                    end_index = path.rfind("/")
+                    path = path[:end_index]
+                    model_id = path.replace("/model/", "")
+                    
+                    
                 if model_id:
                     # Remove the date portion if present (e.g., transform "anthropic.claude-3-haiku-20240307-v1:0"
                     # to "anthropic.claude-3-haiku-v1:0").
                     model_id = re.sub(r'-\d{8}(?=-)', '', model_id)
                     request.headers["x-javelin-model"] = model_id
+                
                 # Update the request URL to use the Javelin endpoint.
                 parsed_base = urlparse(self.base_url)
-                new_scheme = parsed_base.scheme
-                new_netloc = parsed_base.netloc
-                updated_path = f"/v1{original_url.path}"
-                updated_url = original_url._replace(scheme=new_scheme, netloc=new_netloc, path=updated_path)
+                updated_url = original_url._replace(
+                    scheme=parsed_base.scheme, 
+                    netloc=parsed_base.netloc, 
+                    path=f"/v1{original_url.path}"
+                )
                 request.url = urlunparse(updated_url)
 
             except Exception as e:
-                raise ValueError(f"Failed to override endpoint URL: {str(e)}") from e
-            
+                print(f"Failed to override endpoint URL: {str(e)}")
+                pass
+
         # Register header modification & URL override for specific operations
         for op in self.BEDROCK_RUNTIME_OPERATIONS:
             event_name = f"before-send.bedrock-runtime.{op}"
             self.bedrock_runtime_client.meta.events.register(event_name, add_custom_headers)
             self.bedrock_runtime_client.meta.events.register(event_name, override_endpoint_url)
-
 
     def _prepare_request(self, request: Request) -> tuple:
         url = self._construct_url(
