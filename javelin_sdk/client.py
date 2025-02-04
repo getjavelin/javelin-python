@@ -1,5 +1,5 @@
 from typing import Any, Coroutine, Dict, Optional, Union
-from urllib.parse import urljoin, urlparse, urlunparse
+from urllib.parse import urljoin, urlparse, urlunparse, unquote
 import httpx
 import re
 from javelin_sdk.chat_completions import Chat, Completions
@@ -14,7 +14,6 @@ from javelin_sdk.services.trace_service import TraceService
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
 API_TIMEOUT = 10
-
 
 class JavelinClient:
     BEDROCK_RUNTIME_OPERATIONS = frozenset(
@@ -34,6 +33,8 @@ class JavelinClient:
         self._client = None
         self._aclient = None
         self.bedrock_client = None
+        self.bedrock_runtime_client = None
+        self.bedrock_session = None
         self.default_bedrock_route = None
         self.use_default_bedrock_route = False
 
@@ -85,13 +86,20 @@ class JavelinClient:
         if self._client:
             self._client.close()
 
-    def register_bedrock_runtime(self, client: Any, route_name: str = None) -> Any:
+    def register_bedrock(self, 
+                        bedrock_runtime_client: Any, 
+                        bedrock_client: Any,
+                        bedrock_session: Any = None,
+                        route_name: str = None) -> None:
         """
         Register an AWS Bedrock Runtime client
         for request interception and modification.
 
         Args:
-            client: A boto3 bedrock-runtime client instance
+            bedrock_runtime_client: A boto3 bedrock-runtime client instance
+            bedrock_client: A boto3 bedrock client instance
+            bedrock_session: A boto3 bedrock session instance
+            route_name: The name of the route to use for the bedrock client
         Returns:
             The modified boto3 client with registered event handlers
         Raises:
@@ -104,28 +112,50 @@ class JavelinClient:
             >>> javelin_client.register_bedrock_client(bedrock)
             >>> bedrock.invoke_model(
         """
-        if client is None:
-            raise AssertionError("Bedrock Runtime client cannot be None")
-        
+        if bedrock_session is not None:
+            self.bedrock_session = bedrock_session
+            self.bedrock_client = bedrock_session.client("bedrock")
+            self.bedrock_runtime_client = bedrock_session.client("bedrock-runtime")
+        else:
+            if bedrock_runtime_client is None:
+                raise AssertionError("Bedrock Runtime client cannot be None")
+            if bedrock_client is None:
+                raise AssertionError("Bedrock client cannot be None")
+
         # Store the bedrock client
-        self.bedrock_client = client
+        self.bedrock_client = bedrock_client
+        self.bedrock_session = bedrock_session
+        self.bedrock_runtime_client = bedrock_runtime_client
 
         # Store the default bedrock route
         if route_name is not None:
             self.use_default_bedrock_route = True
             self.default_bedrock_route = route_name
 
-        # Validate client type and attributes
+        # Validate bedrock-runtime client type and attributes
         if not all(
             [
-                hasattr(client, "meta"),
-                hasattr(client.meta, "service_model"),
-                getattr(client.meta.service_model, "service_name", None)
+                hasattr(bedrock_runtime_client, "meta"),
+                hasattr(bedrock_runtime_client.meta, "service_model"),
+                getattr(bedrock_runtime_client.meta.service_model, "service_name", None)
                 == "bedrock-runtime",
             ]
         ): raise AssertionError(
                 "Invalid client type. Expected boto3 bedrock-runtime client, got: "
-                f"{type(client).__name__}"
+                f"{type(bedrock_runtime_client).__name__}"
+            )
+
+        # Validate bedrock client type and attributes
+        if not all(
+            [
+                hasattr(bedrock_client, "meta"),
+                hasattr(bedrock_client.meta, "service_model"),
+                getattr(bedrock_client.meta.service_model, "service_name", None)
+                == "bedrock",
+            ]
+        ): raise AssertionError(
+                "Invalid client type. Expected boto3 bedrock client, got: "
+                f"{type(bedrock_client).__name__}"
             )
 
         def add_custom_headers(request: Any, **kwargs) -> None:
@@ -165,7 +195,11 @@ class JavelinClient:
                 # Always attempt to extract an identifier from the URL path after '/model/'.
                 identifier = None
                 if "/model/" in original_url.path:
-                    remainder = original_url.path.split("/model/", 1)[1]
+                    remainder = original_url.path.split("/model/", 1)[1]                    
+                    # Always unquote, whether or not it's actually encoded.
+                    remainder = unquote(remainder)          
+                    print(f"remainder: {remainder}")
+
                     tokens = [token for token in remainder.split("/") if token]
                     if tokens:
                         identifier = tokens[0]
@@ -180,21 +214,24 @@ class JavelinClient:
                 if identifier and identifier.startswith("arn:aws:bedrock:"):
                     # First, try treating the identifier as a profile ARN.
                     try:
-                        get_profile_response = client.get_inference_profile(
+                        get_profile_response = self.bedrock_client.get_inference_profile(
                             inferenceProfileIdentifier=identifier
                         )
                         model_identifier = get_profile_response["models"][0]["modelArn"]
-                        foundation_model_response = client.get_foundation_model(
+                        print(f"model_identifier@profilearn: {model_identifier}")
+                        foundation_model_response = self.bedrock_client.get_foundation_model(
                             modelIdentifier=model_identifier
                         )
                         model_id = foundation_model_response["modelDetails"]["modelId"]
+                        print(f"model_id@profilearn: {model_id}")
                     except Exception:
                         # If the profile ARN approach fails, try treating it directly as a model ARN.
                         try:
-                            foundation_model_response = client.get_foundation_model(
+                            foundation_model_response = self.bedrock_client.get_foundation_model(
                                 modelIdentifier=identifier
                             )
                             model_id = foundation_model_response["modelDetails"]["modelId"]
+                            print(f"model_id@modelarn: {model_id}")
                         except Exception as inner:
                             raise ValueError(
                                 f"Failed to process ARN {identifier} as either profile or model ARN: {inner}"
@@ -202,13 +239,12 @@ class JavelinClient:
                 elif identifier:
                     # If the identifier does not start with an ARN prefix, assume it's a model ID.
                     model_id = identifier
-
+                    print(f"model_id@modelid: {model_id}")
                 if model_id:
                     # Remove the date portion if present (e.g., transform "anthropic.claude-3-haiku-20240307-v1:0"
                     # to "anthropic.claude-3-haiku-v1:0").
                     model_id = re.sub(r'-\d{8}(?=-)', '', model_id)
                     request.headers["x-javelin-model"] = model_id
-
                 # Update the request URL to use the Javelin endpoint.
                 parsed_base = urlparse(self.base_url)
                 new_scheme = parsed_base.scheme
@@ -223,10 +259,9 @@ class JavelinClient:
         # Register header modification & URL override for specific operations
         for op in self.BEDROCK_RUNTIME_OPERATIONS:
             event_name = f"before-send.bedrock-runtime.{op}"
-            client.meta.events.register(event_name, add_custom_headers)
-            client.meta.events.register(event_name, override_endpoint_url)
+            self.bedrock_runtime_client.meta.events.register(event_name, add_custom_headers)
+            self.bedrock_runtime_client.meta.events.register(event_name, override_endpoint_url)
 
-        return client
 
     def _prepare_request(self, request: Request) -> tuple:
         url = self._construct_url(
