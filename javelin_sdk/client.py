@@ -213,6 +213,12 @@ class JavelinClient:
             try:
                 
                 original_url = urlparse(request.url)
+
+                # Construct the base URL (scheme + netloc)
+                base_url = f"{original_url.scheme}://{original_url.netloc}"
+
+                # Set the header
+                request.headers["x-javelin-provider"] = base_url
                 
                 # If default routing is enabled and a default route is provided, set the x-javelin-route header.
                 if self.use_default_bedrock_route and self.default_bedrock_route:
