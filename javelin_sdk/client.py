@@ -206,7 +206,7 @@ class JavelinClient:
                         # If the identifier starts with "arn:aws:bedrock:", combine tokens if necessary.
                         if identifier.startswith("arn:aws:bedrock:"):
                             i = 1
-                            while identifier.count(":") < 5 and i < len(tokens):
+                            while identifier.count(":") < 6 and i < len(tokens):
                                 identifier += "/" + tokens[i]
                                 i += 1
 
