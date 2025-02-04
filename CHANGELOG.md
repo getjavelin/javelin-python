@@ -2,6 +2,28 @@
 ## [Unreleased]
 
 
+<a name="v0.2.21"></a>
+## [v0.2.21] - 2025-02-03
+### Bug Fixes
+- take both bedrock & bedrock-runtime client
+- Update client URL scheme: use scheme from self.base_url instead of hardcoding 'https'
+- fixed a few bugs
+
+### DevOps
+- Update CHANGELOG for v0.2.20
+
+### Features
+- 1. added logic to look for model_arn if profile_arn is not found. Fail silently in case of error (this needs to be enhanced to add async tracing). 2. added logic to pass a default_route_name for bedrock models optionally when registering bedrock_client, 3. added logic to always etract the model and set the x-javlein-model header (needed for model_spec in case if are not rewriting the url and we get an arn instead of model id
+- register_bedrock now supports arn
+- Integrating LangGraph agents with Javelin route with proper comments and short documentaiton of implementation
+
+### Pull Requests
+- Merge pull request [#119](https://github.com/getjavelin/javelin-python/issues/119) from getjavelin/spg
+- Merge pull request [#118](https://github.com/getjavelin/javelin-python/issues/118) from getjavelin/spg
+- Merge pull request [#116](https://github.com/getjavelin/javelin-python/issues/116) from getjavelin/langraph-javelin-branch
+- Merge pull request [#117](https://github.com/getjavelin/javelin-python/issues/117) from getjavelin/cicd-changelog
+
+
 <a name="v0.2.20"></a>
 ## [v0.2.20] - 2025-01-31
 ### Bug Fixes
@@ -271,7 +293,8 @@
 <a name="v0.1.5"></a>
 ## v0.1.5 - 2023-09-04
 
-[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.20...HEAD
+[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.21...HEAD
+[v0.2.21]: https://github.com/getjavelin/javelin-python/compare/v0.2.20...v0.2.21
 [v0.2.20]: https://github.com/getjavelin/javelin-python/compare/v0.2.19...v0.2.20
 [v0.2.19]: https://github.com/getjavelin/javelin-python/compare/v0.2.18...v0.2.19
 [v0.2.18]: https://github.com/getjavelin/javelin-python/compare/v0.2.17...v0.2.18
