@@ -21,7 +21,10 @@ class JavelinClient:
     BEDROCK_RUNTIME_OPERATIONS = frozenset(
         {"InvokeModel", "InvokeModelWithResponseStream", "Converse", "ConverseStream"}
     )
+    PROFILE_ARN_PATTERN = re.compile(r'/model/arn:aws:bedrock:[^:]+:\d+:application-inference-profile/[^/]+')
+    MODEL_ARN_PATTERN = re.compile(r'/model/arn:aws:bedrock:[^:]+::foundation-model/[^/]+')
 
+    
     def __init__(self, config: JavelinConfig) -> None:
         self.config = config
         self.base_url = urljoin(config.base_url, config.api_version or "/v1")
