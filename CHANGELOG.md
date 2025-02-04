@@ -2,6 +2,24 @@
 ## [Unreleased]
 
 
+<a name="v0.2.23"></a>
+## [v0.2.23] - 2025-02-03
+### Bug Fixes
+- for missing arn proc
+
+### Pull Requests
+- Merge pull request [#122](https://github.com/getjavelin/javelin-python/issues/122) from getjavelin/spg
+
+
+<a name="v0.2.22"></a>
+## [v0.2.22] - 2025-02-04
+### DevOps
+- Update CHANGELOG for v0.2.21
+
+### Pull Requests
+- Merge pull request [#120](https://github.com/getjavelin/javelin-python/issues/120) from getjavelin/cicd-changelog
+
+
 <a name="v0.2.21"></a>
 ## [v0.2.21] - 2025-02-03
 ### Bug Fixes
@@ -293,7 +311,9 @@
 <a name="v0.1.5"></a>
 ## v0.1.5 - 2023-09-04
 
-[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.21...HEAD
+[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.23...HEAD
+[v0.2.23]: https://github.com/getjavelin/javelin-python/compare/v0.2.22...v0.2.23
+[v0.2.22]: https://github.com/getjavelin/javelin-python/compare/v0.2.21...v0.2.22
 [v0.2.21]: https://github.com/getjavelin/javelin-python/compare/v0.2.20...v0.2.21
 [v0.2.20]: https://github.com/getjavelin/javelin-python/compare/v0.2.19...v0.2.20
 [v0.2.19]: https://github.com/getjavelin/javelin-python/compare/v0.2.18...v0.2.19
