@@ -2,6 +2,32 @@
 ## [Unreleased]
 
 
+<a name="v0.2.25"></a>
+## [v0.2.25] - 2025-02-04
+### Features
+- Set x-javelin-provider header to base URL
+
+### Pull Requests
+- Merge pull request [#126](https://github.com/getjavelin/javelin-python/issues/126) from getjavelin/spg
+
+
+<a name="v0.2.24"></a>
+## [v0.2.24] - 2025-02-04
+### Bug Fixes
+- chcking for null in javelin-client'
+
+### DevOps
+- Update CHANGELOG for v0.2.23
+
+### Features
+- added missing regexp
+- simplified logic for handling ARN and model identifier
+
+### Pull Requests
+- Merge pull request [#123](https://github.com/getjavelin/javelin-python/issues/123) from getjavelin/spg
+- Merge pull request [#121](https://github.com/getjavelin/javelin-python/issues/121) from getjavelin/cicd-changelog
+
+
 <a name="v0.2.23"></a>
 ## [v0.2.23] - 2025-02-03
 ### Bug Fixes
@@ -311,7 +337,9 @@
 <a name="v0.1.5"></a>
 ## v0.1.5 - 2023-09-04
 
-[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.23...HEAD
+[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.25...HEAD
+[v0.2.25]: https://github.com/getjavelin/javelin-python/compare/v0.2.24...v0.2.25
+[v0.2.24]: https://github.com/getjavelin/javelin-python/compare/v0.2.23...v0.2.24
 [v0.2.23]: https://github.com/getjavelin/javelin-python/compare/v0.2.22...v0.2.23
 [v0.2.22]: https://github.com/getjavelin/javelin-python/compare/v0.2.21...v0.2.22
 [v0.2.21]: https://github.com/getjavelin/javelin-python/compare/v0.2.20...v0.2.21
