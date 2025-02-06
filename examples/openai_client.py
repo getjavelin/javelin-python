@@ -22,11 +22,24 @@ config = JavelinConfig(
 client = JavelinClient(config)
 client.register_openai(openai_client, route_name="openai")
 
-# Call OpenAI Model
-completion = openai_client.chat.completions.create(
+# Call OpenAI endpoints
+chat_completions = openai_client.chat.completions.create(
     model="gpt-3.5-turbo",
     messages=[{"role": "user", "content": "What is machine learning?"}],
 )
-    
-# print("ChatCompletion response:", completion)
-print(completion.model_dump_json(indent=2))
+print(chat_completions.model_dump_json(indent=2))
+
+completions = openai_client.completions.create(
+    model="gpt-3.5-turbo-instruct",
+    prompt="What is machine learning?",
+    max_tokens=7,
+    temperature=0
+)
+print(completions.model_dump_json(indent=2))
+
+embeddings = openai_client.embeddings.create(
+    model="text-embedding-ada-002",
+    input="The food was delicious and the waiter...",
+    encoding_format="float"
+)
+print(embeddings.model_dump_json(indent=2))
