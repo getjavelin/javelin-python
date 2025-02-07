@@ -96,148 +96,73 @@ class JavelinClient:
         if self._client:
             self._client.close()
 
-    def register_openai(self, 
-                    openai_client: Any, 
-                    provider_name: str = None,
-                    route_name: str = None) -> Any:
+    def register_provider(self, 
+                        openai_client: Any,
+                        provider_name: str,
+                        route_name: str = None) -> Any:
         """
-        Register the passed-in OpenAI client so that calls to:
-            - client.chat.completions.create(...)
-            - client.completions.create(...)
-            - client.embeddings.create(...)
-        are intercepted by Javelin.
+        Generalized function to register OpenAI, Azure OpenAI, and Gemini clients.
 
         Additionally sets:
             - openai_client.base_url to self.base_url
             - openai_client._custom_headers to include self._headers
         """
 
-        '''
-        self.client_is_async = None
-        if type(openai_client) == OpenAI:
-            print("DEBUG - OpenAI client is sync")
-            self.client_is_async = False
-        elif type(openai_client) == AsyncOpenAI:
-            print("DEBUG - OpenAI client is async")
-            self.client_is_async = True
-        else:
-            raise Exception(f"Unknown client type: {type(openai_client)}")
-        '''
-
         # Store the OpenAI base URL
         if self.openai_base_url is None:
             self.openai_base_url = openai_client.base_url
 
         # Point the OpenAI client to Javelin's base URL
-        openai_client.base_url=self.base_url + "/" + provider_name
+        openai_client.base_url = f"{self.base_url}/{provider_name}"
 
         if not hasattr(openai_client, "_custom_headers"):
             openai_client._custom_headers = {}
         openai_client._custom_headers.update(self._headers)
 
-        base_url_str = str(self.openai_base_url)
-        # Remove trailing slash if present
-        if base_url_str.endswith("/"):
-            base_url_str = base_url_str[:-1]
+        base_url_str = str(self.openai_base_url).rstrip("/")  # Remove trailing slash if present
 
-         # Update Javelin headers into the client's _custom_headers
+        # Update Javelin headers into the client's _custom_headers
         openai_client._custom_headers["x-javelin-provider"] = base_url_str
         openai_client._custom_headers["x-javelin-route"] = route_name
 
-        # Print out the headers you’ve set (for debug)
-        print("DEBUG - Patched OpenAI client headers:", openai_client._custom_headers)
-         
         # Store references to the original methods
-        original_chat_completions_create = openai_client.chat.completions.create
-        original_completions_create = openai_client.completions.create
-        original_embeddings_create = openai_client.embeddings.create
+        original_methods = {
+            "chat_completions_create": openai_client.chat.completions.create,
+            "completions_create": openai_client.completions.create,
+            "embeddings_create": openai_client.embeddings.create,
+        }
 
-        # Define patched versions, injecting Javelin logs/traces
+        # Patch methods with tracing and header updates
+        def create_patched_method(original_method):
+            def patched_method(*args, **kwargs):
+                model = kwargs.get('model')
+                if model and hasattr(openai_client, "_custom_headers"):
+                    openai_client._custom_headers['x-javelin-model'] = model
 
-        def patched_chat_completions_create(*args, **kwargs):
-            # Update openai_client._custom_headers directly if model is set
-            model = kwargs.get('model')  # Extract the 'model' field
-            if model and hasattr(openai_client, "_custom_headers"):
-                openai_client._custom_headers['x-javelin-model'] = model  # Add or update the custom header
+                response = original_method(*args, **kwargs)
+                return response
 
-            '''
-            TODO: self.trace_service.log_trace(
-                message="OpenAI chat.completions.create called",
-                extra={"args": args, "kwargs": kwargs},
-            )
-            '''
+            return patched_method
 
-            # Call the real method
-            response = original_chat_completions_create(*args, **kwargs)
+        # Apply patches
+        openai_client.chat.completions.create = create_patched_method(original_methods["chat_completions_create"])
+        openai_client.completions.create = create_patched_method(original_methods["completions_create"])
+        openai_client.embeddings.create = create_patched_method(original_methods["embeddings_create"])
 
-            # AFTER calling original
-            '''
-            TODO: self.trace_service.log_trace(
-                message="OpenAI chat.completions.create response",
-                extra={"response": response},
-            )
-            '''
-
-            return response
-
-        def patched_completions_create(*args, **kwargs):
-            # Update openai_client._custom_headers directly if model is set
-            model = kwargs.get('model')  # Extract the 'model' field
-            if model and hasattr(openai_client, "_custom_headers"):
-                openai_client._custom_headers['x-javelin-model'] = model  # Add or update the custom header
-
-            '''
-            TODO: self.trace_service.log_trace(
-                message="OpenAI completions.create called",
-                extra={"args": args, "kwargs": kwargs},
-            )
-            '''
-
-            # Call the real method         
-            response = original_completions_create(*args, **kwargs)
-
-            '''
-            TODO: self.trace_service.log_trace(
-                message="OpenAI completions.create response",
-                extra={"response": response},
-            )
-            '''
-
-            return response
-
-        def patched_embeddings_create(*args, **kwargs):
-            # Update openai_client._custom_headers directly if model is set
-            model = kwargs.get('model')  # Extract the 'model' field
-            if model and hasattr(openai_client, "_custom_headers"):
-                openai_client._custom_headers['x-javelin-model'] = model  # Add or update the custom header
-
-            '''
-            TODO: self.trace_service.log_trace(
-                message="OpenAI embeddings.create called",
-                extra={"args": args, "kwargs": kwargs},
-            )
-            '''
-
-            # Call the real method
-            response = original_embeddings_create(*args, **kwargs)
-
-            '''
-            TODO: self.trace_service.log_trace(
-                message="OpenAI embeddings.create response",
-                extra={"response": response},
-            )
-            '''
-
-            return response
-
-        # patch the client’s methods
-        openai_client.chat.completions.create = patched_chat_completions_create
-        openai_client.completions.create = patched_completions_create
-        openai_client.embeddings.create = patched_embeddings_create
-
-        # Return the patched client
         return openai_client
-            
+
+    def register_openai(self, openai_client: Any, route_name: str = None) -> Any:
+        return self.register_provider(openai_client, provider_name="openai", route_name=route_name)
+
+    def register_azureopenai(self, openai_client: Any, route_name: str = None) -> Any:
+        return self.register_provider(openai_client, provider_name="azureopenai", route_name=route_name)
+
+    def register_gemini(self, openai_client: Any, route_name: str = None) -> Any:
+        return self.register_provider(openai_client, provider_name="gemini", route_name=route_name)
+
+    def register_deepseek(self, openai_client: Any, route_name: str = None) -> Any:
+        return self.register_provider(openai_client, provider_name="deepseek", route_name=route_name)
+
     def register_bedrock(self, 
                     bedrock_runtime_client: Any, 
                     bedrock_client: Any = None,

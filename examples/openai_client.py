@@ -23,7 +23,7 @@ config = JavelinConfig(
     javelin_api_key=javelin_api_key,
 )
 client = JavelinClient(config)
-client.register_openai(openai_client, provider_name="OpenAI", route_name="openai")
+client.register_openai(openai_client, route_name="openai")
 
 # Call OpenAI endpoints
 print("OpenAI: 1 - Chat completions")
@@ -85,7 +85,7 @@ config = JavelinConfig(
     javelin_api_key=javelin_api_key,
 )
 client = JavelinClient(config)
-client.register_openai(openai_async_client, provider_name="OpenAI", route_name="openai")
+client.register_openai(openai_async_client, route_name="openai")
 
 async def main() -> None:
     chat_completion = await openai_async_client.chat.completions.create(
@@ -135,7 +135,7 @@ config = JavelinConfig(
     javelin_api_key=javelin_api_key,
 )
 client = JavelinClient(config)
-client.register_openai(openai_client, provider_name="Google", route_name="openai")
+client.register_gemini(openai_client, route_name="openai")
 
 print("Gemini: 1 - Chat completions")
 
@@ -289,7 +289,7 @@ config = JavelinConfig(
     javelin_api_key=javelin_api_key,
 )
 client = JavelinClient(config)
-client.register_openai(openai_client, provider_name="Azure", route_name="openai")
+client.register_azureopenai(openai_client, route_name="openai")
 
 completion = openai_client.chat.completions.create(
     model="gpt-4o-mini",  # e.g. gpt-35-instant
@@ -319,7 +319,7 @@ config = JavelinConfig(
 )
 
 # client = JavelinClient(config)
-# client.register_openai(openai_client, provider_name="DeepSeek", route_name="openai")
+# client.register_deepseek(openai_client, route_name="openai")
 
 response = openai_client.chat.completions.create(
     model="deepseek-chat",
