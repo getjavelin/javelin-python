@@ -13,6 +13,8 @@ from javelin_sdk.services.secret_service import SecretService
 from javelin_sdk.services.template_service import TemplateService
 from javelin_sdk.services.trace_service import TraceService
 
+# from openai import OpenAI, AsyncOpenAI
+
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
 API_TIMEOUT = 10
@@ -43,6 +45,7 @@ class JavelinClient:
         self.bedrock_session = None
         self.default_bedrock_route = None
         self.use_default_bedrock_route = False
+        self.client_is_async = None
         self.openai_base_url = None
 
         self.gateway_service = GatewayService(self)
@@ -95,6 +98,7 @@ class JavelinClient:
 
     def register_openai(self, 
                     openai_client: Any, 
+                    provider_name: str = None,
                     route_name: str = None) -> Any:
         """
         Register the passed-in OpenAI client so that calls to:
@@ -108,12 +112,24 @@ class JavelinClient:
             - openai_client._custom_headers to include self._headers
         """
 
+        '''
+        self.client_is_async = None
+        if type(openai_client) == OpenAI:
+            print("DEBUG - OpenAI client is sync")
+            self.client_is_async = False
+        elif type(openai_client) == AsyncOpenAI:
+            print("DEBUG - OpenAI client is async")
+            self.client_is_async = True
+        else:
+            raise Exception(f"Unknown client type: {type(openai_client)}")
+        '''
+
         # Store the OpenAI base URL
         if self.openai_base_url is None:
             self.openai_base_url = openai_client.base_url
 
         # Point the OpenAI client to Javelin's base URL
-        openai_client.base_url=self.base_url
+        openai_client.base_url=self.base_url + "/" + provider_name
 
         if not hasattr(openai_client, "_custom_headers"):
             openai_client._custom_headers = {}
@@ -139,7 +155,11 @@ class JavelinClient:
         # Define patched versions, injecting Javelin logs/traces
 
         def patched_chat_completions_create(*args, **kwargs):
-            # BEFORE calling original
+            # Update openai_client._custom_headers directly if model is set
+            model = kwargs.get('model')  # Extract the 'model' field
+            if model and hasattr(openai_client, "_custom_headers"):
+                openai_client._custom_headers['x-javelin-model'] = model  # Add or update the custom header
+
             '''
             TODO: self.trace_service.log_trace(
                 message="OpenAI chat.completions.create called",
@@ -157,16 +177,23 @@ class JavelinClient:
                 extra={"response": response},
             )
             '''
+
             return response
 
         def patched_completions_create(*args, **kwargs):
+            # Update openai_client._custom_headers directly if model is set
+            model = kwargs.get('model')  # Extract the 'model' field
+            if model and hasattr(openai_client, "_custom_headers"):
+                openai_client._custom_headers['x-javelin-model'] = model  # Add or update the custom header
+
             '''
             TODO: self.trace_service.log_trace(
                 message="OpenAI completions.create called",
                 extra={"args": args, "kwargs": kwargs},
             )
             '''
-            
+
+            # Call the real method         
             response = original_completions_create(*args, **kwargs)
 
             '''
@@ -175,9 +202,15 @@ class JavelinClient:
                 extra={"response": response},
             )
             '''
+
             return response
 
         def patched_embeddings_create(*args, **kwargs):
+            # Update openai_client._custom_headers directly if model is set
+            model = kwargs.get('model')  # Extract the 'model' field
+            if model and hasattr(openai_client, "_custom_headers"):
+                openai_client._custom_headers['x-javelin-model'] = model  # Add or update the custom header
+
             '''
             TODO: self.trace_service.log_trace(
                 message="OpenAI embeddings.create called",
@@ -185,6 +218,7 @@ class JavelinClient:
             )
             '''
 
+            # Call the real method
             response = original_embeddings_create(*args, **kwargs)
 
             '''
@@ -193,6 +227,7 @@ class JavelinClient:
                 extra={"response": response},
             )
             '''
+
             return response
 
         # patch the client’s methods
