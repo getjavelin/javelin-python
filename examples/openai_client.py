@@ -1,110 +1,91 @@
 import json
 import os
-import sys
+import base64
+import requests
 import asyncio
-from openai import OpenAI
-from openai import AsyncOpenAI
-from openai import AzureOpenAI
-import dotenv
-from javelin_sdk import (
-    JavelinClient,
-    JavelinConfig,
-)
+from openai import OpenAI, AsyncOpenAI, AzureOpenAI
+from javelin_sdk import JavelinClient, JavelinConfig
+from pydantic import BaseModel
 
-# Create OpenAI client
+# Environment Variables
 openai_api_key = os.getenv("OPENAI_API_KEY")
-openai_client = OpenAI(api_key=openai_api_key)
+javelin_api_key = os.getenv('JAVELIN_API_KEY')
+gemini_api_key = os.getenv("GEMINI_API_KEY")
 
 # Initialize Javelin Client
-javelin_api_key = os.getenv('JAVELIN_API_KEY')
 config = JavelinConfig(
     base_url="https://api-dev.javelin.live",
     # base_url="http://localhost:8000",
     javelin_api_key=javelin_api_key,
 )
 client = JavelinClient(config)
-client.register_openai(openai_client, route_name="openai")
 
-# Call OpenAI endpoints
-print("OpenAI: 1 - Chat completions")
-
-chat_completions = openai_client.chat.completions.create(
-    model="gpt-3.5-turbo",
-    messages=[{"role": "user", "content": "What is machine learning?"}],
-)
-print(chat_completions.model_dump_json(indent=2))
-
-print("OpenAI: 2 - Completions")
-
-completions = openai_client.completions.create(
-    model="gpt-3.5-turbo-instruct",
-    prompt="What is machine learning?",
-    max_tokens=7,
-    temperature=0
-)
-print(completions.model_dump_json(indent=2))
-
-print("OpenAI: 3 - Embeddings")
-
-embeddings = openai_client.embeddings.create(
-    model="text-embedding-ada-002",
-    input="The food was delicious and the waiter...",
-    encoding_format="float"
-)
-print(embeddings.model_dump_json(indent=2))
-
-print("OpenAI: 4 - Streaming")
-
-stream = openai_client.chat.completions.create(
-    messages=[
-        {
-            "role": "user",
-            "content": "Say this is a test",
-        }
-    ],
-    model="gpt-4o",
-    stream=True,
-)
-for chunk in stream:
-    print(chunk.choices[0].delta.content or "", end="")
-
-# Prints two blank lines
-print("\n\n")
-
-print("AsyncOpenAI: 5 - Chat completions")
-
-# Create AsyncOpenAI client
-openai_async_client = AsyncOpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY"),  # This is the default and can be omitted
-)
-
-javelin_api_key = os.getenv('JAVELIN_API_KEY')
-config = JavelinConfig(
-    base_url="https://api-dev.javelin.live",
-    # base_url="http://localhost:8000",
-    javelin_api_key=javelin_api_key,
-)
-client = JavelinClient(config)
-client.register_openai(openai_async_client, route_name="openai")
-
-async def main() -> None:
-    chat_completion = await openai_async_client.chat.completions.create(
-        messages=[
-            {
-                "role": "user",
-                "content": "Say this is a test",
-            }
-        ],
-        model="gpt-4o",
+# Initialize Javelin Client
+def initialize_javelin_client():
+    javelin_api_key = os.getenv('JAVELIN_API_KEY')
+    config = JavelinConfig(
+        base_url="https://api-dev.javelin.live",
+        javelin_api_key=javelin_api_key,
     )
-    print(chat_completion.model_dump_json(indent=2))
+    return JavelinClient(config)
 
-asyncio.run(main())
+def register_openai_client():
+    openai_client = OpenAI(api_key=openai_api_key)
+    client.register_openai(openai_client, route_name="openai")
+    return openai_client
 
-'''
-print("AsyncOpenAI: 6 - Streaming")
+def openai_chat_completions():
+    openai_client = register_openai_client()
+    response = openai_client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": "What is machine learning?"}],
+    )
+    print(response.model_dump_json(indent=2))
 
-async def main():
+def openai_completions():
+    openai_client = register_openai_client()
+    response = openai_client.completions.create(
+        model="gpt-3.5-turbo-instruct",
+        prompt="What is machine learning?",
+        max_tokens=7,
+        temperature=0
+    )
+    print(response.model_dump_json(indent=2))
+
+def openai_embeddings():
+    openai_client = register_openai_client()
+    response = openai_client.embeddings.create(
+        model="text-embedding-ada-002",
+        input="The food was delicious and the waiter...",
+        encoding_format="float"
+    )
+    print(response.model_dump_json(indent=2))
+
+def openai_streaming_chat():
+    openai_client = register_openai_client()
+    stream = openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Say this is a test"}],
+        stream=True,
+    )
+    for chunk in stream:
+        print(chunk.choices[0].delta.content or "", end="")
+
+def register_async_openai_client():
+    openai_async_client = AsyncOpenAI(api_key=openai_api_key)
+    client.register_openai(openai_async_client, route_name="openai")
+    return openai_async_client
+
+async def async_openai_chat_completions():
+    openai_async_client = register_async_openai_client()
+    response = await openai_async_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Say this is a test"}],
+    )
+    print(response.model_dump_json(indent=2))
+
+async def async_openai_streaming_chat():
+    openai_async_client = register_async_openai_client()
     stream = await openai_async_client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": "Say this is a test"}],
@@ -113,265 +94,234 @@ async def main():
     async for chunk in stream:
         print(chunk.choices[0].delta.content or "", end="")
 
-asyncio.run(main())
-'''
+# Create Gemini client
+def create_gemini_client():
+    gemini_api_key = os.getenv("GEMINI_API_KEY")
+    return OpenAI(
+        api_key=gemini_api_key,
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+    )
 
-# Prints two blank lines
-print("\n\n")
+# Register Gemini client with Javelin
+def register_gemini(client, openai_client):
+    client.register_gemini(openai_client, route_name="openai")
 
-# Gemini APIs
-gemini_api_key = os.getenv("GEMINI_API_KEY")
+# Function to download and encode the image
+def encode_image_from_url(image_url):
+    response = requests.get(image_url)
+    if response.status_code == 200:
+        return base64.b64encode(response.content).decode('utf-8')
+    else:
+        raise Exception(f"Failed to download image: {response.status_code}")
 
-# Create OpenAI client
-openai_client = OpenAI(
-    api_key=gemini_api_key,
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-)
+# Gemini Chat Completions
+def gemini_chat_completions(openai_client):
+    response = openai_client.chat.completions.create(
+        model="gemini-1.5-flash",
+        n=1,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Explain to me how AI works"}
+        ]
+    )
+    print(response.model_dump_json(indent=2))
 
-# Initialize Javelin Client
-config = JavelinConfig(
-    base_url="https://api-dev.javelin.live",
-    # base_url="http://localhost:8000",
-    javelin_api_key=javelin_api_key,
-)
-client = JavelinClient(config)
-client.register_gemini(openai_client, route_name="openai")
+# Gemini Streaming Chat Completions
+def gemini_streaming_chat(openai_client):
+    response = openai_client.chat.completions.create(
+        model="gemini-1.5-flash",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Hello!"}
+        ],
+        stream=True
+    )
+    for chunk in response:
+        print(chunk.choices[0].delta)
 
-print("Gemini: 1 - Chat completions")
-
-response = openai_client.chat.completions.create(
-    model="gemini-1.5-flash",
-    n=1,
-    messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
+# Gemini Function Calling
+def gemini_function_calling(openai_client):
+    tools = [
         {
-            "role": "user",
-            "content": "Explain to me how AI works"
+            "type": "function",
+            "function": {
+                "name": "get_weather",
+                "description": "Get the weather in a given location",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "location": {"type": "string", "description": "The city and state, e.g. Chicago, IL"},
+                        "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
+                    },
+                    "required": ["location"],
+                },
+            }
         }
     ]
-)
 
-# print(response.choices[0].message)
-print(response.model_dump_json(indent=2))
+    messages = [{"role": "user", "content": "What's the weather like in Chicago today?"}]
+    response = openai_client.chat.completions.create(
+        model="gemini-1.5-flash",
+        messages=messages,
+        tools=tools,
+        tool_choice="auto"
+    )
+    print(response.model_dump_json(indent=2))
 
-print("Gemini: 2 - Streaming")
+# Gemini Image Understanding
+def gemini_image_understanding(openai_client):
+    image_url = "https://storage.googleapis.com/cloud-samples-data/generative-ai/image/scones.jpg"
+    base64_image = encode_image_from_url(image_url)
 
-response = openai_client.chat.completions.create(
-  model="gemini-1.5-flash",
-  messages=[
-    {"role": "system", "content": "You are a helpful assistant."},
-    {"role": "user", "content": "Hello!"}
-  ],
-  stream=True
-)
+    response = openai_client.chat.completions.create(
+        model="gemini-1.5-flash",
+        messages=[
+            {"role": "user", "content": [
+                {"type": "text", "text": "What is in this image?"},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}},
+            ]}
+        ]
+    )
+    print(response.model_dump_json(indent=2))
 
-for chunk in response:
-    print(chunk.choices[0].delta)
+# Gemini Structured Output
+def gemini_structured_output(openai_client):
+    class CalendarEvent(BaseModel):
+        name: str
+        date: str
+        participants: list[str]
 
-print("Gemini: 3 - Function calling")
+    completion = openai_client.beta.chat.completions.parse(
+        model="gemini-1.5-flash",
+        messages=[
+            {"role": "system", "content": "Extract the event information."},
+            {"role": "user", "content": "John and Susan are going to an AI conference on Friday."}
+        ],
+        response_format=CalendarEvent,
+    )
+    print(completion.model_dump_json(indent=2))
 
-tools = [
-  {
-    "type": "function",
-    "function": {
-      "name": "get_weather",
-      "description": "Get the weather in a given location",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "location": {
-            "type": "string",
-            "description": "The city and state, e.g. Chicago, IL",
-          },
-          "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
-        },
-        "required": ["location"],
-      },
-    }
-  }
-]
+# Gemini Embeddings
+def gemini_embeddings(openai_client):
+    response = openai_client.embeddings.create(
+        input="Your text string goes here",
+        model="text-embedding-004"
+    )
+    print(response.model_dump_json(indent=2))
 
-messages = [{"role": "user", "content": "What's the weather like in Chicago today?"}]
-response = openai_client.chat.completions.create(
-  model="gemini-1.5-flash",
-  messages=messages,
-  tools=tools,
-  tool_choice="auto"
-)
+# Create Azure OpenAI client
+def create_azureopenai_client():
+    azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+    return AzureOpenAI(
+        api_version="2023-07-01-preview", 
+        azure_endpoint="https://javelinpreview.openai.azure.com"
+    )
 
-print(response.model_dump_json(indent=2))
+# Register Azure OpenAI client with Javelin
+def register_azureopenai(client, openai_client):
+    client.register_azureopenai(openai_client, route_name="openai")
 
-'''
-print ("Gemini: 4 - Image understanding")
+# Azure OpenAI Scenario
+def azure_openai_chat_completions(openai_client):
+    response = openai_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": "How do I output all files in a directory using Python?"}]
+    )
+    print(response.model_dump_json(indent=2))
 
-import base64
+# Create DeepSeek client
+def create_deepseek_client():
+    deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
+    return OpenAI(
+        api_key=deepseek_api_key, 
+        base_url="https://api.deepseek.com"
+    )
 
-# Function to encode the image
-def encode_image(image_path):
-  with open(image_path, "rb") as image_file:
-    return base64.b64encode(image_file.read()).decode('utf-8')
+# Register DeepSeek client with Javelin
+def register_deepseek(client, openai_client):
+    client.register_deepseek(openai_client, route_name="openai")
 
-# Getting the base64 string
-base64_image = encode_image("Path/to/agi/image.jpeg")
+# DeepSeek Chat Completions
+def deepseek_chat_completions(openai_client):
+    response = openai_client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant"},
+            {"role": "user", "content": "Hello"}
+        ],
+        stream=False
+    )
+    print(response.model_dump_json(indent=2))
 
-response = client.chat.completions.create(
-  model="gemini-1.5-flash",
-  messages=[
-    {
-      "role": "user",
-      "content": [
-        {
-          "type": "text",
-          "text": "What is in this image?",
-        },
-        {
-          "type": "image_url",
-          "image_url": {
-            "url":  f"data:image/jpeg;base64,{base64_image}"
-          },
-        },
-      ],
-    }
-  ],
-)
+# DeepSeek Reasoning Model
+def deepseek_reasoning_model():
+    deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
+    openai_client = OpenAI(api_key=deepseek_api_key, base_url="https://api.deepseek.com")
 
-print(response.model_dump_json(indent=2))
-'''
+    # Round 1
+    messages = [{"role": "user", "content": "9.11 and 9.8, which is greater?"}]
+    response = openai_client.chat.completions.create(model="deepseek-reasoner", messages=messages)
+    print(response.to_json())
 
-print("Gemini: 5 - Structured output")
+    content = response.choices[0].message.content
 
-from pydantic import BaseModel
+    # Round 2
+    messages.append({"role": "assistant", "content": content})
+    messages.append({"role": "user", "content": "How many Rs are there in the word 'strawberry'?"})
+    response = openai_client.chat.completions.create(model="deepseek-reasoner", messages=messages)
 
-class CalendarEvent(BaseModel):
-    name: str
-    date: str
-    participants: list[str]
+    print(response.to_json())
 
-completion = openai_client.beta.chat.completions.parse(
-    model="gemini-1.5-flash",
-    messages=[
-        {"role": "system", "content": "Extract the event information."},
-        {"role": "user", "content": "John and Susan are going to an AI conference on Friday."},
-    ],
-    response_format=CalendarEvent,
-)
+# Mistral Chat Completions
+def mistral_chat_completions():
+    mistral_api_key = os.getenv("MISTRAL_API_KEY")
+    openai_client = OpenAI(api_key=mistral_api_key, base_url="https://api.mistral.ai/v1")
 
-print(completion.model_dump_json(indent=2))
+    chat_response = openai_client.chat.completions.create(
+        model="mistral-large-latest",
+        messages=[{"role": "user", "content": "What is the best French cheese?"}]
+    )
+    print(chat_response.to_json())
 
-print("Gemini: 6 - Embeddings")
+def main_sync():
+    openai_chat_completions()
+    openai_completions()
+    openai_embeddings()
+    openai_streaming_chat()
 
-response = openai_client.embeddings.create(
-    input="Your text string goes here",
-    model="text-embedding-004"
-)
+    client = initialize_javelin_client()
+    openai_client = create_gemini_client()
+    register_gemini(client, openai_client)
+    gemini_chat_completions(openai_client)
+    gemini_streaming_chat(openai_client)
+    gemini_function_calling(openai_client)
+    gemini_image_understanding(openai_client)
+    gemini_structured_output(openai_client)
+    gemini_embeddings(openai_client)
+    
+    client = initialize_javelin_client()
+    openai_client = create_azureopenai_client()
+    register_azureopenai(client, openai_client)
+    azure_openai_chat_completions(openai_client)
 
-print(response.model_dump_json(indent=2))
+    client = initialize_javelin_client()
+    openai_client = create_deepseek_client()
+    register_deepseek(client, openai_client)
+    deepseek_chat_completions(openai_client)
 
-# Prints two blank lines
-print("\n\n")
+    # deepseek_reasoning_model()
 
-'''
-print("Azure OpenAI: 1 - Chat completions")
+    mistral_chat_completions()
+    
+async def main_async():
+    await async_openai_chat_completions()
+    print("\n")
+    await async_openai_streaming_chat()
+    print("\n")
 
-# Create AzureOpenAI client
-# gets the API Key from environment variable AZURE_OPENAI_API_KEY
-openai_client = AzureOpenAI(
-    # https://learn.microsoft.com/azure/ai-services/openai/reference#rest-api-versioning
-    api_version="2023-07-01-preview",
-    # https://learn.microsoft.com/azure/cognitive-services/openai/how-to/create-resource?pivots=web-portal#create-a-resource
-    azure_endpoint="https://javelinpreview.openai.azure.com",
-)
+def main():
+    main_sync()                 # Run synchronous calls
+    # asyncio.run(main_async())   # Run asynchronous calls within a single event loop
 
-# Initialize Javelin Client
-config = JavelinConfig(
-    # base_url="https://api-dev.javelin.live",
-    base_url="http://localhost:8000",
-    javelin_api_key=javelin_api_key,
-)
-client = JavelinClient(config)
-client.register_azureopenai(openai_client, route_name="openai")
-
-completion = openai_client.chat.completions.create(
-    model="gpt-4o-mini",  # e.g. gpt-35-instant
-    messages=[
-        {
-            "role": "user",
-            "content": "How do I output all files in a directory using Python?",
-        },
-    ],
-)
-print(completion.to_json())
-'''
-
-'''
-# print("DeepSeek: 1 - Chat completions")
-
-deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
-
-# Create OpenAI client
-openai_client = OpenAI(api_key=deepseek_api_key, base_url="https://api.deepseek.com")
-
-# Initialize Javelin Client
-config = JavelinConfig(
-    # base_url="https://api-dev.javelin.live",
-    base_url="http://localhost:8000",
-    javelin_api_key=javelin_api_key,
-)
-
-# client = JavelinClient(config)
-# client.register_deepseek(openai_client, route_name="openai")
-
-response = openai_client.chat.completions.create(
-    model="deepseek-chat",
-    messages=[
-        {"role": "system", "content": "You are a helpful assistant"},
-        {"role": "user", "content": "Hello"},
-    ],
-    stream=False
-)
-
-print(response.to_json())
-
-print("DeepSeek: 2 - Reasoning Model")
-
-deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
-openai_client = OpenAI(api_key=deepseek_api_key, base_url="https://api.deepseek.com")
-
-# Round 1
-messages = [{"role": "user", "content": "9.11 and 9.8, which is greater?"}]
-response = openai_client.chat.completions.create(
-    model="deepseek-reasoner",
-    messages=messages
-)
-print(response.to_json())
-
-reasoning_content = response.choices[0].message.reasoning_content
-content = response.choices[0].message.content
-
-# Round 2
-messages.append({'role': 'assistant', 'content': content})
-messages.append({'role': 'user', 'content': "How many Rs are there in the word 'strawberry'?"})
-response = openai_client.chat.completions.create(
-    model="deepseek-reasoner",
-    messages=messages
-)
-
-print(response.to_json())
-
-'''
-
-'''
-# Create OpenAI client
-mistral_api_key = os.getenv("MISTRAL_API_KEY")
-openai_client = OpenAI(api_key=mistral_api_key, base_url="https://api.mistral.ai/v1")
-chat_response = openai_client.chat.completions.create(
-    model="mistral-large-latest",
-    messages = [
-        {
-            "role": "user",
-            "content": "What is the best French cheese?",
-        },
-    ]
-)
-print(chat_response.to_json())
-'''
+if __name__ == "__main__":
+    main()
