@@ -12,19 +12,19 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 javelin_api_key = os.getenv('JAVELIN_API_KEY')
 gemini_api_key = os.getenv("GEMINI_API_KEY")
 
-# Initialize Javelin Client
+# Global JavelinClient, used for everything
 config = JavelinConfig(
     base_url="https://api-dev.javelin.live",
     # base_url="http://localhost:8000",
     javelin_api_key=javelin_api_key,
 )
-client = JavelinClient(config)
+client = JavelinClient(config) # Global JavelinClient
 
 # Initialize Javelin Client
 def initialize_javelin_client():
-    javelin_api_key = os.getenv('JAVELIN_API_KEY')
     config = JavelinConfig(
         base_url="https://api-dev.javelin.live",
+        # base_url="http://localhost:8000",
         javelin_api_key=javelin_api_key,
     )
     return JavelinClient(config)
@@ -288,8 +288,13 @@ def main_sync():
     openai_completions()
     openai_embeddings()
     openai_streaming_chat()
+    
+    openai_client = create_azureopenai_client() # same global client
+    register_azureopenai(client, openai_client)
+    azure_openai_chat_completions(openai_client)
 
-    client = initialize_javelin_client()
+    # Pending: model specs, uncomment after model is available
+    '''
     openai_client = create_gemini_client()
     register_gemini(client, openai_client)
     gemini_chat_completions(openai_client)
@@ -298,13 +303,7 @@ def main_sync():
     gemini_image_understanding(openai_client)
     gemini_structured_output(openai_client)
     gemini_embeddings(openai_client)
-    
-    client = initialize_javelin_client()
-    openai_client = create_azureopenai_client()
-    register_azureopenai(client, openai_client)
-    azure_openai_chat_completions(openai_client)
 
-    client = initialize_javelin_client()
     openai_client = create_deepseek_client()
     register_deepseek(client, openai_client)
     deepseek_chat_completions(openai_client)
@@ -312,6 +311,7 @@ def main_sync():
     # deepseek_reasoning_model()
 
     mistral_chat_completions()
+    '''
     
 async def main_async():
     await async_openai_chat_completions()

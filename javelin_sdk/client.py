@@ -17,8 +17,8 @@ from javelin_sdk.services.trace_service import TraceService
 from javelin_sdk.tracing_setup import configure_span_exporter
 import inspect
 from opentelemetry.trace import SpanKind
+from opentelemetry.trace import Status, StatusCode
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
-import openai
 
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
@@ -158,13 +158,13 @@ class JavelinClient:
 
         client_id = id(openai_client)
         if client_id in self.patched_clients:
+            print (f"Client {client_id} already patched")
             return openai_client  # Skip if already patched
 
         self.patched_clients.add(client_id)  # Mark as patched
 
         # Store the OpenAI base URL
-        if self.openai_base_url is None:
-            self.openai_base_url = openai_client.base_url
+        self.openai_base_url = openai_client.base_url
 
         # Point the OpenAI client to Javelin's base URL
         openai_client.base_url = f"{self.base_url}/{provider_name}"
@@ -244,8 +244,8 @@ class JavelinClient:
                         else:
                             return _sync_execution(span)
                     except Exception as e:
-                        span.set_attribute("error", True)
-                        span.set_attribute("error.message", str(e))
+                        span.set_status(Status(StatusCode.ERROR, str(e)))
+                        span.set_attribute("is_exception", True)
                         raise
             else:
                 # Tracing is disabled
@@ -258,6 +258,15 @@ class JavelinClient:
         def _capture_response_details(span, response, kwargs, system_name):
             if hasattr(response, "to_json"):
                 response_data = response.to_dict()
+
+                # Set status code based on response
+                status_code = response_data.get("status_code", 200)
+                status_message = response_data.get("status_message", "OK")
+
+                if status_code >= 400:
+                    span.set_status(Status(StatusCode.ERROR, status_message))
+                else:
+                    span.set_status(Status(StatusCode.OK, status_message))
 
                 # Set basic response attributes
                 JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_RESPONSE_MODEL, response_data.get('model'))
