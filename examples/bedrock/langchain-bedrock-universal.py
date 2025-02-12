@@ -1,0 +1,158 @@
+import boto3
+from javelin_sdk import JavelinClient, JavelinConfig
+
+# This import is from the "langchain_community" extension package
+# Make sure to install it:
+#   pip install git+https://github.com/hwchase17/langchain.git@<some_version>#subdirectory=plugins/langchain-community
+from langchain_community.llms.bedrock import Bedrock as BedrockLLM
+
+
+def init_bedrock():
+    """
+    1) Configure Bedrock clients via boto3,
+    2) Register them with Javelin,
+    3) Return the bedrock_runtime_client for direct usage in LangChain.
+    """
+    # Create Bedrock boto3 clients
+    bedrock_runtime_client = boto3.client(
+        service_name="bedrock-runtime",
+        region_name="us-east-1"
+    )
+    bedrock_client = boto3.client(
+        service_name="bedrock",
+        region_name="us-east-1"
+    )
+
+    # Initialize Javelin client
+    config = JavelinConfig(
+        base_url="https://api-dev.javelin.live/v1",
+        javelin_api_key="" # add your javelin api key here
+    )
+    javelin_client = JavelinClient(config)
+
+    # Register them with the route "bedrock" (optional but recommended)
+    javelin_client.register_bedrock(
+        bedrock_runtime_client=bedrock_runtime_client,
+        bedrock_client=bedrock_client,
+        route_name="bedrock"
+    )
+
+    return bedrock_runtime_client
+
+
+#
+# 1) Non-Streaming Example
+#
+def bedrock_langchain_non_stream(bedrock_runtime_client) -> str:
+    """
+    Demonstrates a single prompt with a synchronous, non-streaming response.
+    """
+    # Create the Bedrock LLM
+    llm = BedrockLLM(
+        client=bedrock_runtime_client,
+        model_id="anthropic.claude-v2:1",  # Example model ID
+        model_kwargs={
+            "max_tokens_to_sample": 256,
+            "temperature": 0.7,
+        }
+    )
+    # Call the model with a single string prompt
+    prompt = "What is machine learning?"
+    response = llm(prompt)
+    return response
+
+
+#
+# 2) Streaming Example
+#
+def bedrock_langchain_stream(bedrock_runtime_client) -> str:
+    """
+    Demonstrates streaming partial responses from Bedrock.
+    Returns the concatenated final text.
+    """
+    llm = BedrockLLM(
+        client=bedrock_runtime_client,
+        model_id="anthropic.claude-v2:1",
+        model_kwargs={
+            "max_tokens_to_sample": 256,
+            "temperature": 0.7,
+        }
+    )
+
+    prompt = "Tell me a short joke."
+    stream_gen = llm.stream(prompt)
+
+    collected_chunks = []
+    for chunk in stream_gen:
+        # 'chunk' is a partial piece of text
+        collected_chunks.append(chunk)
+        # Optional live printing:
+        print(chunk, end="", flush=True)
+
+    # Return the combined text
+    return "".join(collected_chunks)
+
+
+#
+# 3) Converse Example (System + User)
+#
+def bedrock_langchain_converse(bedrock_runtime_client) -> str:
+    """
+    Simulates a 'system' plus 'user' message in one call.
+    Because the Bedrock LLM interface accepts a single prompt string,
+    we'll combine them. If you need a multi-message format, craft your
+    prompt accordingly.
+    """
+    llm = BedrockLLM(
+        client=bedrock_runtime_client,
+        model_id="anthropic.claude-v2:1",
+        model_kwargs={
+            "max_tokens_to_sample": 500,
+            "temperature": 0.7,
+        }
+    )
+
+    system_text = "You are an economist with access to lots of data."
+    user_text = "Write an article about the impact of high inflation on GDP."
+
+    # Construct a single prompt that merges system instructions + user request.
+    # This is a common pattern when the LLM only accepts a single text input.
+    combined_prompt = f"System: {system_text}\nUser: {user_text}\n"
+
+    response = llm(combined_prompt)
+    return response
+
+
+def main():
+    try:
+        bedrock_runtime_client = init_bedrock()
+    except Exception as e:
+        print("Error initializing Bedrock + Javelin:", e)
+        return
+
+    print("\n[1) Non-Streaming Example]")
+    try:
+        resp_non_stream = bedrock_langchain_non_stream(bedrock_runtime_client)
+        print("Response:", resp_non_stream)
+    except Exception as e:
+        print("Error in non-stream example:", e)
+
+    print("\n[2) Streaming Example]")
+    try:
+        resp_stream = bedrock_langchain_stream(bedrock_runtime_client)
+        print("\nFinal Combined Streamed Text:\n", resp_stream)
+    except Exception as e:
+        print("Error in streaming example:", e)
+
+    print("\n[3) Converse Example (System + User)")
+    try:
+        resp_converse = bedrock_langchain_converse(bedrock_runtime_client)
+        print("Converse Response:\n", resp_converse)
+    except Exception as e:
+        print("Error in converse example:", e)
+
+    print("\n--- Script Complete. ---")
+
+
+if __name__ == "__main__":
+    main()
