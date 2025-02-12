@@ -1,3 +1,4 @@
+import json
 import functools
 from typing import Any, Coroutine, Dict, Optional, Union
 from urllib.parse import urljoin, urlparse, urlunparse, unquote
@@ -13,7 +14,11 @@ from javelin_sdk.services.secret_service import SecretService
 from javelin_sdk.services.template_service import TemplateService
 from javelin_sdk.services.trace_service import TraceService
 
-# from openai import OpenAI, AsyncOpenAI
+from javelin_sdk.tracing_setup import configure_span_exporter
+import inspect
+from opentelemetry.trace import SpanKind
+from opentelemetry.trace import Status, StatusCode
+from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
@@ -26,13 +31,36 @@ class JavelinClient:
     PROFILE_ARN_PATTERN = re.compile(r'/model/arn:aws:bedrock:[^:]+:\d+:application-inference-profile/[^/]+')
     MODEL_ARN_PATTERN = re.compile(r'/model/arn:aws:bedrock:[^:]+::foundation-model/[^/]+')
 
+    # Mapping provider_name to well-known gen_ai.system values
+    GEN_AI_SYSTEM_MAPPING = {
+        "openai": "openai",
+        "azureopenai": "az.ai.openai",
+        "bedrock": "aws.bedrock",
+        "gemini": "gemini",
+        "deepseek": "deepseek",
+        "cohere": "cohere",
+        "mistral_ai": "mistral_ai",
+        "anthropic": "anthropic",
+        "vertex_ai": "vertex_ai",
+        "perplexity": "perplexity",
+        "groq": "groq",
+        "ibm": "ibm.watsonx.ai",
+        "xai": "xai"
+    }
+
+    # Mapping method names to well-known operation names
+    GEN_AI_OPERATION_MAPPING = {
+        "chat.completions.create": "chat",
+        "completions.create": "text_completion",
+        "embeddings.create": "embeddings"
+    }
     
     def __init__(self, config: JavelinConfig) -> None:
         self.config = config
         self.base_url = urljoin(config.base_url, config.api_version or "/v1")
-        
+
         self._headers = {
-            "x-api-key": config.javelin_api_key,
+            "x-api-key": config.javelin_api_key
         }
         if config.llm_api_key:
             self._headers["Authorization"] = f"Bearer {config.llm_api_key}"
@@ -58,6 +86,13 @@ class JavelinClient:
         self.chat = Chat(self)
         self.completions = Completions(self)
 
+        self.tracer = configure_span_exporter()
+
+        self.patched_clients = set()  # Track already patched clients
+        self.patched_methods = set()  # Track already patched methods
+
+        self.original_methods = {}
+        
     @property
     def client(self):
         if self._client is None:
@@ -96,6 +131,19 @@ class JavelinClient:
         if self._client:
             self._client.close()
 
+    @staticmethod
+    def set_span_attribute_if_not_none(span, key, value):
+        """Helper function to set span attributes only if the value is not None."""
+        if value is not None:
+            span.set_attribute(key, value)
+    
+    @staticmethod
+    def add_event_with_attributes(span, event_name, attributes):
+        """Helper function to add events only with non-None attributes."""
+        filtered_attributes = {k: v for k, v in attributes.items() if v is not None}
+        if filtered_attributes:  # Add event only if there are valid attributes
+            span.add_event(name=event_name, attributes=filtered_attributes)
+
     def register_provider(self, 
                         openai_client: Any,
                         provider_name: str,
@@ -108,9 +156,15 @@ class JavelinClient:
             - openai_client._custom_headers to include self._headers
         """
 
+        client_id = id(openai_client)
+        if client_id in self.patched_clients:
+            print (f"Client {client_id} already patched")
+            return openai_client  # Skip if already patched
+
+        self.patched_clients.add(client_id)  # Mark as patched
+
         # Store the OpenAI base URL
-        if self.openai_base_url is None:
-            self.openai_base_url = openai_client.base_url
+        self.openai_base_url = openai_client.base_url
 
         # Point the OpenAI client to Javelin's base URL
         openai_client.base_url = f"{self.base_url}/{provider_name}"
@@ -125,29 +179,172 @@ class JavelinClient:
         openai_client._custom_headers["x-javelin-provider"] = base_url_str
         openai_client._custom_headers["x-javelin-route"] = route_name
 
-        # Store references to the original methods
-        original_methods = {
-            "chat_completions_create": openai_client.chat.completions.create,
-            "completions_create": openai_client.completions.create,
-            "embeddings_create": openai_client.embeddings.create,
-        }
+        # Store the original methods only if not already stored
+        if provider_name not in self.original_methods:
+            self.original_methods[provider_name] = {
+                "chat_completions_create": openai_client.chat.completions.create,
+                "completions_create": openai_client.completions.create,
+                "embeddings_create": openai_client.embeddings.create,
+            }
 
         # Patch methods with tracing and header updates
-        def create_patched_method(original_method):
-            def patched_method(*args, **kwargs):
-                model = kwargs.get('model')
-                if model and hasattr(openai_client, "_custom_headers"):
-                    openai_client._custom_headers['x-javelin-model'] = model
-
-                response = original_method(*args, **kwargs)
-                return response
+        def create_patched_method(method_name, original_method):
+            # Check if the original method is asynchronous
+            if inspect.iscoroutinefunction(original_method):
+                # Async Patched Method
+                async def patched_method(*args, **kwargs):
+                    return await _execute_with_tracing(original_method, method_name, args, kwargs)
+            else:
+                # Sync Patched Method
+                def patched_method(*args, **kwargs):
+                    return _execute_with_tracing(original_method, method_name, args, kwargs)
 
             return patched_method
 
-        # Apply patches
-        openai_client.chat.completions.create = create_patched_method(original_methods["chat_completions_create"])
-        openai_client.completions.create = create_patched_method(original_methods["completions_create"])
-        openai_client.embeddings.create = create_patched_method(original_methods["embeddings_create"])
+        def _execute_with_tracing(original_method, method_name, args, kwargs):
+            model = kwargs.get('model')
+
+            if model and hasattr(openai_client, "_custom_headers"):
+                openai_client._custom_headers['x-javelin-model'] = model
+
+            # Use well-known operation names, fallback to method_name if not mapped
+            operation_name = self.GEN_AI_OPERATION_MAPPING.get(method_name, method_name)
+            system_name = self.GEN_AI_SYSTEM_MAPPING.get(provider_name, provider_name)  # Fallback if provider is custom
+            span_name = f"{operation_name} {model}"
+
+            async def _async_execution(span):
+                response = await original_method(*args, **kwargs)
+                _capture_response_details(span, response, kwargs, system_name)
+                return response
+
+            def _sync_execution(span):
+                response = original_method(*args, **kwargs)
+                _capture_response_details(span, response, kwargs, system_name)
+                return response
+
+            # Only create spans if tracing is enabled
+            if self.tracer:
+                with self.tracer.start_as_current_span(span_name, kind=SpanKind.CLIENT) as span:
+                    span.set_attribute(gen_ai_attributes.GEN_AI_SYSTEM, system_name)
+                    span.set_attribute(gen_ai_attributes.GEN_AI_OPERATION_NAME, operation_name)
+                    span.set_attribute(gen_ai_attributes.GEN_AI_REQUEST_MODEL, model)
+                        
+                    # Request attributes
+                    JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS, kwargs.get('max_completion_tokens'))
+                    JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY, kwargs.get('presence_penalty'))
+                    JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY, kwargs.get('frequency_penalty'))
+                    JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_REQUEST_STOP_SEQUENCES, json.dumps(kwargs.get('stop', [])) if kwargs.get('stop') else None)
+                    JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE, kwargs.get('temperature'))
+                    JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_REQUEST_TOP_K, kwargs.get('top_k'))
+                    JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_REQUEST_TOP_P, kwargs.get('top_p'))
+
+                    try:
+                        if inspect.iscoroutinefunction(original_method):
+                            return asyncio.run(_async_execution(span))
+                        else:
+                            return _sync_execution(span)
+                    except Exception as e:
+                        span.set_status(Status(StatusCode.ERROR, str(e)))
+                        span.set_attribute("is_exception", True)
+                        raise
+            else:
+                # Tracing is disabled
+                if inspect.iscoroutinefunction(original_method):
+                    return asyncio.run(original_method(*args, **kwargs))
+                else:
+                    return original_method(*args, **kwargs)
+
+        # Helper to capture response details
+        def _capture_response_details(span, response, kwargs, system_name):
+            if hasattr(response, "to_json"):
+                response_data = response.to_dict()
+
+                # Set status code based on response
+                status_code = response_data.get("status_code", 200)
+                status_message = response_data.get("status_message", "OK")
+
+                if status_code >= 400:
+                    span.set_status(Status(StatusCode.ERROR, status_message))
+                else:
+                    span.set_status(Status(StatusCode.OK, status_message))
+
+                # Set basic response attributes
+                JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_RESPONSE_MODEL, response_data.get('model'))
+                JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_RESPONSE_ID, response_data.get('id'))
+                JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER, response_data.get('service_tier'))
+                JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT, response_data.get('system_fingerprint'))
+
+                # Finish reasons for choices
+                finish_reasons = [
+                    choice.get('finish_reason')
+                    for choice in response_data.get('choices', [])
+                    if choice.get('finish_reason')
+                ]
+                JavelinClient.set_span_attribute_if_not_none(
+                    span,
+                    gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS,
+                    json.dumps(finish_reasons) if finish_reasons else None
+                )
+
+                # Token usage
+                usage = response_data.get('usage', {})
+                JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS, usage.get('prompt_tokens'))
+                JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS, usage.get('completion_tokens'))
+
+                # System message event
+                system_message = next(
+                    (msg.get('content') for msg in kwargs.get('messages', []) if msg.get('role') == 'system'),
+                    None
+                )
+                JavelinClient.add_event_with_attributes(span, "gen_ai.system.message", {"gen_ai.system": system_name, "content": system_message})
+
+                # User message event
+                user_message = next(
+                    (msg.get('content') for msg in kwargs.get('messages', []) if msg.get('role') == 'user'),
+                    None
+                )
+                JavelinClient.add_event_with_attributes(span, "gen_ai.user.message", {"gen_ai.system": system_name, "content": user_message})
+
+                # Choice events
+                choices = response_data.get('choices', [])
+                for index, choice in enumerate(choices):
+                    choice_attributes = {"gen_ai.system": system_name, "index": index}
+                    message = choice.pop("message", {})
+                    choice.update(message)
+
+                    # Add attributes dynamically, filtering out None values
+                    for key, value in choice.items():
+                        if isinstance(value, (dict, list)):
+                            value = json.dumps(value)
+                        choice_attributes[key] = value if value is not None else None
+
+                    JavelinClient.add_event_with_attributes(span, "gen_ai.choice", choice_attributes)
+
+            else:
+                span.set_attribute("javelin.response.body", str(response))
+
+        
+        def get_nested_attr(obj, attr_path):
+            attrs = attr_path.split(".")
+            for attr in attrs:
+                obj = getattr(obj, attr)
+            return obj
+
+        for method_name in ["chat.completions.create", "completions.create", "embeddings.create"]:
+            method_ref = get_nested_attr(openai_client, method_name)
+            method_id = id(method_ref)
+
+            if method_id in self.patched_methods:
+                continue  # Skip if already patched
+
+            original_method = self.original_methods[provider_name][method_name.replace(".", "_")]
+            patched_method = create_patched_method(method_name, original_method)
+
+            parent_attr, method_attr = method_name.rsplit(".", 1)
+            parent_obj = get_nested_attr(openai_client, parent_attr)
+            setattr(parent_obj, method_attr, patched_method)
+
+            self.patched_methods.add(method_id)
 
         return openai_client
 
