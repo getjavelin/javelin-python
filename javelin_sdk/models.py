@@ -472,6 +472,7 @@ class Request:
         archive: Optional[str] = "",
         query_params: Optional[Dict[str, Any]] = None,
         is_transformation_rules: bool = False,
+        is_model_specs: bool = False,
         is_reload: bool = False,
     ):
         self.method = method
@@ -487,6 +488,7 @@ class Request:
         self.archive = archive
         self.query_params = query_params
         self.is_transformation_rules = is_transformation_rules
+        self.is_model_specs = is_model_specs
         self.is_reload = is_reload
 
 
