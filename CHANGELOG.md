@@ -2,6 +2,47 @@
 ## [Unreleased]
 
 
+<a name="v0.2.28"></a>
+## [v0.2.28] - 2025-02-11
+### Features
+- Refactor JavelinClient initialization, improve tracing with OpenTelemetry status handling, and simplify OpenAI base URL logic
+
+### Pull Requests
+- Merge pull request [#135](https://github.com/getjavelin/javelin-python/issues/135) from getjavelin/feature/openai-register
+
+
+<a name="v0.2.27"></a>
+## [v0.2.27] - 2025-02-11
+### Features
+- Integrate OpenTelemetry tracing with OpenAI, Gemini, and Azure OpenAI support
+
+### Pull Requests
+- Merge pull request [#131](https://github.com/getjavelin/javelin-python/issues/131) from getjavelin/feature/openai-register
+
+
+<a name="v0.2.26"></a>
+## [v0.2.26] - 2025-02-06
+### Bug Fixes
+- Removing the code and moving to other repo
+
+### DevOps
+- Update CHANGELOG for v0.2.25
+
+### Features
+- Enhance OpenAI client registration with provider handling and model-specific headers
+- Enhance OpenAI client registration with provider handling and model-specific headers
+- Add /completions, /chat/completions, /embeddings endpoints
+- Add register_openai method to JavelinClient
+- Implement agent for test case generation, execution, and evaluation
+
+### Pull Requests
+- Merge pull request [#129](https://github.com/getjavelin/javelin-python/issues/129) from getjavelin/feature/openai-register
+- Merge pull request [#127](https://github.com/getjavelin/javelin-python/issues/127) from getjavelin/feature/openai-register
+- Merge pull request [#128](https://github.com/getjavelin/javelin-python/issues/128) from getjavelin/lg-agent-eval-branch
+- Merge pull request [#124](https://github.com/getjavelin/javelin-python/issues/124) from getjavelin/lg-agent-eval-branch
+- Merge pull request [#125](https://github.com/getjavelin/javelin-python/issues/125) from getjavelin/cicd-changelog
+
+
 <a name="v0.2.25"></a>
 ## [v0.2.25] - 2025-02-04
 ### Features
@@ -337,7 +378,10 @@
 <a name="v0.1.5"></a>
 ## v0.1.5 - 2023-09-04
 
-[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.25...HEAD
+[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.28...HEAD
+[v0.2.28]: https://github.com/getjavelin/javelin-python/compare/v0.2.27...v0.2.28
+[v0.2.27]: https://github.com/getjavelin/javelin-python/compare/v0.2.26...v0.2.27
+[v0.2.26]: https://github.com/getjavelin/javelin-python/compare/v0.2.25...v0.2.26
 [v0.2.25]: https://github.com/getjavelin/javelin-python/compare/v0.2.24...v0.2.25
 [v0.2.24]: https://github.com/getjavelin/javelin-python/compare/v0.2.23...v0.2.24
 [v0.2.23]: https://github.com/getjavelin/javelin-python/compare/v0.2.22...v0.2.23
