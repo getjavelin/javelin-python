@@ -16,29 +16,29 @@ class TransformationRuleManager:
         self.cache_ttl = 3600
         self.last_fetch = {}
 
-    def get_rules(self, provider: str, model: str, endpoint: EndpointType) -> ModelSpec:
+    def get_rules(self, provider_url: str, model_name: str) -> ModelSpec:
         """Get transformation rules for a provider/model combination"""
-        model = model.lower()
+        model_name = model_name.lower()
 
         try:
-            rules = self._fetch_remote_rules(provider, model, endpoint)
+            rules = self._fetch_remote_rules(provider_url, model_name)
             if rules:
                 return rules
         except Exception as e:
             logger.error(
-                f"Error fetching remote rules for {provider}/{model}: {str(e)}"
+                f"Error fetching remote rules for {provider_url}/{model_name}: {str(e)}"
             )
 
-        raise ValueError(f"No transformation rules found for {provider}/{model}")
+        raise ValueError(f"No transformation rules found for {provider_url} and {model_name}")
 
-    def _fetch_remote_rules(self, provider: str, model: str, endpoint: EndpointType) -> Optional[ModelSpec]:
+    def _fetch_remote_rules(self, provider_url: str, model_name: str) -> Optional[ModelSpec]:
         """Fetch transformation rules from remote service"""
         try:
-            response = self.client.get_transformation_rules(provider, model, endpoint)
+            response = self.client.get_model_specs(provider_url, model_name)
             if response:
-                input_rules = response.get("input_rules", [])
-                output_rules = response.get("output_rules", [])
-                stream_response_path = response.get("stream_response_path", None)
+                input_rules = response["model_spec"].get("openai_request_transform_rules", [])
+                output_rules = response["model_spec"].get("openai_response_transform_rules", [])
+                stream_response_path = response["model_spec"].get("stream_response_path", None)
 
                 return ModelSpec(
                     input_rules=[TransformRule(**rule) for rule in (input_rules or [])],
@@ -46,7 +46,7 @@ class TransformationRuleManager:
                     stream_response_path=stream_response_path
                 )
             
-            print(f"No remote rules found for {provider}/{model}")
+            print(f"No remote rules found for {provider_url}/{model_name}")
             return None
         except Exception as e:
             logger.error(f"Failed to fetch remote rules: {str(e)}")

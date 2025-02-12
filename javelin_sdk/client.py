@@ -12,6 +12,7 @@ from javelin_sdk.services.route_service import RouteService
 from javelin_sdk.services.secret_service import SecretService
 from javelin_sdk.services.template_service import TemplateService
 from javelin_sdk.services.trace_service import TraceService
+from javelin_sdk.services.modelspec_service import ModelSpecService
 
 # from openai import OpenAI, AsyncOpenAI
 
@@ -54,6 +55,7 @@ class JavelinClient:
         self.secret_service = SecretService(self)
         self.template_service = TemplateService(self)
         self.trace_service = TraceService(self)
+        self.modelspec_service = ModelSpecService(self)
 
         self.chat = Chat(self)
         self.completions = Completions(self)
@@ -358,6 +360,7 @@ class JavelinClient:
             archive=request.archive,
             query_params=request.query_params,
             is_transformation_rules=request.is_transformation_rules,
+            is_model_specs=request.is_model_specs,
             is_reload=request.is_reload,
         )
         headers = {**self._headers, **(request.headers or {})}
@@ -397,11 +400,14 @@ class JavelinClient:
         archive: Optional[str] = "",
         query_params: Optional[Dict[str, Any]] = None,
         is_transformation_rules: bool = False,
+        is_model_specs: bool = False,
         is_reload: bool = False,
     ) -> str:
         url_parts = [self.base_url]
 
-        if query:
+        if is_model_specs:
+            url_parts.extend(["admin", "modelspec"])
+        elif query:
             url_parts.append("query")
             if route_name is not None:
                 url_parts.append(route_name)
@@ -458,7 +464,6 @@ class JavelinClient:
         if query_params:
             query_string = "&".join(f"{k}={v}" for k, v in query_params.items())
             url += f"?{query_string}"
-
         return url
 
     # Gateway methods
@@ -524,6 +529,12 @@ class JavelinClient:
     )
     aget_transformation_rules = lambda self, provider_name, model_name, endpoint: self.provider_service.aget_transformation_rules(
         provider_name, model_name, endpoint
+    )
+    get_model_specs = lambda self, provider_url, model_name: self.modelspec_service.get_model_specs(
+        provider_url, model_name
+    )
+    aget_model_specs = lambda self, provider_url, model_name: self.modelspec_service.aget_model_specs(
+        provider_url, model_name
     )
 
     # Route methods
