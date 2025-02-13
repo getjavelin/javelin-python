@@ -15,7 +15,7 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") # add your openai api key here
 JAVELIN_API_KEY = os.environ.get("JAVELIN_API_KEY") # add your javelin api key here
 MODEL_NAME_CHAT = "gpt-3.5-turbo"          # For chat
 MODEL_NAME_EMBED = "text-embedding-ada-002"
-ROUTE_NAME      = "openai-univ"
+ROUTE_NAME      = "openai_univ"
 
 def init_chat_llm_non_streaming():
     """
@@ -165,40 +165,40 @@ def conversation_demo() -> None:
 # -----------------------------------------------------------------------------
 def main():
     print("=== LangChain + OpenAI Javelin Examples (No Text Completion) ===")
-
-    # 1) Chat Completion (Sync)
-    print("\n[Chat Completion: Synchronous]")
+    
+    # 1) Chat Completion (Synchronous)
+    print("\n--- Chat Completion: Synchronous ---")
     try:
         question = "What is machine learning?"
         result = chat_completion_sync(question)
         print(f"Prompt: {question}\nAnswer:\n{result}")
     except Exception as e:
-        print("Error in synchronous chat completion:", e)
+        print(f"Error in synchronous chat completion: {e}")
 
     # 2) Chat Completion (Streaming)
-    print("\n[Chat Completion: Streaming]")
+    print("\n--- Chat Completion: Streaming ---")
     try:
         question2 = "Tell me a short joke."
         result_stream = chat_completion_stream(question2)
-        print(f"\nPrompt: {question2}\nStreamed Answer:\n{result_stream}")
+        print(f"Prompt: {question2}\nStreamed Answer:\n{result_stream}")
     except Exception as e:
-        print("Error in streaming chat completion:", e)
+        print(f"Error in streaming chat completion: {e}")
 
-    # 3) Embeddings
-    print("\n[Embeddings Example]")
+    # 3) Embeddings Example
+    print("\n--- Embeddings Example ---")
     try:
         sample_text = "The quick brown fox jumps over the lazy dog."
         embed_vec = get_embeddings(sample_text)
         print(f"Text: {sample_text}\nEmbedding Vector:\n{embed_vec[:100]} ...")
     except Exception as e:
-        print("Error in embeddings:", e)
+        print(f"Error in embeddings: {e}")
 
-    # 4) Conversation Demo
-    print("\n[Conversation Demo (Manual, Non-Streaming)]")
+    # 4) Conversation Demo (Manual, Non-Streaming)
+    print("\n--- Conversation Demo (Manual, Non-Streaming) ---")
     try:
         conversation_demo()
     except Exception as e:
-        print("Error in conversation demo:", e)
+        print(f"Error in conversation demo: {e}")
 
     print("\n=== Script Complete ===")
 

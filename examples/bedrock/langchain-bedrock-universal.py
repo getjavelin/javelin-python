@@ -1,5 +1,9 @@
 import boto3
+import os
 from javelin_sdk import JavelinClient, JavelinConfig
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # This import is from the "langchain_community" extension package
 # Make sure to install it:
@@ -25,8 +29,8 @@ def init_bedrock():
 
     # Initialize Javelin client
     config = JavelinConfig(
-        base_url="https://api-dev.javelin.live/v1",
-        javelin_api_key="" # add your javelin api key here
+        # base_url="https://api-dev.javelin.live/v1",
+        javelin_api_key=os.getenv("JAVELIN_API_KEY") # add your javelin api key here
     )
     javelin_client = JavelinClient(config)
 

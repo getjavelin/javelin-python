@@ -1,6 +1,10 @@
 import boto3
+import os
 import json
 from javelin_sdk import JavelinClient, JavelinConfig
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def init_bedrock():
     """
@@ -20,8 +24,8 @@ def init_bedrock():
 
     # Initialize Javelin Client (if you want the route registered)
     config = JavelinConfig(
-        base_url="https://api-dev.javelin.live/v1",
-        javelin_api_key="" # add your javelin api key here
+        # base_url="https://api-dev.javelin.live/v1",
+        javelin_api_key=os.getenv("JAVELIN_API_KEY") # add your javelin api key here
     )
     javelin_client = JavelinClient(config)
 
