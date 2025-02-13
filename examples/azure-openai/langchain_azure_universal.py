@@ -1,6 +1,6 @@
 import os
 import dotenv
-dotenv.load_dotenv()
+from dotenv import load_dotenv
 
 from langchain_openai import AzureChatOpenAI
 from langchain.schema import HumanMessage, SystemMessage, AIMessage
@@ -11,7 +11,7 @@ from langchain.callbacks.manager import CallbackManager
 # 1) Keys and Route Setup
 #
 print("Initializing environment variables...")
-
+load_dotenv()
 azure_openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
 javelin_api_key      = os.getenv("JAVELIN_API_KEY")
 
@@ -21,7 +21,7 @@ javelin_api_key      = os.getenv("JAVELIN_API_KEY")
 model_choice         = "gpt-4"
 
 # Javelin route name, as registered in your javelin route dashboard
-route_name           = "saviour"
+route_name           = "azureopenai_univ"
 
 print("Azure OpenAI key:", "FOUND" if azure_openai_api_key else "MISSING")
 print("Javelin key:", "FOUND" if javelin_api_key else "MISSING")
@@ -140,27 +140,35 @@ def conversation_demo():
 #
 # 6) Main function
 #
-
 def main():
     print("=== LangChain AzureOpenAI Example ===")
-
-    # 1) Single-turn non-streaming
-    print("\n[1) Single-turn Non-Streaming Invoke]")
+    
+    # 1) Single-turn Non-Streaming Invoke
+    print("\n--- Single-turn Non-Streaming Invoke ---")
     question_a = "What is the capital of France?"
-    response_a = invoke_non_streaming(question_a)
-    print(f"Question: {question_a}\nAnswer: {response_a}")
-
-    # 2) Single-turn streaming
-    print("\n[2) Single-turn Streaming Invoke]")
+    try:
+        response_a = invoke_non_streaming(question_a)
+        print(f"Question: {question_a}\nAnswer: {response_a}")
+    except Exception as e:
+        print(f"Error in non-streaming invoke: {e}")
+    
+    # 2) Single-turn Streaming Invoke
+    print("\n--- Single-turn Streaming Invoke ---")
     question_b = "Tell me a quick joke."
-    response_b = invoke_streaming(question_b)
-    print(f"Question: {question_b}\nStreamed Answer: {response_b}")
-
-    # 3) Multi-turn conversation (non-streaming)
-    print("\n[3) Simple Conversation Demo]")
-    conversation_demo()
-
+    try:
+        response_b = invoke_streaming(question_b)
+        print(f"Question: {question_b}\nStreamed Answer: {response_b}")
+    except Exception as e:
+        print(f"Error in streaming invoke: {e}")
+    
+    # 3) Multi-turn Conversation Demo
+    print("\n--- Simple Conversation Demo ---")
+    try:
+        conversation_demo()
+    except Exception as e:
+        print(f"Error in conversation demo: {e}")
+    
     print("\n=== All done! ===")
-
+    
 if __name__ == "__main__":
     main()

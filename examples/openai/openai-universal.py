@@ -12,7 +12,6 @@ from javelin_sdk import (
     JavelinClient,
     JavelinConfig,
 )
-
 # -------------------------------
 # Helper Functions
 # -------------------------------
@@ -21,9 +20,8 @@ def init_sync_openai_client():
     """Initialize and return a synchronous OpenAI client."""
     try:
         # Set (and print) the OpenAI key
-        openai_api_key = "" # add your openai api key here
+        openai_api_key = os.getenv("OPENAI_API_KEY") # define your openai api key here
         print(f"Synchronous OpenAI client key: {openai_api_key}")
-        print("hello",openai_api_key)
         return OpenAI(api_key=openai_api_key)
     except Exception as e:
         raise e
@@ -32,13 +30,14 @@ def init_javelin_client_sync(openai_client):
     """Initialize JavelinClient for synchronous usage and register the OpenAI route."""
     try:
         # Set (and print) the Javelin key
-        javelin_api_key ="" # add your javelin api key here
+        javelin_api_key = os.getenv("JAVELIN_API_KEY") # define your javelin api key here
         config = JavelinConfig(
             base_url="https://api-dev.javelin.live",
             javelin_api_key=javelin_api_key,
         )
         client = JavelinClient(config)
-        client.register_openai(openai_client, route_name="openai-univ")
+        rout_name = "openai_univ" # define your universal route name here
+        client.register_openai(openai_client, route_name=rout_name)
         return client
     except Exception as e:
         raise e
@@ -99,7 +98,7 @@ def sync_openai_stream(openai_client):
 def init_async_openai_client():
     """Initialize and return an asynchronous OpenAI client."""
     try:
-        openai_api_key = "" # add your openai api key here
+        openai_api_key = os.getenv("OPENAI_API_KEY") # add your openai api key here
         return AsyncOpenAI(api_key=openai_api_key)
     except Exception as e:
         raise e
@@ -107,10 +106,10 @@ def init_async_openai_client():
 def init_javelin_client_async(openai_async_client):
     """Initialize JavelinClient for async usage and register the OpenAI route."""
     try:
-        javelin_api_key = "" # add your javelin api key here
+        javelin_api_key = os.getenv("JAVELIN_API_KEY") # add your javelin api key here
         config = JavelinConfig(javelin_api_key=javelin_api_key)
         client = JavelinClient(config)
-        client.register_openai(openai_async_client, route_name="openai")
+        client.register_openai(openai_async_client, route_name="openai_univ")
         return client
     except Exception as e:
         raise e
@@ -139,41 +138,39 @@ def main():
         print(f"Error initializing synchronous clients: {e}")
         return
 
-    # 1. Chat completions
-    print("\nOpenAI: 1 - Chat completions")
+    # 1) Chat Completions
+    print("\n--- OpenAI: Chat Completions ---")
     try:
         chat_completions_response = sync_openai_chat_completions(openai_client)
         print(chat_completions_response)
     except Exception as e:
         print(f"Error in chat completions: {e}")
 
-    # 2. Completions
-    print("\nOpenAI: 2 - Completions")
+    # 2) Completions
+    print("\n--- OpenAI: Completions ---")
     try:
         completions_response = sync_openai_completions(openai_client)
         print(completions_response)
     except Exception as e:
         print(f"Error in completions: {e}")
 
-    # 3. Embeddings
-    print("\nOpenAI: 3 - Embeddings")
+    # 3) Embeddings
+    print("\n--- OpenAI: Embeddings ---")
     try:
         embeddings_response = sync_openai_embeddings(openai_client)
         print(embeddings_response)
     except Exception as e:
         print(f"Error in embeddings: {e}")
 
-    # 4. Streaming
-    print("\nOpenAI: 4 - Streaming")
+    # 4) Streaming
+    print("\n--- OpenAI: Streaming ---")
     try:
         stream_result = sync_openai_stream(openai_client)
         print("Streaming response:", stream_result)
     except Exception as e:
         print(f"Error in streaming: {e}")
 
-    # -------------------------------
-    # Asynchronous OpenAI Example
-    # -------------------------------
+    # 5) Asynchronous Chat Completions
     print("\n=== Asynchronous OpenAI Example ===")
     try:
         openai_async_client = init_async_openai_client()
@@ -182,14 +179,12 @@ def main():
         print(f"Error initializing async clients: {e}")
         return
 
-    # 5. Chat completions (async)
-    print("\nAsyncOpenAI: 5 - Chat completions")
+    print("\n--- AsyncOpenAI: Chat Completions ---")
     try:
         async_response = asyncio.run(async_openai_chat_completions(openai_async_client))
         print(async_response)
     except Exception as e:
         print(f"Error in async chat completions: {e}")
-
 
 if __name__ == "__main__":
     main()

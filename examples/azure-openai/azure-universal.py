@@ -1,14 +1,17 @@
 import os
 from openai import AzureOpenAI
 from javelin_sdk import JavelinClient, JavelinConfig
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def initialize_client():
     """
     Creates the AzureOpenAI client and registers it with Javelin.
     Returns the AzureOpenAI client object if successful, else None.
     """
-    javelin_api_key = "" # add your javelin api key here
-    azure_openai_api_key = ""  # Add your Azure OpenAI key
+    javelin_api_key = os.getenv("JAVELIN_API_KEY") # add your javelin api key here
+    azure_openai_api_key = os.getenv("AZURE_OPENAI_API_KEY") # Add your Azure OpenAI key
 
     if not javelin_api_key:
         print("Error: JAVELIN_API_KEY is not set!")
@@ -32,7 +35,8 @@ def initialize_client():
     # Initialize the Javelin client and register the Azure client
     config = JavelinConfig(javelin_api_key=javelin_api_key)
     javelin_client = JavelinClient(config)
-    javelin_client.register_azureopenai(azure_client, route_name="azureopenai-univ")
+    rout_name = "azureopenai_univ" # Define the unversal route name
+    javelin_client.register_azureopenai(azure_client, route_name=rout_name)
 
     return azure_client
 
@@ -43,6 +47,7 @@ def get_chat_completion_sync(azure_client, messages):
     Takes a list of message dicts, returns JSON response as a string.
     Example model: 'gpt-4' or your deployed name (like 'gpt-4o').
     """
+
     response = azure_client.chat.completions.create(
         model="gpt-4",  # Adjust to your Azure deployment name
         messages=messages
@@ -53,7 +58,7 @@ def get_chat_completion_sync(azure_client, messages):
 def get_chat_completion_stream(azure_client, messages):
     """
     Calls the Azure Chat Completions endpoint with streaming=True.
-    Returns the concatenated text from the streamed chunks (for demonstration).
+    Returns the concatenated text from the streamed chunks.
     """
     response = azure_client.chat.completions.create(
         model="gpt-4",  # Adjust to your Azure deployment name
@@ -64,11 +69,15 @@ def get_chat_completion_stream(azure_client, messages):
     # Accumulate streamed text
     streamed_text = []
     for chunk in response:
-        # chunk is an OpenAIObject with partial content in chunk.choices[0].delta
-        if hasattr(chunk, "choices") and chunk.choices and chunk.choices[0].delta:
-            streamed_text.append(chunk.choices[0].delta.get("content", ""))
-
+        if hasattr(chunk, "choices") and chunk.choices:
+            delta = chunk.choices[0].delta
+            if delta is not None:
+                # Use getattr to safely retrieve the 'content' attribute
+                content = getattr(delta, "content", "")
+                if content:
+                    streamed_text.append(content)
     return "".join(streamed_text)
+
 
 
 def get_text_completion(azure_client, prompt):
@@ -135,7 +144,7 @@ def main():
     except Exception as e:
         print("Error in embeddings:", e)
 
-    print("\n--- Script complete. ---")
+    print("\nScript complete.")
 
 
 if __name__ == "__main__":

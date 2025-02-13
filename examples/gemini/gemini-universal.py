@@ -18,8 +18,8 @@ def init_gemini_client():
 
     # Hard-coded environment variable assignment (for demonstration)
     # You may prefer to do: gemini_api_key = os.environ.get("GEMINI_API_KEY") in real usage.
-    os.environ["GEMINI_API_KEY"] = "" # add your gemini api key here
-    gemini_api_key = os.environ["GEMINI_API_KEY"]
+    
+    gemini_api_key = os.getenv("GEMINI_API_KEY") # define your gemini api key here
     if not gemini_api_key:
         raise ValueError("GEMINI_API_KEY is not set!")
     print("Gemini API Key loaded successfully.")
@@ -31,13 +31,13 @@ def init_gemini_client():
     )
 
     # Javelin configuration
-    os.environ["JAVELIN_API_KEY"] = "" # add your javelin api key here
-    javelin_api_key = os.environ["JAVELIN_API_KEY"]
+    
+    javelin_api_key = os.getenv("JAVELIN_API_KEY") #define your javelin api key here
     config = JavelinConfig(javelin_api_key=javelin_api_key)
     client = JavelinClient(config)
-
+    rout_name = "gemini_univ" #define your universal route name here
     # Register the Gemini client with Javelin
-    client.register_gemini(openai_client, route_name="gemini-univ")
+    client.register_gemini(openai_client, route_name=rout_name)
 
     return openai_client
 
@@ -83,12 +83,16 @@ def gemini_streaming(client):
     for chunk in response:
         if chunk.choices and chunk.choices[0].delta:
             delta_content = chunk.choices[0].delta
-            # Just store the dictionary or the text portion.
-            # We'll store the entire dict as JSON for demonstration:
-            streamed_content.append(json.dumps(delta_content))
+            # If delta_content has a .dict() method (e.g. it's a Pydantic model), use it.
+            if hasattr(delta_content, "dict"):
+                dumped = json.dumps(delta_content.dict())
+            else:
+                dumped = json.dumps(delta_content)
+            streamed_content.append(dumped)
 
     # Join all chunk data with newlines
     return "\n".join(streamed_content)
+
 
 
 # -----------------------------------------------------------------------------
@@ -173,58 +177,55 @@ def gemini_embeddings(client):
 # 7) Main
 # -----------------------------------------------------------------------------
 def main():
-    # 1. Initialize the Gemini (PaLM) client via Javelin
+    print("=== Gemini Example ===")
     try:
         gemini_client = init_gemini_client()
     except Exception as e:
-        print("Error initializing Gemini client:", e)
+        print(f"Error initializing Gemini client: {e}")
         return
 
-    print("\nGemini: 1 - Chat completions")
+    # 1) Chat Completions
+    print("\n--- Gemini: Chat Completions ---")
     try:
         chat_response = gemini_chat_completions(gemini_client)
         print(chat_response)
     except Exception as e:
-        print("Error in chat completions:", e)
+        print(f"Error in chat completions: {e}")
 
-    print("\nGemini: 2 - Streaming")
+    # 2) Streaming
+    print("\n--- Gemini: Streaming ---")
     try:
         stream_response = gemini_streaming(gemini_client)
         print("Streaming output:")
         print(stream_response)
     except Exception as e:
-        print("Error in streaming:", e)
+        print(f"Error in streaming: {e}")
 
-    print("\nGemini: 3 - Function calling")
+    # 3) Function Calling
+    print("\n--- Gemini: Function Calling ---")
     try:
         func_response = gemini_function_calling(gemini_client)
         print(func_response)
     except Exception as e:
-        print("Error in function calling:", e)
+        print(f"Error in function calling: {e}")
 
-    # (Commented out) Gemini Image Understanding Example:
-    # If you want, create a function `gemini_image_understanding()`
-    # and call it similarly in a try/except block here.
-
-    print("\nGemini: 4 - Structured output")
+    # 4) Structured Output
+    print("\n--- Gemini: Structured Output ---")
     try:
         structured_response = gemini_structured_output(gemini_client)
         print(structured_response)
     except Exception as e:
-        print("Error in structured output:", e)
+        print(f"Error in structured output: {e}")
 
-    print("\nGemini: 5 - Embeddings")
+    # 5) Embeddings
+    print("\n--- Gemini: Embeddings ---")
     try:
         embeddings_response = gemini_embeddings(gemini_client)
         print(embeddings_response)
     except Exception as e:
-        print("Error in embeddings:", e)
+        print(f"Error in embeddings: {e}")
 
-    print("\n--- Script complete. ---")
+    print("\n--- Script Complete ---")
 
-
-# -----------------------------------------------------------------------------
-# 8) Run main if executed directly
-# -----------------------------------------------------------------------------
 if __name__ == "__main__":
     main()
