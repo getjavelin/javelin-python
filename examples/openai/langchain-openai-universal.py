@@ -8,6 +8,10 @@ from langchain.callbacks.manager import CallbackManager
 # LLM classes from langchain_openai
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # -----------------------------------------------------------------------------
 # 1) Configuration
 # -----------------------------------------------------------------------------
