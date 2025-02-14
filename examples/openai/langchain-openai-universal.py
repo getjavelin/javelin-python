@@ -175,7 +175,10 @@ def main():
     try:
         question = "What is machine learning?"
         result = chat_completion_sync(question)
-        print(f"Prompt: {question}\nAnswer:\n{result}")
+        if not result.strip():
+            print("Error: Empty response  failed")
+        else:
+            print(f"Prompt: {question}\nAnswer:\n{result}")
     except Exception as e:
         print(f"Error in synchronous chat completion: {e}")
 
@@ -184,7 +187,10 @@ def main():
     try:
         question2 = "Tell me a short joke."
         result_stream = chat_completion_stream(question2)
-        print(f"Prompt: {question2}\nStreamed Answer:\n{result_stream}")
+        if not result_stream.strip():
+            print("Error: Empty response  failed")
+        else:
+            print(f"Prompt: {question2}\nStreamed Answer:\n{result_stream}")
     except Exception as e:
         print(f"Error in streaming chat completion: {e}")
 
@@ -193,7 +199,10 @@ def main():
     try:
         sample_text = "The quick brown fox jumps over the lazy dog."
         embed_vec = get_embeddings(sample_text)
-        print(f"Text: {sample_text}\nEmbedding Vector:\n{embed_vec[:100]} ...")
+        if not embed_vec.strip():
+            print("Error: Empty response  failed")
+        else:
+            print(f"Text: {sample_text}\nEmbedding Vector:\n{embed_vec[:100]} ...")
     except Exception as e:
         print(f"Error in embeddings: {e}")
 

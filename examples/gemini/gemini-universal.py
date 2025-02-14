@@ -5,6 +5,9 @@ import json
 from openai import OpenAI
 from javelin_sdk import JavelinClient, JavelinConfig
 from pydantic import BaseModel
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # -----------------------------------------------------------------------------
 # 1) Initialize Gemini + Javelin
@@ -188,7 +191,10 @@ def main():
     print("\n--- Gemini: Chat Completions ---")
     try:
         chat_response = gemini_chat_completions(gemini_client)
-        print(chat_response)
+        if not chat_response.strip():
+            print("Error: Empty response  failed")
+        else:
+            print(chat_response)
     except Exception as e:
         print(f"Error in chat completions: {e}")
 
@@ -196,8 +202,12 @@ def main():
     print("\n--- Gemini: Streaming ---")
     try:
         stream_response = gemini_streaming(gemini_client)
-        print("Streaming output:")
-        print(stream_response)
+        
+        if not stream_response.strip():
+            print("Error: Empty response  failed")
+        else:
+            print("Streaming output:")
+            print(stream_response)
     except Exception as e:
         print(f"Error in streaming: {e}")
 
@@ -205,7 +215,10 @@ def main():
     print("\n--- Gemini: Function Calling ---")
     try:
         func_response = gemini_function_calling(gemini_client)
-        print(func_response)
+        if not func_response.strip():
+            print("Error: Empty response  failed")
+        else:
+            print(func_response)
     except Exception as e:
         print(f"Error in function calling: {e}")
 
@@ -213,7 +226,10 @@ def main():
     print("\n--- Gemini: Structured Output ---")
     try:
         structured_response = gemini_structured_output(gemini_client)
-        print(structured_response)
+        if not structured_response.strip():
+            print("Error: Empty response  failed")
+        else:
+            print(structured_response)
     except Exception as e:
         print(f"Error in structured output: {e}")
 
@@ -221,11 +237,15 @@ def main():
     print("\n--- Gemini: Embeddings ---")
     try:
         embeddings_response = gemini_embeddings(gemini_client)
-        print(embeddings_response)
+        if not embeddings_response.strip():
+            print("Error: Empty response  failed")
+        else:
+            print(embeddings_response)
+        
     except Exception as e:
         print(f"Error in embeddings: {e}")
 
-    print("\n--- Script Complete ---")
+    print("\nScript Complete")
 
 if __name__ == "__main__":
     main()
