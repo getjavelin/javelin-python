@@ -40,10 +40,12 @@ class TransformationRuleManager:
                 output_rules = response["model_spec"].get("openai_response_transform_rules", [])
                 stream_response_path = response["model_spec"].get("stream_response_path", None)
 
+                processed_stream_path = stream_response_path[0] if len(stream_response_path) > 0 else None
+
                 return ModelSpec(
                     input_rules=[TransformRule(**rule) for rule in (input_rules or [])],
                     output_rules=[TransformRule(**rule) for rule in (output_rules or [])],
-                    stream_response_path=stream_response_path
+                    stream_response_path=processed_stream_path
                 )
             
             print(f"No remote rules found for {provider_url}/{model_name}")
