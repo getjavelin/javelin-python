@@ -2,7 +2,9 @@ import json
 import os
 import sys
 import asyncio
-import dotenv
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from openai import OpenAI
 from openai import AsyncOpenAI
@@ -142,7 +144,10 @@ def main():
     print("\n--- OpenAI: Chat Completions ---")
     try:
         chat_completions_response = sync_openai_chat_completions(openai_client)
-        print(chat_completions_response)
+        if not chat_completions_response.strip():
+            print("Error: Empty response failed")
+        else:
+            print(chat_completions_response)
     except Exception as e:
         print(f"Error in chat completions: {e}")
 
@@ -150,7 +155,10 @@ def main():
     print("\n--- OpenAI: Completions ---")
     try:
         completions_response = sync_openai_completions(openai_client)
-        print(completions_response)
+        if not completions_response.strip():
+            print("Error: Empty response  failed")
+        else:
+            print(completions_response)
     except Exception as e:
         print(f"Error in completions: {e}")
 
@@ -158,7 +166,10 @@ def main():
     print("\n--- OpenAI: Embeddings ---")
     try:
         embeddings_response = sync_openai_embeddings(openai_client)
-        print(embeddings_response)
+        if not embeddings_response.strip():
+            print("Error: Empty response  failed")
+        else:
+            print(embeddings_response)
     except Exception as e:
         print(f"Error in embeddings: {e}")
 
@@ -166,7 +177,11 @@ def main():
     print("\n--- OpenAI: Streaming ---")
     try:
         stream_result = sync_openai_stream(openai_client)
-        print("Streaming response:", stream_result)
+        if not stream_result.strip():
+            print("Error: Empty response failed")
+        else:
+            print("stream_result", stream_result)
+            print("Streaming response:", stream_result)
     except Exception as e:
         print(f"Error in streaming: {e}")
 
@@ -182,7 +197,10 @@ def main():
     print("\n--- AsyncOpenAI: Chat Completions ---")
     try:
         async_response = asyncio.run(async_openai_chat_completions(openai_async_client))
-        print(async_response)
+        if not async_response.strip():
+            print("Error: Empty response  failed")
+        else:
+            print(async_response)
     except Exception as e:
         print(f"Error in async chat completions: {e}")
 

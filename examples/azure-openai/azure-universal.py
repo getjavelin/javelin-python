@@ -123,7 +123,10 @@ def main():
     try:
         print("\n--- Chat Completion (Non-Streaming) ---")
         response_chat_sync = get_chat_completion_sync(azure_client, messages)
-        print("Response:\n", response_chat_sync)
+        if not response_chat_sync.strip():
+            print("Error: Empty response  failed")
+        else:
+            print("Response:\n", response_chat_sync)
     except Exception as e:
         print("Error in chat completion (sync):", e)
 
@@ -131,7 +134,10 @@ def main():
     try:
         print("\n--- Chat Completion (Streaming) ---")
         response_streamed = get_chat_completion_stream(azure_client, messages)
-        print("Streamed Content:\n", response_streamed)
+        if not response_streamed.strip():
+            print("Error: Empty response  failed")
+        else:
+            print("Response:\n", response_streamed)
     except Exception as e:
         print("Error in chat completion (streaming):", e)
 
@@ -140,7 +146,10 @@ def main():
         print("\n--- Embeddings ---")
         embed_text = "Sample text to embed."
         embed_resp = get_embeddings(azure_client, embed_text)
-        print("Response:\n", embed_resp)
+        if not embed_resp.strip():
+            print("Error: Empty response  failed")
+        else:
+            print("Response:\n", embed_resp)
     except Exception as e:
         print("Error in embeddings:", e)
 

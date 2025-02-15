@@ -148,7 +148,10 @@ def main():
     question_a = "What is the capital of France?"
     try:
         response_a = invoke_non_streaming(question_a)
-        print(f"Question: {question_a}\nAnswer: {response_a}")
+        if not response_a.strip():
+            print("Error: Empty response  failed")
+        else:
+            print(f"Question: {question_a}\nAnswer: {response_a}")
     except Exception as e:
         print(f"Error in non-streaming invoke: {e}")
     
@@ -157,7 +160,10 @@ def main():
     question_b = "Tell me a quick joke."
     try:
         response_b = invoke_streaming(question_b)
-        print(f"Question: {question_b}\nStreamed Answer: {response_b}")
+        if not response_b.strip():
+            print("Error: Empty response  failed")
+        else:
+            print(f"Question: {question_b}\nStreamed Answer: {response_b}")
     except Exception as e:
         print(f"Error in streaming invoke: {e}")
     
