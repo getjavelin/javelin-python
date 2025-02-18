@@ -34,7 +34,6 @@ def init_javelin_client_sync(openai_client):
         # Set (and print) the Javelin key
         javelin_api_key = os.getenv("JAVELIN_API_KEY") # define your javelin api key here
         config = JavelinConfig(
-            base_url="https://api-dev.javelin.live",
             javelin_api_key=javelin_api_key,
         )
         client = JavelinClient(config)
