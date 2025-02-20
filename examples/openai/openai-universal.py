@@ -8,40 +8,47 @@ load_dotenv()
 
 from openai import OpenAI
 from openai import AsyncOpenAI
+
 # from openai import AzureOpenAI  # Not used, but imported for completeness
 
 from javelin_sdk import (
     JavelinClient,
     JavelinConfig,
 )
+
 # -------------------------------
 # Helper Functions
 # -------------------------------
+
 
 def init_sync_openai_client():
     """Initialize and return a synchronous OpenAI client."""
     try:
         # Set (and print) the OpenAI key
-        openai_api_key = os.getenv("OPENAI_API_KEY") # define your openai api key here
+        openai_api_key = os.getenv("OPENAI_API_KEY")  # define your openai api key here
         print(f"Synchronous OpenAI client key: {openai_api_key}")
         return OpenAI(api_key=openai_api_key)
     except Exception as e:
         raise e
 
+
 def init_javelin_client_sync(openai_client):
     """Initialize JavelinClient for synchronous usage and register the OpenAI route."""
     try:
         # Set (and print) the Javelin key
-        javelin_api_key = os.getenv("JAVELIN_API_KEY") # define your javelin api key here
+        javelin_api_key = os.getenv(
+            "JAVELIN_API_KEY"
+        )  # define your javelin api key here
         config = JavelinConfig(
             javelin_api_key=javelin_api_key,
         )
         client = JavelinClient(config)
-        rout_name = "openai_univ" # define your universal route name here
+        rout_name = "openai_univ"  # define your universal route name here
         client.register_openai(openai_client, route_name=rout_name)
         return client
     except Exception as e:
         raise e
+
 
 def sync_openai_chat_completions(openai_client):
     """Call OpenAI's Chat Completions endpoint (synchronously)."""
@@ -54,6 +61,7 @@ def sync_openai_chat_completions(openai_client):
     except Exception as e:
         raise e
 
+
 def sync_openai_completions(openai_client):
     """Call OpenAI's Completions endpoint (synchronously)."""
     try:
@@ -61,11 +69,12 @@ def sync_openai_completions(openai_client):
             model="gpt-3.5-turbo-instruct",
             prompt="What is machine learning?",
             max_tokens=7,
-            temperature=0
+            temperature=0,
         )
         return response.model_dump_json(indent=2)
     except Exception as e:
         raise e
+
 
 def sync_openai_embeddings(openai_client):
     """Call OpenAI's Embeddings endpoint (synchronously)."""
@@ -73,11 +82,12 @@ def sync_openai_embeddings(openai_client):
         response = openai_client.embeddings.create(
             model="text-embedding-ada-002",
             input="The food was delicious and the waiter...",
-            encoding_format="float"
+            encoding_format="float",
         )
         return response.model_dump_json(indent=2)
     except Exception as e:
         raise e
+
 
 def sync_openai_stream(openai_client):
     """Call OpenAI's Chat Completions endpoint with streaming."""
@@ -95,25 +105,28 @@ def sync_openai_stream(openai_client):
     except Exception as e:
         raise e
 
+
 # Async part
 def init_async_openai_client():
     """Initialize and return an asynchronous OpenAI client."""
     try:
-        openai_api_key = os.getenv("OPENAI_API_KEY") # add your openai api key here
+        openai_api_key = os.getenv("OPENAI_API_KEY")  # add your openai api key here
         return AsyncOpenAI(api_key=openai_api_key)
     except Exception as e:
         raise e
 
+
 def init_javelin_client_async(openai_async_client):
     """Initialize JavelinClient for async usage and register the OpenAI route."""
     try:
-        javelin_api_key = os.getenv("JAVELIN_API_KEY") # add your javelin api key here
+        javelin_api_key = os.getenv("JAVELIN_API_KEY")  # add your javelin api key here
         config = JavelinConfig(javelin_api_key=javelin_api_key)
         client = JavelinClient(config)
         client.register_openai(openai_async_client, route_name="openai_univ")
         return client
     except Exception as e:
         raise e
+
 
 async def async_openai_chat_completions(openai_async_client):
     """Call OpenAI's Chat Completions endpoint (asynchronously)."""
@@ -125,6 +138,7 @@ async def async_openai_chat_completions(openai_async_client):
         return chat_completion.model_dump_json(indent=2)
     except Exception as e:
         raise e
+
 
 # -------------------------------
 # Main Function
@@ -202,6 +216,7 @@ def main():
             print(async_response)
     except Exception as e:
         print(f"Error in async chat completions: {e}")
+
 
 if __name__ == "__main__":
     main()

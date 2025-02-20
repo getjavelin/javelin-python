@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def init_bedrock():
     """
     1) Configure Bedrock clients using boto3,
@@ -14,13 +15,9 @@ def init_bedrock():
     """
     # Configure the bedrock-runtime and bedrock service clients
     bedrock_runtime_client = boto3.client(
-        service_name="bedrock-runtime",
-        region_name="us-west-2"
+        service_name="bedrock-runtime", region_name="us-west-2"
     )
-    bedrock_client = boto3.client(
-        service_name="bedrock",
-        region_name="us-west-2"
-    )
+    bedrock_client = boto3.client(service_name="bedrock", region_name="us-west-2")
 
     # Initialize Javelin Client (if you want the route registered)
     config = JavelinConfig(
@@ -32,9 +29,10 @@ def init_bedrock():
     javelin_client.register_bedrock(
         bedrock_runtime_client=bedrock_runtime_client,
         bedrock_client=bedrock_client,
-        route_name="amazon_univ"
+        route_name="amazon_univ",
     )
     return bedrock_runtime_client
+
 
 def bedrock_invoke_example(bedrock_runtime_client):
     """
@@ -43,18 +41,19 @@ def bedrock_invoke_example(bedrock_runtime_client):
     """
     response = bedrock_runtime_client.invoke_model(
         modelId="anthropic.claude-3-5-sonnet-20240620-v1:0",  # Example model ID
-        body=json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 100,
-            "messages": [
-                {"role": "user", "content": "What is machine learning?"}
-            ]
-        }),
-        contentType="application/json"
+        body=json.dumps(
+            {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 100,
+                "messages": [{"role": "user", "content": "What is machine learning?"}],
+            }
+        ),
+        contentType="application/json",
     )
 
     response_body = json.loads(response["body"].read())
     return json.dumps(response_body, indent=2)
+
 
 def bedrock_converse_example(bedrock_runtime_client):
     """
@@ -63,26 +62,31 @@ def bedrock_converse_example(bedrock_runtime_client):
     """
     response = bedrock_runtime_client.invoke_model(
         modelId="anthropic.claude-3-5-sonnet-20240620-v1:0",  # Example model ID
-        body=json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 500,
-            "system": [
-                {"text": "You are an economist with access to lots of data"}
-            ],
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"text": "Write an article about the impact of high inflation on a country's GDP"}
-                    ]
-                }
-            ]
-        }),
-        contentType="application/json"
+        body=json.dumps(
+            {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 500,
+                "system": [
+                    {"text": "You are an economist with access to lots of data"}
+                ],
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "text": "Write an article about the impact of high inflation on a country's GDP"
+                            }
+                        ],
+                    }
+                ],
+            }
+        ),
+        contentType="application/json",
     )
 
     response_body = json.loads(response["body"].read())
     return json.dumps(response_body, indent=2)
+
 
 def bedrock_invoke_stream_example(bedrock_runtime_client):
     """
@@ -91,14 +95,14 @@ def bedrock_invoke_stream_example(bedrock_runtime_client):
     """
     response = bedrock_runtime_client.invoke_model(
         modelId="anthropic.claude-3-5-sonnet-20240620-v1:0",  # Example model ID
-        body=json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 100,
-            "messages": [
-                {"role": "user", "content": "What is machine learning?"}
-            ]
-        }),
-        contentType="application/json"
+        body=json.dumps(
+            {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 100,
+                "messages": [{"role": "user", "content": "What is machine learning?"}],
+            }
+        ),
+        contentType="application/json",
     )
     tokens = []
     try:
@@ -111,6 +115,7 @@ def bedrock_invoke_stream_example(bedrock_runtime_client):
         print("Error streaming invoke response:", e)
     return "".join(tokens)
 
+
 def bedrock_converse_stream_example(bedrock_runtime_client):
     """
     Demonstrates a streaming 'converse' call by processing the response tokens as they arrive.
@@ -118,22 +123,26 @@ def bedrock_converse_stream_example(bedrock_runtime_client):
     """
     response = bedrock_runtime_client.invoke_model(
         modelId="anthropic.claude-3-5-sonnet-20240620-v1:0",  # Example model ID
-        body=json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 500,
-            "system": [
-                {"text": "You are an economist with access to lots of data"}
-            ],
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"text": "Write an article about the impact of high inflation on a country's GDP"}
-                    ]
-                }
-            ]
-        }),
-        contentType="application/json"
+        body=json.dumps(
+            {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 500,
+                "system": [
+                    {"text": "You are an economist with access to lots of data"}
+                ],
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "text": "Write an article about the impact of high inflation on a country's GDP"
+                            }
+                        ],
+                    }
+                ],
+            }
+        ),
+        contentType="application/json",
     )
     tokens = []
     try:
@@ -145,6 +154,7 @@ def bedrock_converse_stream_example(bedrock_runtime_client):
     except Exception as e:
         print("Error streaming converse response:", e)
     return "".join(tokens)
+
 
 def main():
     try:
@@ -198,6 +208,7 @@ def main():
         print("Error in bedrock_converse_stream_example:", e)
 
     print("\nScript complete.")
+
 
 if __name__ == "__main__":
     main()

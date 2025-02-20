@@ -19,13 +19,9 @@ def init_bedrock():
     """
     # Create Bedrock boto3 clients
     bedrock_runtime_client = boto3.client(
-        service_name="bedrock-runtime",
-        region_name="us-east-1"
+        service_name="bedrock-runtime", region_name="us-east-1"
     )
-    bedrock_client = boto3.client(
-        service_name="bedrock",
-        region_name="us-east-1"
-    )
+    bedrock_client = boto3.client(service_name="bedrock", region_name="us-east-1")
 
     # Initialize Javelin client
     config = JavelinConfig(
@@ -38,7 +34,7 @@ def init_bedrock():
     javelin_client.register_bedrock(
         bedrock_runtime_client=bedrock_runtime_client,
         bedrock_client=bedrock_client,
-        route_name="amazon_univ"
+        route_name="amazon_univ",
     )
 
     return bedrock_runtime_client
@@ -58,7 +54,7 @@ def bedrock_langchain_non_stream(bedrock_runtime_client) -> str:
         model_kwargs={
             "max_tokens_to_sample": 256,
             "temperature": 0.7,
-        }
+        },
     )
     # Call the model with a single string prompt
     prompt = "What is machine learning?"
@@ -80,7 +76,7 @@ def bedrock_langchain_stream(bedrock_runtime_client) -> str:
         model_kwargs={
             "max_tokens_to_sample": 256,
             "temperature": 0.7,
-        }
+        },
     )
 
     prompt = "Tell me a short joke."
@@ -110,7 +106,7 @@ def bedrock_langchain_converse(bedrock_runtime_client) -> str:
         model_kwargs={
             "max_tokens_to_sample": 500,
             "temperature": 0.7,
-        }
+        },
     )
 
     system_text = "You are an economist with access to lots of data."
@@ -135,7 +131,7 @@ def bedrock_langchain_converse_stream(bedrock_runtime_client) -> str:
         model_kwargs={
             "max_tokens_to_sample": 500,
             "temperature": 0.7,
-        }
+        },
     )
 
     system_text = "You are an economist with access to lots of data."

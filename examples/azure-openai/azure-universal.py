@@ -5,13 +5,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def initialize_client():
     """
     Creates the AzureOpenAI client and registers it with Javelin.
     Returns the AzureOpenAI client object if successful, else None.
     """
-    javelin_api_key = os.getenv("JAVELIN_API_KEY") # add your javelin api key here
-    azure_openai_api_key = os.getenv("AZURE_OPENAI_API_KEY") # Add your Azure OpenAI key
+    javelin_api_key = os.getenv("JAVELIN_API_KEY")  # add your javelin api key here
+    azure_openai_api_key = os.getenv(
+        "AZURE_OPENAI_API_KEY"
+    )  # Add your Azure OpenAI key
 
     if not javelin_api_key:
         print("Error: JAVELIN_API_KEY is not set!")
@@ -29,13 +32,13 @@ def initialize_client():
         # Typically "2023-07-01-preview" or a more recent version
         api_version="2023-07-01-preview",
         azure_endpoint="https://javelinpreview.openai.azure.com",
-        api_key=azure_openai_api_key
+        api_key=azure_openai_api_key,
     )
 
     # Initialize the Javelin client and register the Azure client
     config = JavelinConfig(javelin_api_key=javelin_api_key)
     javelin_client = JavelinClient(config)
-    rout_name = "azureopenai_univ" # Define the unversal route name
+    rout_name = "azureopenai_univ"  # Define the unversal route name
     javelin_client.register_azureopenai(azure_client, route_name=rout_name)
 
     return azure_client
@@ -49,8 +52,7 @@ def get_chat_completion_sync(azure_client, messages):
     """
 
     response = azure_client.chat.completions.create(
-        model="gpt-4",  # Adjust to your Azure deployment name
-        messages=messages
+        model="gpt-4", messages=messages  # Adjust to your Azure deployment name
     )
     return response.to_json()
 
@@ -63,7 +65,7 @@ def get_chat_completion_stream(azure_client, messages):
     response = azure_client.chat.completions.create(
         model="gpt-4",  # Adjust to your Azure deployment name
         messages=messages,
-        stream=True
+        stream=True,
     )
 
     # Accumulate streamed text
@@ -79,7 +81,6 @@ def get_chat_completion_stream(azure_client, messages):
     return "".join(streamed_text)
 
 
-
 def get_text_completion(azure_client, prompt):
     """
     Demonstrates Azure text completion (non-chat).
@@ -90,7 +91,7 @@ def get_text_completion(azure_client, prompt):
         model="gpt-4o",  # Adjust to your actual Azure completions model name
         prompt=prompt,
         max_tokens=50,
-        temperature=0.7
+        temperature=0.7,
     )
     return response.to_json()
 
@@ -102,7 +103,7 @@ def get_embeddings(azure_client, text):
     """
     response = azure_client.embeddings.create(
         model="text-embedding-ada-002",  # Adjust to your embeddings model name
-        input=text
+        input=text,
     )
     return response.to_json()
 
@@ -115,9 +116,7 @@ def main():
         return
 
     # Example chat messages
-    messages = [
-        {"role": "user", "content": "say hello"}
-    ]
+    messages = [{"role": "user", "content": "say hello"}]
 
     # 1) Chat Completion (Synchronous)
     try:

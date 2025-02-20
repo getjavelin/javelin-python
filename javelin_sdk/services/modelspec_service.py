@@ -9,6 +9,7 @@ from javelin_sdk.exceptions import (
 )
 from javelin_sdk.models import HttpMethod, Request
 
+
 class ModelSpecService:
     def __init__(self, client):
         self.client = client
@@ -24,18 +25,13 @@ class ModelSpecService:
         elif response.status_code != 200:
             raise InternalServerError(response=response)
 
-    def get_model_specs(
-        self, provider_url: str, model_name: str
-    ) -> Dict[str, Any]:
+    def get_model_specs(self, provider_url: str, model_name: str) -> Dict[str, Any]:
         """Get model specifications from the provider configuration"""
         try:
             response = self.client._send_request_sync(
                 Request(
                     method=HttpMethod.GET,
-                    query_params={
-                        "api_base": provider_url,
-                        "model_name": model_name
-                    },
+                    query_params={"api_base": provider_url, "model_name": model_name},
                     is_model_specs=True,
                 )
             )
@@ -60,7 +56,7 @@ class ModelSpecService:
                         "api_base": provider_url,
                         "model_name": model_name,
                     },
-                    is_model_specs=True
+                    is_model_specs=True,
                 )
             )
 

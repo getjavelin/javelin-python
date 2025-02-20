@@ -15,11 +15,12 @@ load_dotenv()
 # -----------------------------------------------------------------------------
 # 1) Configuration
 # -----------------------------------------------------------------------------
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") # add your openai api key here
-JAVELIN_API_KEY = os.environ.get("JAVELIN_API_KEY") # add your javelin api key here
-MODEL_NAME_CHAT = "gpt-3.5-turbo"          # For chat
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")  # add your openai api key here
+JAVELIN_API_KEY = os.environ.get("JAVELIN_API_KEY")  # add your javelin api key here
+MODEL_NAME_CHAT = "gpt-3.5-turbo"  # For chat
 MODEL_NAME_EMBED = "text-embedding-ada-002"
-ROUTE_NAME      = "openai_univ"
+ROUTE_NAME = "openai_univ"
+
 
 def init_chat_llm_non_streaming():
     """
@@ -32,10 +33,11 @@ def init_chat_llm_non_streaming():
             "x-api-key": JAVELIN_API_KEY,
             "x-javelin-route": ROUTE_NAME,
             "x-javelin-provider": "https://api.openai.com/v1",
-            "x-javelin-model": MODEL_NAME_CHAT
+            "x-javelin-model": MODEL_NAME_CHAT,
         },
-        streaming=False
+        streaming=False,
     )
+
 
 def init_chat_llm_streaming():
     """
@@ -48,10 +50,11 @@ def init_chat_llm_streaming():
             "x-api-key": JAVELIN_API_KEY,
             "x-javelin-route": ROUTE_NAME,
             "x-javelin-provider": "https://api.openai.com/v1",
-            "x-javelin-model": MODEL_NAME_CHAT
+            "x-javelin-model": MODEL_NAME_CHAT,
         },
-        streaming=True
+        streaming=True,
     )
+
 
 def init_embeddings_llm():
     """
@@ -64,9 +67,10 @@ def init_embeddings_llm():
             "x-api-key": JAVELIN_API_KEY,
             "x-javelin-route": ROUTE_NAME,
             "x-javelin-provider": "https://api.openai.com/v1",
-            "x-javelin-model": MODEL_NAME_EMBED
-        }
+            "x-javelin-model": MODEL_NAME_EMBED,
+        },
     )
+
 
 # -----------------------------------------------------------------------------
 # 2) Chat Completion (Synchronous)
@@ -77,14 +81,14 @@ def chat_completion_sync(question: str) -> str:
     """
     llm = init_chat_llm_non_streaming()
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a helpful assistant."),
-        ("user", "{input}")
-    ])
+    prompt = ChatPromptTemplate.from_messages(
+        [("system", "You are a helpful assistant."), ("user", "{input}")]
+    )
     parser = StrOutputParser()
     chain = prompt | llm | parser
 
     return chain.invoke({"input": question})
+
 
 # -----------------------------------------------------------------------------
 # 3) Chat Completion (Streaming)
@@ -92,11 +96,14 @@ def chat_completion_sync(question: str) -> str:
 class StreamCallbackHandler(BaseCallbackHandler):
     def __init__(self):
         self.tokens = []
+
     def on_llm_new_token(self, token: str, **kwargs):
         self.tokens.append(token)
+
     # Prevent argument errors in some versions:
     def on_chat_model_start(self, serialized, messages, **kwargs):
         pass
+
 
 def chat_completion_stream(question: str) -> str:
     """
@@ -108,15 +115,15 @@ def chat_completion_stream(question: str) -> str:
     # In some versions, you might pass callbacks to llm
     llm.callbacks = [callback_handler]
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a helpful assistant."),
-        ("user", "{input}")
-    ])
+    prompt = ChatPromptTemplate.from_messages(
+        [("system", "You are a helpful assistant."), ("user", "{input}")]
+    )
     parser = StrOutputParser()
     streaming_chain = prompt | llm | parser
 
     streaming_chain.invoke({"input": question})
     return "".join(callback_handler.tokens)
+
 
 # -----------------------------------------------------------------------------
 # 4) Embeddings Example
@@ -130,6 +137,7 @@ def get_embeddings(text: str) -> str:
     # We'll embed a single query
     vector = emb.embed_query(text)
     return json.dumps(vector)
+
 
 # -----------------------------------------------------------------------------
 # 5) Conversation Demo (Manual, Non-Streaming)
@@ -164,12 +172,13 @@ def conversation_demo() -> None:
     messages.append(("assistant", ans2))
     print(f"User: {user_q2}\nAssistant: {ans2}\n")
 
+
 # -----------------------------------------------------------------------------
 # 6) Main
 # -----------------------------------------------------------------------------
 def main():
     print("=== LangChain + OpenAI Javelin Examples (No Text Completion) ===")
-    
+
     # 1) Chat Completion (Synchronous)
     print("\n--- Chat Completion: Synchronous ---")
     try:
@@ -214,6 +223,7 @@ def main():
         print(f"Error in conversation demo: {e}")
 
     print("\n=== Script Complete ===")
+
 
 if __name__ == "__main__":
     main()

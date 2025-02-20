@@ -25,12 +25,17 @@ API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
 API_TIMEOUT = 10
 
+
 class JavelinClient:
     BEDROCK_RUNTIME_OPERATIONS = frozenset(
         {"InvokeModel", "InvokeModelWithResponseStream", "Converse", "ConverseStream"}
     )
-    PROFILE_ARN_PATTERN = re.compile(r'/model/arn:aws:bedrock:[^:]+:\d+:application-inference-profile/[^/]+')
-    MODEL_ARN_PATTERN = re.compile(r'/model/arn:aws:bedrock:[^:]+::foundation-model/[^/]+')
+    PROFILE_ARN_PATTERN = re.compile(
+        r"/model/arn:aws:bedrock:[^:]+:\d+:application-inference-profile/[^/]+"
+    )
+    MODEL_ARN_PATTERN = re.compile(
+        r"/model/arn:aws:bedrock:[^:]+::foundation-model/[^/]+"
+    )
 
     # Mapping provider_name to well-known gen_ai.system values
     GEN_AI_SYSTEM_MAPPING = {
@@ -46,23 +51,21 @@ class JavelinClient:
         "perplexity": "perplexity",
         "groq": "groq",
         "ibm": "ibm.watsonx.ai",
-        "xai": "xai"
+        "xai": "xai",
     }
 
     # Mapping method names to well-known operation names
     GEN_AI_OPERATION_MAPPING = {
         "chat.completions.create": "chat",
         "completions.create": "text_completion",
-        "embeddings.create": "embeddings"
+        "embeddings.create": "embeddings",
     }
-    
+
     def __init__(self, config: JavelinConfig) -> None:
         self.config = config
         self.base_url = urljoin(config.base_url, config.api_version or "/v1")
 
-        self._headers = {
-            "x-api-key": config.javelin_api_key
-        }
+        self._headers = {"x-api-key": config.javelin_api_key}
         if config.llm_api_key:
             self._headers["Authorization"] = f"Bearer {config.llm_api_key}"
         if config.javelin_virtualapikey:
@@ -94,7 +97,7 @@ class JavelinClient:
         self.patched_methods = set()  # Track already patched methods
 
         self.original_methods = {}
-        
+
     @property
     def client(self):
         if self._client is None:
@@ -138,7 +141,7 @@ class JavelinClient:
         """Helper function to set span attributes only if the value is not None."""
         if value is not None:
             span.set_attribute(key, value)
-    
+
     @staticmethod
     def add_event_with_attributes(span, event_name, attributes):
         """Helper function to add events only with non-None attributes."""
@@ -146,10 +149,9 @@ class JavelinClient:
         if filtered_attributes:  # Add event only if there are valid attributes
             span.add_event(name=event_name, attributes=filtered_attributes)
 
-    def register_provider(self, 
-                        openai_client: Any,
-                        provider_name: str,
-                        route_name: str = None) -> Any:
+    def register_provider(
+        self, openai_client: Any, provider_name: str, route_name: str = None
+    ) -> Any:
         """
         Generalized function to register OpenAI, Azure OpenAI, and Gemini clients.
 
@@ -160,7 +162,7 @@ class JavelinClient:
 
         client_id = id(openai_client)
         if client_id in self.patched_clients:
-            print (f"Client {client_id} already patched")
+            print(f"Client {client_id} already patched")
             return openai_client  # Skip if already patched
 
         self.patched_clients.add(client_id)  # Mark as patched
@@ -175,7 +177,9 @@ class JavelinClient:
             openai_client._custom_headers = {}
         openai_client._custom_headers.update(self._headers)
 
-        base_url_str = str(self.openai_base_url).rstrip("/")  # Remove trailing slash if present
+        base_url_str = str(self.openai_base_url).rstrip(
+            "/"
+        )  # Remove trailing slash if present
 
         # Update Javelin headers into the client's _custom_headers
         openai_client._custom_headers["x-javelin-provider"] = base_url_str
@@ -195,23 +199,30 @@ class JavelinClient:
             if inspect.iscoroutinefunction(original_method):
                 # Async Patched Method
                 async def patched_method(*args, **kwargs):
-                    return await _execute_with_tracing(original_method, method_name, args, kwargs)
+                    return await _execute_with_tracing(
+                        original_method, method_name, args, kwargs
+                    )
+
             else:
                 # Sync Patched Method
                 def patched_method(*args, **kwargs):
-                    return _execute_with_tracing(original_method, method_name, args, kwargs)
+                    return _execute_with_tracing(
+                        original_method, method_name, args, kwargs
+                    )
 
             return patched_method
 
         def _execute_with_tracing(original_method, method_name, args, kwargs):
-            model = kwargs.get('model')
+            model = kwargs.get("model")
 
             if model and hasattr(openai_client, "_custom_headers"):
-                openai_client._custom_headers['x-javelin-model'] = model
+                openai_client._custom_headers["x-javelin-model"] = model
 
             # Use well-known operation names, fallback to method_name if not mapped
             operation_name = self.GEN_AI_OPERATION_MAPPING.get(method_name, method_name)
-            system_name = self.GEN_AI_SYSTEM_MAPPING.get(provider_name, provider_name)  # Fallback if provider is custom
+            system_name = self.GEN_AI_SYSTEM_MAPPING.get(
+                provider_name, provider_name
+            )  # Fallback if provider is custom
             span_name = f"{operation_name} {model}"
 
             async def _async_execution(span):
@@ -226,19 +237,55 @@ class JavelinClient:
 
             # Only create spans if tracing is enabled
             if self.tracer:
-                with self.tracer.start_as_current_span(span_name, kind=SpanKind.CLIENT) as span:
+                with self.tracer.start_as_current_span(
+                    span_name, kind=SpanKind.CLIENT
+                ) as span:
                     span.set_attribute(gen_ai_attributes.GEN_AI_SYSTEM, system_name)
-                    span.set_attribute(gen_ai_attributes.GEN_AI_OPERATION_NAME, operation_name)
+                    span.set_attribute(
+                        gen_ai_attributes.GEN_AI_OPERATION_NAME, operation_name
+                    )
                     span.set_attribute(gen_ai_attributes.GEN_AI_REQUEST_MODEL, model)
-                        
+
                     # Request attributes
-                    JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS, kwargs.get('max_completion_tokens'))
-                    JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY, kwargs.get('presence_penalty'))
-                    JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY, kwargs.get('frequency_penalty'))
-                    JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_REQUEST_STOP_SEQUENCES, json.dumps(kwargs.get('stop', [])) if kwargs.get('stop') else None)
-                    JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE, kwargs.get('temperature'))
-                    JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_REQUEST_TOP_K, kwargs.get('top_k'))
-                    JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_REQUEST_TOP_P, kwargs.get('top_p'))
+                    JavelinClient.set_span_attribute_if_not_none(
+                        span,
+                        gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS,
+                        kwargs.get("max_completion_tokens"),
+                    )
+                    JavelinClient.set_span_attribute_if_not_none(
+                        span,
+                        gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY,
+                        kwargs.get("presence_penalty"),
+                    )
+                    JavelinClient.set_span_attribute_if_not_none(
+                        span,
+                        gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY,
+                        kwargs.get("frequency_penalty"),
+                    )
+                    JavelinClient.set_span_attribute_if_not_none(
+                        span,
+                        gen_ai_attributes.GEN_AI_REQUEST_STOP_SEQUENCES,
+                        (
+                            json.dumps(kwargs.get("stop", []))
+                            if kwargs.get("stop")
+                            else None
+                        ),
+                    )
+                    JavelinClient.set_span_attribute_if_not_none(
+                        span,
+                        gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE,
+                        kwargs.get("temperature"),
+                    )
+                    JavelinClient.set_span_attribute_if_not_none(
+                        span,
+                        gen_ai_attributes.GEN_AI_REQUEST_TOP_K,
+                        kwargs.get("top_k"),
+                    )
+                    JavelinClient.set_span_attribute_if_not_none(
+                        span,
+                        gen_ai_attributes.GEN_AI_REQUEST_TOP_P,
+                        kwargs.get("top_p"),
+                    )
 
                     try:
                         if inspect.iscoroutinefunction(original_method):
@@ -271,44 +318,82 @@ class JavelinClient:
                     span.set_status(Status(StatusCode.OK, status_message))
 
                 # Set basic response attributes
-                JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_RESPONSE_MODEL, response_data.get('model'))
-                JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_RESPONSE_ID, response_data.get('id'))
-                JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER, response_data.get('service_tier'))
-                JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT, response_data.get('system_fingerprint'))
+                JavelinClient.set_span_attribute_if_not_none(
+                    span,
+                    gen_ai_attributes.GEN_AI_RESPONSE_MODEL,
+                    response_data.get("model"),
+                )
+                JavelinClient.set_span_attribute_if_not_none(
+                    span, gen_ai_attributes.GEN_AI_RESPONSE_ID, response_data.get("id")
+                )
+                JavelinClient.set_span_attribute_if_not_none(
+                    span,
+                    gen_ai_attributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER,
+                    response_data.get("service_tier"),
+                )
+                JavelinClient.set_span_attribute_if_not_none(
+                    span,
+                    gen_ai_attributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT,
+                    response_data.get("system_fingerprint"),
+                )
 
                 # Finish reasons for choices
                 finish_reasons = [
-                    choice.get('finish_reason')
-                    for choice in response_data.get('choices', [])
-                    if choice.get('finish_reason')
+                    choice.get("finish_reason")
+                    for choice in response_data.get("choices", [])
+                    if choice.get("finish_reason")
                 ]
                 JavelinClient.set_span_attribute_if_not_none(
                     span,
                     gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS,
-                    json.dumps(finish_reasons) if finish_reasons else None
+                    json.dumps(finish_reasons) if finish_reasons else None,
                 )
 
                 # Token usage
-                usage = response_data.get('usage', {})
-                JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS, usage.get('prompt_tokens'))
-                JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS, usage.get('completion_tokens'))
+                usage = response_data.get("usage", {})
+                JavelinClient.set_span_attribute_if_not_none(
+                    span,
+                    gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS,
+                    usage.get("prompt_tokens"),
+                )
+                JavelinClient.set_span_attribute_if_not_none(
+                    span,
+                    gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS,
+                    usage.get("completion_tokens"),
+                )
 
                 # System message event
                 system_message = next(
-                    (msg.get('content') for msg in kwargs.get('messages', []) if msg.get('role') == 'system'),
-                    None
+                    (
+                        msg.get("content")
+                        for msg in kwargs.get("messages", [])
+                        if msg.get("role") == "system"
+                    ),
+                    None,
                 )
-                JavelinClient.add_event_with_attributes(span, "gen_ai.system.message", {"gen_ai.system": system_name, "content": system_message})
+                JavelinClient.add_event_with_attributes(
+                    span,
+                    "gen_ai.system.message",
+                    {"gen_ai.system": system_name, "content": system_message},
+                )
 
                 # User message event
                 user_message = next(
-                    (msg.get('content') for msg in kwargs.get('messages', []) if msg.get('role') == 'user'),
-                    None
+                    (
+                        msg.get("content")
+                        for msg in kwargs.get("messages", [])
+                        if msg.get("role") == "user"
+                    ),
+                    None,
                 )
-                JavelinClient.add_event_with_attributes(span, "gen_ai.user.message", {"gen_ai.system": system_name, "content": user_message})
+                JavelinClient.add_event_with_attributes(
+                    span,
+                    "gen_ai.user.message",
+                    {"gen_ai.system": system_name, "content": user_message},
+                )
 
                 # Choice events
-                choices = response_data.get('choices', [])
+                choices = response_data.get("choices", [])
                 for index, choice in enumerate(choices):
                     choice_attributes = {"gen_ai.system": system_name, "index": index}
                     message = choice.pop("message", {})
@@ -320,26 +405,33 @@ class JavelinClient:
                             value = json.dumps(value)
                         choice_attributes[key] = value if value is not None else None
 
-                    JavelinClient.add_event_with_attributes(span, "gen_ai.choice", choice_attributes)
+                    JavelinClient.add_event_with_attributes(
+                        span, "gen_ai.choice", choice_attributes
+                    )
 
             else:
                 span.set_attribute("javelin.response.body", str(response))
 
-        
         def get_nested_attr(obj, attr_path):
             attrs = attr_path.split(".")
             for attr in attrs:
                 obj = getattr(obj, attr)
             return obj
 
-        for method_name in ["chat.completions.create", "completions.create", "embeddings.create"]:
+        for method_name in [
+            "chat.completions.create",
+            "completions.create",
+            "embeddings.create",
+        ]:
             method_ref = get_nested_attr(openai_client, method_name)
             method_id = id(method_ref)
 
             if method_id in self.patched_methods:
                 continue  # Skip if already patched
 
-            original_method = self.original_methods[provider_name][method_name.replace(".", "_")]
+            original_method = self.original_methods[provider_name][
+                method_name.replace(".", "_")
+            ]
             patched_method = create_patched_method(method_name, original_method)
 
             parent_attr, method_attr = method_name.rsplit(".", 1)
@@ -351,22 +443,32 @@ class JavelinClient:
         return openai_client
 
     def register_openai(self, openai_client: Any, route_name: str = None) -> Any:
-        return self.register_provider(openai_client, provider_name="openai", route_name=route_name)
+        return self.register_provider(
+            openai_client, provider_name="openai", route_name=route_name
+        )
 
     def register_azureopenai(self, openai_client: Any, route_name: str = None) -> Any:
-        return self.register_provider(openai_client, provider_name="azureopenai", route_name=route_name)
+        return self.register_provider(
+            openai_client, provider_name="azureopenai", route_name=route_name
+        )
 
     def register_gemini(self, openai_client: Any, route_name: str = None) -> Any:
-        return self.register_provider(openai_client, provider_name="gemini", route_name=route_name)
+        return self.register_provider(
+            openai_client, provider_name="gemini", route_name=route_name
+        )
 
     def register_deepseek(self, openai_client: Any, route_name: str = None) -> Any:
-        return self.register_provider(openai_client, provider_name="deepseek", route_name=route_name)
+        return self.register_provider(
+            openai_client, provider_name="deepseek", route_name=route_name
+        )
 
-    def register_bedrock(self, 
-                    bedrock_runtime_client: Any, 
-                    bedrock_client: Any = None,
-                    bedrock_session: Any = None,
-                    route_name: str = None) -> None:
+    def register_bedrock(
+        self,
+        bedrock_runtime_client: Any,
+        bedrock_client: Any = None,
+        bedrock_session: Any = None,
+        route_name: str = None,
+    ) -> None:
         """
         Register an AWS Bedrock Runtime client
         for request interception and modification.
@@ -395,7 +497,7 @@ class JavelinClient:
         else:
             if bedrock_runtime_client is None:
                 raise AssertionError("Bedrock Runtime client cannot be None")
-            
+
         # Store the bedrock client
         self.bedrock_client = bedrock_client
         self.bedrock_session = bedrock_session
@@ -414,7 +516,8 @@ class JavelinClient:
                 getattr(bedrock_runtime_client.meta.service_model, "service_name", None)
                 == "bedrock-runtime",
             ]
-        ): raise AssertionError(
+        ):
+            raise AssertionError(
                 "Invalid client type. Expected boto3 bedrock-runtime client, got: "
                 f"{type(bedrock_runtime_client).__name__}"
             )
@@ -428,10 +531,11 @@ class JavelinClient:
         So we cache the results of the inference profile and 
         foundation model requests.
         """
+
         @functools.lru_cache()
         def get_inference_model(inference_profile_identifier: str) -> str:
             try:
-                # Get the inference profile response            
+                # Get the inference profile response
                 response = self.bedrock_client.get_inference_profile(
                     inferenceProfileIdentifier=inference_profile_identifier
                 )
@@ -446,7 +550,7 @@ class JavelinClient:
             except Exception as e:
                 # Fail silently if the model is not found
                 return None
-        
+
         @functools.lru_cache()
         def get_foundation_model(model_identifier: str) -> str:
             try:
@@ -457,21 +561,21 @@ class JavelinClient:
             except Exception as e:
                 # Fail silently if the model is not found
                 return None
-                    
+
         def override_endpoint_url(request: Any, **kwargs) -> None:
             """
             Redirect Bedrock operations to the Javelin endpoint while preserving path and query.
 
             - If self.use_default_bedrock_route is True and self.default_bedrock_route is not None,
             the header 'x-javelin-route' is set to self.default_bedrock_route.
-            
+
             - In all cases, the function extracts an identifier from the URL path (after '/model/').
                 a. First, by treating it as a profile ARN (via get_inference_profile) and then retrieving
                 the model ARN and foundation model details.
                 b. If that fails, by treating it directly as a model ARN and getting the foundation model detail
-            
+
             - If it fails to find a model ID, it will try to extract it the model id from the path
-            
+
             - Once the model ID is found, any date portion is removed, and the header
             'x-javelin-model' is set with this model ID.
 
@@ -482,7 +586,7 @@ class JavelinClient:
                 ValueError: If any part of the process fails.
             """
             try:
-                
+
                 original_url = urlparse(request.url)
 
                 # Construct the base URL (scheme + netloc)
@@ -490,27 +594,30 @@ class JavelinClient:
 
                 # Set the header
                 request.headers["x-javelin-provider"] = base_url
-                
+
                 # If default routing is enabled and a default route is provided, set the x-javelin-route header.
                 if self.use_default_bedrock_route and self.default_bedrock_route:
                     request.headers["x-javelin-route"] = self.default_bedrock_route
 
-
                 path = original_url.path
                 path = unquote(path)
-                
+
                 model_id = None
-                
-                # Check for inference profile ARN 
+
+                # Check for inference profile ARN
                 if re.match(self.PROFILE_ARN_PATTERN, path):
                     match = re.match(self.PROFILE_ARN_PATTERN, path)
-                    model_id = get_inference_model(match.group(0).replace("/model/", ""))
+                    model_id = get_inference_model(
+                        match.group(0).replace("/model/", "")
+                    )
 
                 # Check for model ARN
                 elif re.match(self.MODEL_ARN_PATTERN, path):
                     match = re.match(self.MODEL_ARN_PATTERN, path)
-                    model_id = get_foundation_model(match.group(0).replace("/model/", ""))
-                    
+                    model_id = get_foundation_model(
+                        match.group(0).replace("/model/", "")
+                    )
+
                 # If the model ID is not found, try to extract it from the path
                 if model_id is None:
                     path = path.replace("/model/", "")
@@ -518,20 +625,19 @@ class JavelinClient:
                     end_index = path.rfind("/")
                     path = path[:end_index]
                     model_id = path.replace("/model/", "")
-                    
-                    
+
                 if model_id:
                     # Remove the date portion if present (e.g., transform "anthropic.claude-3-haiku-20240307-v1:0"
                     # to "anthropic.claude-3-haiku-v1:0").
-                    model_id = re.sub(r'-\d{8}(?=-)', '', model_id)
+                    model_id = re.sub(r"-\d{8}(?=-)", "", model_id)
                     request.headers["x-javelin-model"] = model_id
-                
+
                 # Update the request URL to use the Javelin endpoint.
                 parsed_base = urlparse(self.base_url)
                 updated_url = original_url._replace(
-                    scheme=parsed_base.scheme, 
-                    netloc=parsed_base.netloc, 
-                    path=f"/v1{original_url.path}"
+                    scheme=parsed_base.scheme,
+                    netloc=parsed_base.netloc,
+                    path=f"/v1{original_url.path}",
                 )
                 request.url = urlunparse(updated_url)
 
@@ -542,8 +648,12 @@ class JavelinClient:
         # Register header modification & URL override for specific operations
         for op in self.BEDROCK_RUNTIME_OPERATIONS:
             event_name = f"before-send.bedrock-runtime.{op}"
-            self.bedrock_runtime_client.meta.events.register(event_name, add_custom_headers)
-            self.bedrock_runtime_client.meta.events.register(event_name, override_endpoint_url)
+            self.bedrock_runtime_client.meta.events.register(
+                event_name, add_custom_headers
+            )
+            self.bedrock_runtime_client.meta.events.register(
+                event_name, override_endpoint_url
+            )
 
     def _prepare_request(self, request: Request) -> tuple:
         url = self._construct_url(
@@ -727,11 +837,15 @@ class JavelinClient:
     aget_transformation_rules = lambda self, provider_name, model_name, endpoint: self.provider_service.aget_transformation_rules(
         provider_name, model_name, endpoint
     )
-    get_model_specs = lambda self, provider_url, model_name: self.modelspec_service.get_model_specs(
-        provider_url, model_name
+    get_model_specs = (
+        lambda self, provider_url, model_name: self.modelspec_service.get_model_specs(
+            provider_url, model_name
+        )
     )
-    aget_model_specs = lambda self, provider_url, model_name: self.modelspec_service.aget_model_specs(
-        provider_url, model_name
+    aget_model_specs = (
+        lambda self, provider_url, model_name: self.modelspec_service.aget_model_specs(
+            provider_url, model_name
+        )
     )
 
     # Route methods
