@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any, Dict, List, Optional, Union, Generator
+from typing import Any, Dict, Generator, List, Optional, Union
 
 from javelin_sdk.model_adapters import ModelTransformer, TransformationRuleManager
 from javelin_sdk.models import EndpointType

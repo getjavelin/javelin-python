@@ -1,11 +1,13 @@
+import asyncio
+import base64
 import json
 import os
-import base64
+
 import requests
-import asyncio
-from openai import OpenAI, AsyncOpenAI, AzureOpenAI
-from javelin_sdk import JavelinClient, JavelinConfig
+from openai import AsyncOpenAI, AzureOpenAI, OpenAI
 from pydantic import BaseModel
+
+from javelin_sdk import JavelinClient, JavelinConfig
 
 # Environment Variables
 openai_api_key = os.getenv("OPENAI_API_KEY")

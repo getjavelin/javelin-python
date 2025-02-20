@@ -1,9 +1,10 @@
-import yaml
-from pathlib import Path
-from typing import Dict, Any, Optional
-import re
 import os
+import re
+from pathlib import Path
+from typing import Any, Dict, Optional
+
 import requests
+import yaml
 
 SWAGGER_FILE_PATH = Path(os.path.join(os.path.dirname(__file__), "swagger.yaml"))
 MODELS_FILE_PATH = Path(

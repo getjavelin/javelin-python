@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 
 import jmespath
 
-from .models import ArrayHandling, ModelSpec, TransformRule, TypeHint, EndpointType
+from .models import ArrayHandling, EndpointType, ModelSpec, TransformRule, TypeHint
 
 logger = logging.getLogger(__name__)
 

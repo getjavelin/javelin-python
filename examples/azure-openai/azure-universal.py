@@ -1,7 +1,9 @@
 import os
-from openai import AzureOpenAI
-from javelin_sdk import JavelinClient, JavelinConfig
+
 from dotenv import load_dotenv
+from openai import AzureOpenAI
+
+from javelin_sdk import JavelinClient, JavelinConfig
 
 load_dotenv()
 

@@ -1,4 +1,5 @@
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 import httpx
 
 from javelin_sdk.exceptions import (

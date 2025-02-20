@@ -11,12 +11,12 @@ from javelin_sdk.exceptions import (
     UnauthorizedError,
 )
 from javelin_sdk.models import (
+    EndpointType,
     HttpMethod,
     Provider,
     Providers,
     Request,
     Secrets,
-    EndpointType,
 )
 
 

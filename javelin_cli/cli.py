@@ -1,15 +1,15 @@
 import argparse
-import importlib.metadata
-import os
-import webbrowser
-from pathlib import Path
-import json
 import http.server
+import importlib.metadata
+import json
+import os
+import random
 import socketserver
+import sys
 import threading
 import urllib.parse
-import random
-import sys
+import webbrowser
+from pathlib import Path
 
 import requests
 

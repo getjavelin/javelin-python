@@ -1,20 +1,18 @@
+import asyncio
 import json
 import os
 import sys
-import asyncio
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from openai import OpenAI
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, OpenAI
+
+from javelin_sdk import JavelinClient, JavelinConfig
 
 # from openai import AzureOpenAI  # Not used, but imported for completeness
 
-from javelin_sdk import (
-    JavelinClient,
-    JavelinConfig,
-)
 
 # -------------------------------
 # Helper Functions

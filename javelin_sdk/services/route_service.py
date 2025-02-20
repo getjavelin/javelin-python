@@ -1,6 +1,7 @@
-from typing import Any, Dict, List, Optional, Union, Generator, AsyncGenerator
 import json
 import time
+from typing import Any, AsyncGenerator, Dict, Generator, List, Optional, Union
+
 import httpx
 from jsonpath_ng import parse
 

@@ -1,25 +1,24 @@
-import json
 import functools
-from typing import Any, Coroutine, Dict, Optional, Union
-from urllib.parse import urljoin, urlparse, urlunparse, unquote
-import httpx
+import inspect
+import json
 import re
+from typing import Any, Coroutine, Dict, Optional, Union
+from urllib.parse import unquote, urljoin, urlparse, urlunparse
+
+import httpx
+from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
+from opentelemetry.trace import SpanKind, Status, StatusCode
 
 from javelin_sdk.chat_completions import Chat, Completions
 from javelin_sdk.models import HttpMethod, JavelinConfig, Request
 from javelin_sdk.services.gateway_service import GatewayService
+from javelin_sdk.services.modelspec_service import ModelSpecService
 from javelin_sdk.services.provider_service import ProviderService
 from javelin_sdk.services.route_service import RouteService
 from javelin_sdk.services.secret_service import SecretService
 from javelin_sdk.services.template_service import TemplateService
 from javelin_sdk.services.trace_service import TraceService
-from javelin_sdk.services.modelspec_service import ModelSpecService
-
 from javelin_sdk.tracing_setup import configure_span_exporter
-import inspect
-from opentelemetry.trace import SpanKind
-from opentelemetry.trace import Status, StatusCode
-from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"

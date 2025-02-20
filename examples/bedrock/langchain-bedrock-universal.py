@@ -1,7 +1,9 @@
-import boto3
 import os
-from javelin_sdk import JavelinClient, JavelinConfig
+
+import boto3
 from dotenv import load_dotenv
+
+from javelin_sdk import JavelinClient, JavelinConfig
 
 load_dotenv()
 

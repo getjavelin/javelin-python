@@ -1,11 +1,13 @@
-import os
 import json
+import os
+
+from dotenv import load_dotenv
 
 # The official OpenAI Python library with Gemini support (via Javelin)
 from openai import OpenAI
-from javelin_sdk import JavelinClient, JavelinConfig
 from pydantic import BaseModel
-from dotenv import load_dotenv
+
+from javelin_sdk import JavelinClient, JavelinConfig
 
 load_dotenv()
 

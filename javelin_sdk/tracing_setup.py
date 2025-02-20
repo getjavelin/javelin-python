@@ -1,15 +1,15 @@
 # javelin_sdk/tracing_setup.py
+# from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
+import os
+
 from opentelemetry import trace
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 # from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 # Use the HTTP exporter instead of the gRPC one
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-
-# from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
-import os
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 # --- OpenTelemetry Setup ---
 # TRACES_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "https://api-dev.javelin.live/v1/admin/traces")
