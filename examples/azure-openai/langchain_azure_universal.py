@@ -1,5 +1,4 @@
 import os
-import dotenv
 from dotenv import load_dotenv
 
 from langchain_openai import AzureChatOpenAI
@@ -13,15 +12,15 @@ from langchain.callbacks.manager import CallbackManager
 print("Initializing environment variables...")
 load_dotenv()
 azure_openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
-javelin_api_key      = os.getenv("JAVELIN_API_KEY")
+javelin_api_key = os.getenv("JAVELIN_API_KEY")
+base_url = os.getenv("JAVELIN_BASE_URL", "https://api.javelin.live")  # Default to generic base URL
 
-# The name of your Azure deployment (e.g., "gpt-4") 
-# or whatever you’ve set in Azure. 
-# Must also match x-javelin-model if Javelin expects that.
-model_choice         = "gpt-4"
+# The name of your Azure deployment (e.g., "gpt-4")
+# or whatever you’ve set in Azure. Must also match x-javelin-model if Javelin expects that.
+model_choice = "gpt-4"
 
 # Javelin route name, as registered in your javelin route dashboard
-route_name           = "azureopenai_univ"
+route_name = "azureopenai_univ"
 
 print("Azure OpenAI key:", "FOUND" if azure_openai_api_key else "MISSING")
 print("Javelin key:", "FOUND" if javelin_api_key else "MISSING")
@@ -34,8 +33,7 @@ llm_non_streaming = AzureChatOpenAI(
     # Provide your actual API version
     api_version="2024-08-01-preview",
     # The base_url is Javelin’s universal route 
-    # pointing to your Azure endpoint:
-    base_url="https://api-dev.javelin.live/v1/azureopenai/deployments/gpt-4/",
+    base_url=f"{base_url}/v1/azureopenai/deployments/gpt-4/",
     validate_base_url=False,
     verbose=True,
     default_headers={
@@ -77,7 +75,6 @@ class StreamCallbackHandler(BaseCallbackHandler):
     def on_llm_new_token(self, token: str, **kwargs) -> None:
         self.tokens.append(token)
 
-
 def invoke_streaming(question: str) -> str:
     """
     Sends a single user message to the LLM (streaming=True).
@@ -86,11 +83,10 @@ def invoke_streaming(question: str) -> str:
     callback_handler = StreamCallbackHandler()
     callback_manager = CallbackManager([callback_handler])
 
-    # Create a streaming LLM
     llm_streaming = AzureChatOpenAI(
         openai_api_key=azure_openai_api_key,
         api_version="2024-08-01-preview",
-        base_url="https://api-dev.javelin.live/v1/azureopenai/deployments/gpt-4/",
+        base_url=f"{base_url}/v1/azureopenai/deployments/gpt-4/",
         validate_base_url=False,
         verbose=True,
         default_headers={
@@ -110,7 +106,8 @@ def invoke_streaming(question: str) -> str:
     return "".join(callback_handler.tokens)
 
 #
-
+# 5) Conversation Demo
+#
 def conversation_demo():
     """
     Demonstrates a multi-turn conversation by manually
@@ -122,11 +119,10 @@ def conversation_demo():
 
     # Start with a system message 
     messages = [SystemMessage(content="You are a friendly assistant.")]
-
     user_q1 = "Hello, how are you?"
     messages.append(HumanMessage(content=user_q1))
     response_1 = conversation_llm.invoke(messages)
-    messages.append(response_1)  # add AIMessage to context
+    messages.append(response_1)
     print(f"User: {user_q1}\nAssistant: {response_1.content}\n")
 
     user_q2 = "Can you tell me a fun fact about dolphins?"
@@ -138,7 +134,7 @@ def conversation_demo():
     return "Conversation done!"
 
 #
-# 6) Main function
+# 6) Main Function
 #
 def main():
     print("=== LangChain AzureOpenAI Example ===")

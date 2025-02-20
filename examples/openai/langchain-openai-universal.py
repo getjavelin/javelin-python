@@ -20,6 +20,7 @@ JAVELIN_API_KEY = os.environ.get("JAVELIN_API_KEY") # add your javelin api key h
 MODEL_NAME_CHAT = "gpt-3.5-turbo"          # For chat
 MODEL_NAME_EMBED = "text-embedding-ada-002"
 ROUTE_NAME      = "openai_univ"
+BASE_URL = os.getenv("BASE_URL", "https://api.javelin.live")  # Default base URL
 
 def init_chat_llm_non_streaming():
     """
@@ -27,7 +28,7 @@ def init_chat_llm_non_streaming():
     """
     return ChatOpenAI(
         openai_api_key=OPENAI_API_KEY,
-        openai_api_base="https://api-dev.javelin.live/v1/openai",
+        openai_api_base=f"{BASE_URL}/v1/openai",
         default_headers={
             "x-api-key": JAVELIN_API_KEY,
             "x-javelin-route": ROUTE_NAME,
@@ -43,7 +44,7 @@ def init_chat_llm_streaming():
     """
     return ChatOpenAI(
         openai_api_key=OPENAI_API_KEY,
-        openai_api_base="https://api-dev.javelin.live/v1/openai",
+        openai_api_base=f"{BASE_URL}/v1/openai",
         default_headers={
             "x-api-key": JAVELIN_API_KEY,
             "x-javelin-route": ROUTE_NAME,
@@ -59,7 +60,7 @@ def init_embeddings_llm():
     """
     return OpenAIEmbeddings(
         openai_api_key=OPENAI_API_KEY,
-        openai_api_base="https://api-dev.javelin.live/v1/openai",
+        openai_api_base=f"{BASE_URL}/v1/openai",
         default_headers={
             "x-api-key": JAVELIN_API_KEY,
             "x-javelin-route": ROUTE_NAME,
