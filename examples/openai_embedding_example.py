@@ -37,7 +37,7 @@ for i, embedding in enumerate(embedded_texts):
 javelin_headers = {"x-api-key": javelin_api_key, "x-javelin-route": "myusers"}
 
 llm = ChatOpenAI(
-    openai_api_base="https://api-dev.javelin.live/v1/query",
+    openai_api_base="https://api.javelin.live/v1/query",
     openai_api_key=llm_api_key,
     model_kwargs={"extra_headers": javelin_headers},
 )

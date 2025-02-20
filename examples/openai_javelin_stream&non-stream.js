@@ -3,7 +3,7 @@ import OpenAI from "openai";
 
 const openai = new OpenAI({
   apiKey: "",  // add your api key
-  baseURL: "https://api-dev.javelin.live/v1/query",
+  baseURL: "hhttps://api.javelin.live/v1/query",
   defaultHeaders: {
     "x-api-key": "", // add here javelin api key
     "x-javelin-route": "OpenAIInspect",
@@ -31,7 +31,7 @@ import OpenAI from "openai";
 
 const openai = new OpenAI({
   apiKey: "", // add your api key
-  baseURL: "https://api-dev.javelin.live/v1/query",
+  baseURL: "https://api.javelin.live/v1/query",
   defaultHeaders: {
     "x-api-key": "",// add here javelin api key
     "x-javelin-route": "OpenAIInspect",

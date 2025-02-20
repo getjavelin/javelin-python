@@ -14,8 +14,6 @@ gemini_api_key = os.getenv("GEMINI_API_KEY")
 
 # Initialize Javelin Client
 config = JavelinConfig(
-    base_url="https://api-dev.javelin.live",
-    # base_url="http://localhost:8000",
     javelin_api_key=javelin_api_key,
 )
 client = JavelinClient(config)
@@ -25,7 +23,6 @@ client = JavelinClient(config)
 def initialize_javelin_client():
     javelin_api_key = os.getenv("JAVELIN_API_KEY")
     config = JavelinConfig(
-        base_url="https://api-dev.javelin.live",
         javelin_api_key=javelin_api_key,
     )
     return JavelinClient(config)
