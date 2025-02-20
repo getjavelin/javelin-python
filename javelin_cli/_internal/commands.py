@@ -2,8 +2,6 @@ import json
 import os
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from javelin_sdk.client import JavelinClient
 from javelin_sdk.exceptions import (
     BadRequest,
@@ -29,6 +27,7 @@ from javelin_sdk.models import (
     Template,
     Templates,
 )
+from pydantic import ValidationError
 
 
 def get_javelin_client():

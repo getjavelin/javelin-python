@@ -1,10 +1,7 @@
 import json
-import time
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional, Union
 
 import httpx
-from jsonpath_ng import parse
-
 from javelin_sdk.exceptions import (
     BadRequest,
     InternalServerError,
@@ -13,7 +10,8 @@ from javelin_sdk.exceptions import (
     RouteNotFoundError,
     UnauthorizedError,
 )
-from javelin_sdk.models import HttpMethod, Request, Route, Routes
+from javelin_sdk.models import HttpMethod, Request, Route, Routes, UnivModelConfig
+from jsonpath_ng import parse
 
 
 class RouteService:
@@ -310,3 +308,49 @@ class RouteService:
             )
         )
         return response
+
+    def query_unified_endpoint(
+        self,
+        provider_name: str,
+        endpoint_type: str,
+        query_body: Dict[str, Any],
+        headers: Optional[Dict[str, str]] = None,
+        query_params: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        univ_model_config = UnivModelConfig(
+            provider_name=provider_name,
+            endpoint_type=endpoint_type,
+        )
+
+        request = Request(
+            method=HttpMethod.POST,
+            data=query_body,
+            univ_model_config=univ_model_config.__dict__,
+            headers=headers,
+            query_params=query_params,
+        )
+        response = self.client._send_request_sync(request)
+        return response.json()
+
+    async def aquery_unified_endpoint(
+        self,
+        provider_name: str,
+        endpoint_type: str,
+        query_body: Dict[str, Any],
+        headers: Optional[Dict[str, str]] = None,
+        query_params: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        univ_model_config = UnivModelConfig(
+            provider_name=provider_name,
+            endpoint_type=endpoint_type,
+        )
+
+        request = Request(
+            method=HttpMethod.POST,
+            data=query_body,
+            univ_model_config=univ_model_config.__dict__,
+            headers=headers,
+            query_params=query_params,
+        )
+        response = await self.client._send_request_async(request)
+        return response.json()

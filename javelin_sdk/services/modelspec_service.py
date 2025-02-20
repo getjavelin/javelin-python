@@ -1,7 +1,6 @@
 from typing import Any, Dict, Optional
 
 import httpx
-
 from javelin_sdk.exceptions import (
     BadRequest,
     InternalServerError,

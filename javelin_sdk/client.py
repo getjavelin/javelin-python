@@ -6,9 +6,6 @@ from typing import Any, Coroutine, Dict, Optional, Union
 from urllib.parse import unquote, urljoin, urlparse, urlunparse
 
 import httpx
-from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
-from opentelemetry.trace import SpanKind, Status, StatusCode
-
 from javelin_sdk.chat_completions import Chat, Completions
 from javelin_sdk.models import HttpMethod, JavelinConfig, Request
 from javelin_sdk.services.gateway_service import GatewayService
@@ -19,6 +16,8 @@ from javelin_sdk.services.secret_service import SecretService
 from javelin_sdk.services.template_service import TemplateService
 from javelin_sdk.services.trace_service import TraceService
 from javelin_sdk.tracing_setup import configure_span_exporter
+from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
+from opentelemetry.trace import SpanKind, Status, StatusCode
 
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
@@ -546,7 +545,7 @@ class JavelinClient:
                 )
                 model_id = foundation_model_response["modelDetails"]["modelId"]
                 return model_id
-            except Exception as e:
+            except Exception:
                 # Fail silently if the model is not found
                 return None
 
@@ -557,7 +556,7 @@ class JavelinClient:
                     modelIdentifier=model_identifier
                 )
                 return response["modelDetails"]["modelId"]
-            except Exception as e:
+            except Exception:
                 # Fail silently if the model is not found
                 return None
 
@@ -668,6 +667,7 @@ class JavelinClient:
             is_transformation_rules=request.is_transformation_rules,
             is_model_specs=request.is_model_specs,
             is_reload=request.is_reload,
+            univ_model=request.univ_model_config,
         )
         headers = {**self._headers, **(request.headers or {})}
         return url, headers
@@ -708,6 +708,7 @@ class JavelinClient:
         is_transformation_rules: bool = False,
         is_model_specs: bool = False,
         is_reload: bool = False,
+        univ_model: Optional[Dict[str, Any]] = None,
     ) -> str:
         url_parts = [self.base_url]
 
@@ -770,6 +771,12 @@ class JavelinClient:
         if query_params:
             query_string = "&".join(f"{k}={v}" for k, v in query_params.items())
             url += f"?{query_string}"
+
+        # Integrate construct_endpoint_url logic
+        if univ_model:
+            endpoint_url = self.construct_endpoint_url(univ_model)
+            url = urljoin(url, endpoint_url)
+
         return url
 
     # Gateway methods
@@ -876,6 +883,12 @@ class JavelinClient:
     aquery_llama = lambda self, route_name, query_body: self.route_service.aquery_llama(
         route_name, query_body
     )
+    query_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None: self.route_service.query_unified_endpoint(
+        provider_name, endpoint_type, query_body, headers, query_params
+    )
+    aquery_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None: self.route_service.aquery_unified_endpoint(
+        provider_name, endpoint_type, query_body, headers, query_params
+    )
 
     # Secret methods
     create_secret = lambda self, secret: self.secret_service.create_secret(secret)
@@ -969,3 +982,52 @@ class JavelinClient:
         )
         response = await self._send_request_async(request)
         return response
+
+    def construct_endpoint_url(self, request_model: Dict[str, Any]) -> str:
+        """
+        Constructs the endpoint URL based on the request model.
+
+        :param base_url: The base URL for the API.
+        :param request_model: The request model containing endpoint details.
+        :return: The constructed endpoint URL.
+        """
+        base_url = self.base_url
+        provider_name = request_model.get("provider_name")
+        endpoint_type = request_model.get("endpoint_type")
+        deployment = request_model.get("deployment")
+        arn = request_model.get("arn")
+        api_version = request_model.get(
+            "api_version", "2023-07-01-preview"
+        )  # Default version
+
+        if not provider_name:
+            raise ValueError("Provider name is not specified in the request model.")
+
+        if provider_name == "azureopenai" and deployment:
+            # Handle Azure OpenAI endpoints
+            if endpoint_type == "chat":
+                return f"{base_url}/{provider_name}/deployments/{deployment}/chat/completions?api-version={api_version}"
+            elif endpoint_type == "completion":
+                return f"{base_url}/{provider_name}/deployments/{deployment}/completions?api-version={api_version}"
+            elif endpoint_type == "embeddings":
+                return f"{base_url}/{provider_name}/deployments/{deployment}/embeddings?api-version={api_version}"
+        elif arn:
+            # Handle Bedrock endpoints
+            if endpoint_type == "invoke":
+                return f"{base_url}/v1/model/{arn}/invoke"
+            elif endpoint_type == "converse":
+                return f"{base_url}/v1/model/{arn}/converse"
+            elif endpoint_type == "invoke_stream":
+                return f"{base_url}/v1/model/{arn}/invoke-with-response-stream"
+            elif endpoint_type == "converse_stream":
+                return f"{base_url}/v1/model/{arn}/converse-stream"
+        else:
+            # Handle OpenAI compatible endpoints
+            if endpoint_type == "chat":
+                return f"{base_url}/{provider_name}/chat/completions"
+            elif endpoint_type == "completion":
+                return f"{base_url}/{provider_name}/completions"
+            elif endpoint_type == "embeddings":
+                return f"{base_url}/{provider_name}/embeddings"
+
+        raise ValueError("Invalid request model configuration")
