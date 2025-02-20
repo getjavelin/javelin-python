@@ -21,7 +21,6 @@ test:
 	poetry run pytest tests
 
 build:
-	black .
 	poetry build
 
 clean:
