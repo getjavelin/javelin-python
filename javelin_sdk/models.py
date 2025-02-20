@@ -1,9 +1,8 @@
 from enum import Enum, auto
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, field_validator
-
 from javelin_sdk.exceptions import UnauthorizedError
+from pydantic import BaseModel, Field, field_validator
 
 
 class GatewayConfig(BaseModel):
@@ -478,6 +477,7 @@ class Request:
         is_transformation_rules: bool = False,
         is_model_specs: bool = False,
         is_reload: bool = False,
+        univ_model_config: Optional[Dict[str, Any]] = None,
     ):
         self.method = method
         self.gateway = gateway
@@ -494,6 +494,7 @@ class Request:
         self.is_transformation_rules = is_transformation_rules
         self.is_model_specs = is_model_specs
         self.is_reload = is_reload
+        self.univ_model_config = univ_model_config
 
 
 class Message(BaseModel):
@@ -568,3 +569,19 @@ class EndpointType(str, Enum):
     INVOKE_STREAM = "invoke_stream"
     CONVERSE_STREAM = "converse_stream"
     ALL = "all"
+
+
+class UnivModelConfig:
+    def __init__(
+        self,
+        provider_name: str,
+        endpoint_type: str,
+        deployment: Optional[str] = None,
+        arn: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ):
+        self.provider_name = provider_name
+        self.endpoint_type = endpoint_type
+        self.deployment = deployment
+        self.arn = arn
+        self.api_version = api_version
