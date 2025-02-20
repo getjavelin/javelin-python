@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any, Dict, List, Optional, Union, Generator
+from typing import Any, Dict, Generator, List, Optional, Union
 
 from javelin_sdk.model_adapters import ModelTransformer, TransformationRuleManager
 from javelin_sdk.models import EndpointType
@@ -36,19 +36,19 @@ class BaseCompletions:
             provider_name = primary_model.provider
             provider_object = self.client.provider_service.get_provider(provider_name)
             model_rules = self.rule_manager.get_rules(
-                provider_object.config.api_base.rstrip('/') + primary_model.suffix,
-                primary_model.name
+                provider_object.config.api_base.rstrip("/") + primary_model.suffix,
+                primary_model.name,
             )
             transformed_request = self.transformer.transform(
                 request_data, model_rules.input_rules
             )
-            
+
             model_response = self.client.query_route(
-                route, 
-                query_body=transformed_request, 
-                headers={}, 
+                route,
+                query_body=transformed_request,
+                headers={},
                 stream=stream,
-                stream_response_path=model_rules.stream_response_path
+                stream_response_path=model_rules.stream_response_path,
             )
             if stream:
                 return model_response

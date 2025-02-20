@@ -22,4 +22,3 @@ repos:
     rev: "1.4.0" # add version here
     hooks:
       - id: poetry-check
-      - id: poetry-lock

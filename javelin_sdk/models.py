@@ -90,6 +90,7 @@ class PromptSafety(BaseModel):
         default=None, description="List of content types"
     )
 
+
 class SecurityFilters(BaseModel):
     enabled: Optional[bool] = Field(
         default=None, description="Whether security filters are enabled"
@@ -278,7 +279,10 @@ class Provider(BaseModel):
         default=None, description="Configuration for the provider"
     )
 
-    api_keys: Optional[List[Dict[str, Any]]] = Field(default=None, description='API keys associated with the provider')
+    api_keys: Optional[List[Dict[str, Any]]] = Field(
+        default=None, description="API keys associated with the provider"
+    )
+
 
 class Providers(BaseModel):
     providers: List[Provider] = Field(default=[], description="List of providers")
@@ -515,11 +519,18 @@ class ModelConfig(BaseModel):
     class Config:
         protected_namespaces = ()  # This resolves the warning
 
-    virtual_secret_key: Optional[str] = Field(default=None, description='Virtual secret name')
-    fallback_enabled: Optional[bool] = Field(default=None, description='Whether fallback is enabled')
-    suffix: Optional[str] = Field(default=None, description='Suffix for the model')
-    weight: Optional[int] = Field(default=None, description='Weight of the model')
-    fallback_codes: Optional[List[int]] = Field(default=None, description='Fallback codes')
+    virtual_secret_key: Optional[str] = Field(
+        default=None, description="Virtual secret name"
+    )
+    fallback_enabled: Optional[bool] = Field(
+        default=None, description="Whether fallback is enabled"
+    )
+    suffix: Optional[str] = Field(default=None, description="Suffix for the model")
+    weight: Optional[int] = Field(default=None, description="Weight of the model")
+    fallback_codes: Optional[List[int]] = Field(
+        default=None, description="Fallback codes"
+    )
+
 
 class JavelinConfig(BaseModel):
     base_url: str = Field(default="https://api-dev.javelin.live")
@@ -528,6 +539,7 @@ class JavelinConfig(BaseModel):
     llm_api_key: Optional[str] = None
     api_version: Optional[str] = None
     timeout: Optional[float] = None
+
 
 class RemoteModelSpec(BaseModel):
     provider: str
@@ -548,7 +560,7 @@ class RemoteModelSpec(BaseModel):
 class EndpointType(str, Enum):
     UNKNOWN = "unknown"
     CHAT = "chat"
-    COMPLETION = "completion" 
+    COMPLETION = "completion"
     EMBED = "embed"
     INVOKE = "invoke"
     CONVERSE = "converse"
