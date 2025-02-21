@@ -1,13 +1,16 @@
-import os
 import json
+import os
+
+from dotenv import load_dotenv
 
 # The official OpenAI Python library with Gemini support (via Javelin)
 from openai import OpenAI
-from javelin_sdk import JavelinClient, JavelinConfig
 from pydantic import BaseModel
-from dotenv import load_dotenv
+
+from javelin_sdk import JavelinClient, JavelinConfig
 
 load_dotenv()
+
 
 # -----------------------------------------------------------------------------
 # 1) Initialize Gemini + Javelin
@@ -21,8 +24,8 @@ def init_gemini_client():
 
     # Hard-coded environment variable assignment (for demonstration)
     # You may prefer to do: gemini_api_key = os.environ.get("GEMINI_API_KEY") in real usage.
-    
-    gemini_api_key = os.getenv("GEMINI_API_KEY") # define your gemini api key here
+
+    gemini_api_key = os.getenv("GEMINI_API_KEY")  # define your gemini api key here
     if not gemini_api_key:
         raise ValueError("GEMINI_API_KEY is not set!")
     print("Gemini API Key loaded successfully.")
@@ -30,15 +33,15 @@ def init_gemini_client():
     # Create an OpenAI client configured for Gemini
     openai_client = OpenAI(
         api_key=gemini_api_key,
-        base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
     )
 
     # Javelin configuration
-    
-    javelin_api_key = os.getenv("JAVELIN_API_KEY") #define your javelin api key here
+
+    javelin_api_key = os.getenv("JAVELIN_API_KEY")  # define your javelin api key here
     config = JavelinConfig(javelin_api_key=javelin_api_key)
     client = JavelinClient(config)
-    rout_name = "gemini_univ" #define your universal route name here
+    rout_name = "gemini_univ"  # define your universal route name here
     # Register the Gemini client with Javelin
     client.register_gemini(openai_client, route_name=rout_name)
 
@@ -58,8 +61,8 @@ def gemini_chat_completions(client):
         n=1,
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": "Explain to me how AI works"}
-        ]
+            {"role": "user", "content": "Explain to me how AI works"},
+        ],
     )
     return response.model_dump_json(indent=2)
 
@@ -76,9 +79,9 @@ def gemini_streaming(client):
         model="gemini-1.5-flash",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": "Hello!"}
+            {"role": "user", "content": "Hello!"},
         ],
-        stream=True
+        stream=True,
     )
 
     # Accumulate partial content in a list
@@ -95,7 +98,6 @@ def gemini_streaming(client):
 
     # Join all chunk data with newlines
     return "\n".join(streamed_content)
-
 
 
 # -----------------------------------------------------------------------------
@@ -123,15 +125,14 @@ def gemini_function_calling(client):
                     },
                     "required": ["location"],
                 },
-            }
+            },
         }
     ]
-    messages = [{"role": "user", "content": "What's the weather like in Chicago today?"}]
+    messages = [
+        {"role": "user", "content": "What's the weather like in Chicago today?"}
+    ]
     response = client.chat.completions.create(
-        model="gemini-1.5-flash",
-        messages=messages,
-        tools=tools,
-        tool_choice="auto"
+        model="gemini-1.5-flash", messages=messages, tools=tools, tool_choice="auto"
     )
     return response.model_dump_json(indent=2)
 
@@ -144,6 +145,7 @@ class CalendarEvent(BaseModel):
     date: str
     participants: list[str]
 
+
 def gemini_structured_output(client):
     """
     Demonstrates how to request structured JSON output from Gemini
@@ -154,7 +156,10 @@ def gemini_structured_output(client):
         model="gemini-1.5-flash",
         messages=[
             {"role": "system", "content": "Extract the event information."},
-            {"role": "user", "content": "John and Susan are going to an AI conference on Friday."},
+            {
+                "role": "user",
+                "content": "John and Susan are going to an AI conference on Friday.",
+            },
         ],
         response_format=CalendarEvent,
     )
@@ -170,8 +175,7 @@ def gemini_embeddings(client):
     Returns the JSON string of the embeddings response.
     """
     response = client.embeddings.create(
-        input="Your text string goes here",
-        model="text-embedding-004"
+        input="Your text string goes here", model="text-embedding-004"
     )
     return response.model_dump_json(indent=2)
 
@@ -202,7 +206,7 @@ def main():
     print("\n--- Gemini: Streaming ---")
     try:
         stream_response = gemini_streaming(gemini_client)
-        
+
         if not stream_response.strip():
             print("Error: Empty response  failed")
         else:
@@ -241,11 +245,12 @@ def main():
             print("Error: Empty response  failed")
         else:
             print(embeddings_response)
-        
+
     except Exception as e:
         print(f"Error in embeddings: {e}")
 
     print("\nScript Complete")
+
 
 if __name__ == "__main__":
     main()

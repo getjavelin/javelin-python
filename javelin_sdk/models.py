@@ -1,9 +1,8 @@
 from enum import Enum, auto
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, field_validator
-
 from javelin_sdk.exceptions import UnauthorizedError
+from pydantic import BaseModel, Field, field_validator
 
 
 class GatewayConfig(BaseModel):
@@ -89,6 +88,7 @@ class PromptSafety(BaseModel):
     content_types: Optional[List[ContentTypes]] = Field(
         default=None, description="List of content types"
     )
+
 
 class SecurityFilters(BaseModel):
     enabled: Optional[bool] = Field(
@@ -278,7 +278,10 @@ class Provider(BaseModel):
         default=None, description="Configuration for the provider"
     )
 
-    api_keys: Optional[List[Dict[str, Any]]] = Field(default=None, description='API keys associated with the provider')
+    api_keys: Optional[List[Dict[str, Any]]] = Field(
+        default=None, description="API keys associated with the provider"
+    )
+
 
 class Providers(BaseModel):
     providers: List[Provider] = Field(default=[], description="List of providers")
@@ -474,6 +477,7 @@ class Request:
         is_transformation_rules: bool = False,
         is_model_specs: bool = False,
         is_reload: bool = False,
+        univ_model_config: Optional[Dict[str, Any]] = None,
     ):
         self.method = method
         self.gateway = gateway
@@ -490,6 +494,7 @@ class Request:
         self.is_transformation_rules = is_transformation_rules
         self.is_model_specs = is_model_specs
         self.is_reload = is_reload
+        self.univ_model_config = univ_model_config
 
 
 class Message(BaseModel):
@@ -515,11 +520,18 @@ class ModelConfig(BaseModel):
     class Config:
         protected_namespaces = ()  # This resolves the warning
 
-    virtual_secret_key: Optional[str] = Field(default=None, description='Virtual secret name')
-    fallback_enabled: Optional[bool] = Field(default=None, description='Whether fallback is enabled')
-    suffix: Optional[str] = Field(default=None, description='Suffix for the model')
-    weight: Optional[int] = Field(default=None, description='Weight of the model')
-    fallback_codes: Optional[List[int]] = Field(default=None, description='Fallback codes')
+    virtual_secret_key: Optional[str] = Field(
+        default=None, description="Virtual secret name"
+    )
+    fallback_enabled: Optional[bool] = Field(
+        default=None, description="Whether fallback is enabled"
+    )
+    suffix: Optional[str] = Field(default=None, description="Suffix for the model")
+    weight: Optional[int] = Field(default=None, description="Weight of the model")
+    fallback_codes: Optional[List[int]] = Field(
+        default=None, description="Fallback codes"
+    )
+
 
 class JavelinConfig(BaseModel):
     base_url: str = Field(default="https://api-dev.javelin.live")
@@ -528,6 +540,7 @@ class JavelinConfig(BaseModel):
     llm_api_key: Optional[str] = None
     api_version: Optional[str] = None
     timeout: Optional[float] = None
+
 
 class RemoteModelSpec(BaseModel):
     provider: str
@@ -548,7 +561,7 @@ class RemoteModelSpec(BaseModel):
 class EndpointType(str, Enum):
     UNKNOWN = "unknown"
     CHAT = "chat"
-    COMPLETION = "completion" 
+    COMPLETION = "completion"
     EMBED = "embed"
     INVOKE = "invoke"
     CONVERSE = "converse"
@@ -556,3 +569,19 @@ class EndpointType(str, Enum):
     INVOKE_STREAM = "invoke_stream"
     CONVERSE_STREAM = "converse_stream"
     ALL = "all"
+
+
+class UnivModelConfig:
+    def __init__(
+        self,
+        provider_name: str,
+        endpoint_type: str,
+        deployment: Optional[str] = None,
+        arn: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ):
+        self.provider_name = provider_name
+        self.endpoint_type = endpoint_type
+        self.deployment = deployment
+        self.arn = arn
+        self.api_version = api_version

@@ -28,7 +28,7 @@ def pretty_print(obj):
 
 def main():
     config = JavelinConfig(
-        base_url="https://api-dev.javelin.live",
+        base_url="https://api.javelin.live",
         javelin_api_key=javelin_api_key,
         javelin_virtualapikey=javelin_virtualapikey,
         llm_api_key=llm_api_key,
