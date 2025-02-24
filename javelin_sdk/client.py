@@ -6,7 +6,10 @@ from typing import Any, Coroutine, Dict, Optional, Union
 from urllib.parse import unquote, urljoin, urlparse, urlunparse
 
 import httpx
-from javelin_sdk.chat_completions import Chat, Completions
+from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
+from opentelemetry.trace import SpanKind, Status, StatusCode
+
+from javelin_sdk.chat_completions import Chat, Completions, Embeddings
 from javelin_sdk.models import HttpMethod, JavelinConfig, Request
 from javelin_sdk.services.gateway_service import GatewayService
 from javelin_sdk.services.modelspec_service import ModelSpecService
@@ -16,8 +19,6 @@ from javelin_sdk.services.secret_service import SecretService
 from javelin_sdk.services.template_service import TemplateService
 from javelin_sdk.services.trace_service import TraceService
 from javelin_sdk.tracing_setup import configure_span_exporter
-from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
-from opentelemetry.trace import SpanKind, Status, StatusCode
 
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
@@ -88,6 +89,7 @@ class JavelinClient:
 
         self.chat = Chat(self)
         self.completions = Completions(self)
+        self.embeddings = Embeddings(self)
 
         self.tracer = configure_span_exporter()
 
