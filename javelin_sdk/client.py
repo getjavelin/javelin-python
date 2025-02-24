@@ -19,8 +19,6 @@ from javelin_sdk.services.secret_service import SecretService
 from javelin_sdk.services.template_service import TemplateService
 from javelin_sdk.services.trace_service import TraceService
 from javelin_sdk.tracing_setup import configure_span_exporter
-from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
-from opentelemetry.trace import SpanKind, Status, StatusCode
 
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
