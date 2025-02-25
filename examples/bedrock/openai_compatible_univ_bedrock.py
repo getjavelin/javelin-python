@@ -1,0 +1,42 @@
+from javelin_sdk import JavelinClient, JavelinConfig
+import os
+from typing import Dict, Any
+import json
+
+
+# Helper function to pretty print responses
+def print_response(provider: str, response: Dict[str, Any]) -> None:
+    print(f"=== Response from {provider} ===")
+    print(json.dumps(response, indent=2))
+
+
+# Setup client configuration
+config = JavelinConfig(
+    base_url="https://api-dev.javelin.live",
+    javelin_api_key=os.getenv("JAVELIN_API_KEY"),
+    timeout=120,
+)
+
+client = JavelinClient(config)
+custom_headers = {
+    "Content-Type": "application/json",
+    "x-javelin-route": "univ_bedrock",
+}
+client.set_headers(custom_headers)
+
+# Example messages in OpenAI format
+messages = [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": "What are the three primary colors?"},
+]
+
+try:
+    openai_response = client.chat.completions.create(
+        messages=messages,
+        temperature=0.7,
+        max_tokens=150,
+        model="amazon.titan-text-express-v1",
+    )
+    print_response("OpenAI", openai_response)
+except Exception as e:
+    print(f"OpenAI query failed: {str(e)}")

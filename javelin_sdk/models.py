@@ -436,6 +436,9 @@ class JavelinConfig(BaseModel):
         default=None, description="API key for the LLM provider"
     )
     api_version: Optional[str] = Field(default=None, description="API version")
+    default_headers: Optional[Dict[str, str]] = Field(
+        default=None, description="Default headers"
+    )
 
     @field_validator("javelin_api_key")
     @classmethod
@@ -579,9 +582,11 @@ class UnivModelConfig:
         deployment: Optional[str] = None,
         arn: Optional[str] = None,
         api_version: Optional[str] = None,
+        model_id: Optional[str] = None,
     ):
         self.provider_name = provider_name
         self.endpoint_type = endpoint_type
         self.deployment = deployment
         self.arn = arn
         self.api_version = api_version
+        self.model_id = model_id
