@@ -88,24 +88,30 @@ response = client.chat.completions.create(
 ### Using Javelin SDK
 
 ```python
-from javelin_sdk import JavelinClient, JavelinConfig
+import os
+from openai import OpenAI
+import dotenv
+dotenv.load_dotenv()
+# Configure regular route with Javelin headers
+javelin_api_key = os.getenv("JAVELIN_API_KEY")
+llm_api_key = os.getenv("OPENAI_API_KEY")
+javelin_headers = {
+    "x-api-key": javelin_api_key,
+}
 
-# Initialize Javelin client
-config = JavelinConfig(
-    base_url="https://api.javelin.live",
-    javelin_api_key="your_javelin_api_key",
-    llm_api_key="your_llm_api_key"
+client = OpenAI(
+    base_url="https://api-dev.javelin.live/v1/query/<route>",
+    default_headers=javelin_headers
 )
-client = JavelinClient(config)
 
-# Make requests through Javelin
 response = client.chat.completions.create(
-    route="your_route",
+    model="gpt-4o",
     messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "Hello!"}
-    ]
+        {"role": "user", "content": "hello"}
+    ],
 )
+
+print(response.model_dump_json(indent=2))
 ```
 
 ### Using Universal Endpoints in OpenAI-Compatible Format
