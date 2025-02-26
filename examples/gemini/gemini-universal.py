@@ -41,7 +41,7 @@ def init_gemini_client():
     javelin_api_key = os.getenv("JAVELIN_API_KEY")  # define your javelin api key here
     config = JavelinConfig(javelin_api_key=javelin_api_key)
     client = JavelinClient(config)
-    rout_name = "gemini_univ"  # define your universal route name here
+    rout_name = "google_univ"  # define your universal route name here
     # Register the Gemini client with Javelin
     client.register_gemini(openai_client, route_name=rout_name)
 
@@ -192,15 +192,15 @@ def main():
         return
 
     # 1) Chat Completions
-    print("\n--- Gemini: Chat Completions ---")
-    try:
-        chat_response = gemini_chat_completions(gemini_client)
-        if not chat_response.strip():
-            print("Error: Empty response  failed")
-        else:
-            print(chat_response)
-    except Exception as e:
-        print(f"Error in chat completions: {e}")
+    # print("\n--- Gemini: Chat Completions ---")
+    # try:
+    #     chat_response = gemini_chat_completions(gemini_client)
+    #     if not chat_response.strip():
+    #         print("Error: Empty response  failed")
+    #     else:
+    #         print(chat_response)
+    # except Exception as e:
+    #     print(f"Error in chat completions: {e}")
 
     # 2) Streaming
     print("\n--- Gemini: Streaming ---")
@@ -215,39 +215,39 @@ def main():
     except Exception as e:
         print(f"Error in streaming: {e}")
 
-    # 3) Function Calling
-    print("\n--- Gemini: Function Calling ---")
-    try:
-        func_response = gemini_function_calling(gemini_client)
-        if not func_response.strip():
-            print("Error: Empty response  failed")
-        else:
-            print(func_response)
-    except Exception as e:
-        print(f"Error in function calling: {e}")
+    # # 3) Function Calling
+    # print("\n--- Gemini: Function Calling ---")
+    # try:
+    #     func_response = gemini_function_calling(gemini_client)
+    #     if not func_response.strip():
+    #         print("Error: Empty response  failed")
+    #     else:
+    #         print(func_response)
+    # except Exception as e:
+    #     print(f"Error in function calling: {e}")
 
-    # 4) Structured Output
-    print("\n--- Gemini: Structured Output ---")
-    try:
-        structured_response = gemini_structured_output(gemini_client)
-        if not structured_response.strip():
-            print("Error: Empty response  failed")
-        else:
-            print(structured_response)
-    except Exception as e:
-        print(f"Error in structured output: {e}")
+    # # 4) Structured Output
+    # print("\n--- Gemini: Structured Output ---")
+    # try:
+    #     structured_response = gemini_structured_output(gemini_client)
+    #     if not structured_response.strip():
+    #         print("Error: Empty response  failed")
+    #     else:
+    #         print(structured_response)
+    # except Exception as e:
+    #     print(f"Error in structured output: {e}")
 
-    # 5) Embeddings
-    print("\n--- Gemini: Embeddings ---")
-    try:
-        embeddings_response = gemini_embeddings(gemini_client)
-        if not embeddings_response.strip():
-            print("Error: Empty response  failed")
-        else:
-            print(embeddings_response)
+    # # 5) Embeddings
+    # print("\n--- Gemini: Embeddings ---")
+    # try:
+    #     embeddings_response = gemini_embeddings(gemini_client)
+    #     if not embeddings_response.strip():
+    #         print("Error: Empty response  failed")
+    #     else:
+    #         print(embeddings_response)
 
-    except Exception as e:
-        print(f"Error in embeddings: {e}")
+    # except Exception as e:
+    #     print(f"Error in embeddings: {e}")
 
     print("\nScript Complete")
 

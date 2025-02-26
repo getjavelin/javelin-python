@@ -547,7 +547,7 @@ class JavelinClient:
                 )
                 model_id = foundation_model_response["modelDetails"]["modelId"]
                 return model_id
-            except Exception:
+            except Exception as e:
                 # Fail silently if the model is not found
                 return None
 
@@ -558,7 +558,7 @@ class JavelinClient:
                     modelIdentifier=model_identifier
                 )
                 return response["modelDetails"]["modelId"]
-            except Exception:
+            except Exception as e:
                 # Fail silently if the model is not found
                 return None
 
@@ -684,7 +684,6 @@ class JavelinClient:
         self, client: Union[httpx.Client, httpx.AsyncClient], request: Request
     ) -> Union[httpx.Response, Coroutine[Any, Any, httpx.Response]]:
         url, headers = self._prepare_request(request)
-
         if request.method == HttpMethod.GET:
             return client.get(url, headers=headers)
         elif request.method == HttpMethod.POST:
@@ -770,14 +769,13 @@ class JavelinClient:
 
         url = "/".join(url_parts)
 
-        if query_params:
-            query_string = "&".join(f"{k}={v}" for k, v in query_params.items())
-            url += f"?{query_string}"
-
-        # Integrate construct_endpoint_url logic
         if univ_model:
             endpoint_url = self.construct_endpoint_url(univ_model)
             url = urljoin(url, endpoint_url)
+
+        if query_params:
+            query_string = "&".join(f"{k}={v}" for k, v in query_params.items())
+            url += f"?{query_string}"
 
         return url
 
@@ -885,11 +883,23 @@ class JavelinClient:
     aquery_llama = lambda self, route_name, query_body: self.route_service.aquery_llama(
         route_name, query_body
     )
-    query_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None: self.route_service.query_unified_endpoint(
-        provider_name, endpoint_type, query_body, headers, query_params
+    query_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None: self.route_service.query_unified_endpoint(
+        provider_name,
+        endpoint_type,
+        query_body,
+        headers,
+        query_params,
+        deployment,
+        model_id,
     )
-    aquery_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None: self.route_service.aquery_unified_endpoint(
-        provider_name, endpoint_type, query_body, headers, query_params
+    aquery_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None: self.route_service.aquery_unified_endpoint(
+        provider_name,
+        endpoint_type,
+        query_body,
+        headers,
+        query_params,
+        deployment,
+        model_id,
     )
 
     # Secret methods
@@ -997,32 +1007,30 @@ class JavelinClient:
         provider_name = request_model.get("provider_name")
         endpoint_type = request_model.get("endpoint_type")
         deployment = request_model.get("deployment")
-        arn = request_model.get("arn")
-        api_version = request_model.get(
-            "api_version", "2023-07-01-preview"
-        )  # Default version
-
+        model_id = request_model.get("model_id")
         if not provider_name:
             raise ValueError("Provider name is not specified in the request model.")
 
         if provider_name == "azureopenai" and deployment:
             # Handle Azure OpenAI endpoints
             if endpoint_type == "chat":
-                return f"{base_url}/{provider_name}/deployments/{deployment}/chat/completions?api-version={api_version}"
+                return f"{base_url}/{provider_name}/deployments/{deployment}/chat/completions"
             elif endpoint_type == "completion":
-                return f"{base_url}/{provider_name}/deployments/{deployment}/completions?api-version={api_version}"
+                return (
+                    f"{base_url}/{provider_name}/deployments/{deployment}/completions"
+                )
             elif endpoint_type == "embeddings":
-                return f"{base_url}/{provider_name}/deployments/{deployment}/embeddings?api-version={api_version}"
-        elif arn:
+                return f"{base_url}/{provider_name}/deployments/{deployment}/embeddings"
+        elif provider_name == "bedrock" and model_id:
             # Handle Bedrock endpoints
             if endpoint_type == "invoke":
-                return f"{base_url}/v1/model/{arn}/invoke"
+                return f"{base_url}/model/{model_id}/invoke"
             elif endpoint_type == "converse":
-                return f"{base_url}/v1/model/{arn}/converse"
+                return f"{base_url}/model/{model_id}/converse"
             elif endpoint_type == "invoke_stream":
-                return f"{base_url}/v1/model/{arn}/invoke-with-response-stream"
+                return f"{base_url}/model/{model_id}/invoke-with-response-stream"
             elif endpoint_type == "converse_stream":
-                return f"{base_url}/v1/model/{arn}/converse-stream"
+                return f"{base_url}/model/{model_id}/converse-stream"
         else:
             # Handle OpenAI compatible endpoints
             if endpoint_type == "chat":
@@ -1033,3 +1041,12 @@ class JavelinClient:
                 return f"{base_url}/{provider_name}/embeddings"
 
         raise ValueError("Invalid request model configuration")
+
+    def set_headers(self, headers: Dict[str, str]) -> None:
+        """
+        Set or update headers for the client.
+
+        Args:
+            headers (Dict[str, str]): A dictionary of headers to set or update.
+        """
+        self._headers.update(headers)

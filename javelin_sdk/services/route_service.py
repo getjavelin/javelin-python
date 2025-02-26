@@ -316,10 +316,14 @@ class RouteService:
         query_body: Dict[str, Any],
         headers: Optional[Dict[str, str]] = None,
         query_params: Optional[Dict[str, Any]] = None,
+        deployment: Optional[str] = None,
+        model_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         univ_model_config = UnivModelConfig(
             provider_name=provider_name,
             endpoint_type=endpoint_type,
+            deployment=deployment,
+            model_id=model_id,
         )
 
         request = Request(
@@ -329,6 +333,7 @@ class RouteService:
             headers=headers,
             query_params=query_params,
         )
+
         response = self.client._send_request_sync(request)
         return response.json()
 
@@ -339,10 +344,14 @@ class RouteService:
         query_body: Dict[str, Any],
         headers: Optional[Dict[str, str]] = None,
         query_params: Optional[Dict[str, Any]] = None,
+        deployment: Optional[str] = None,
+        model_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         univ_model_config = UnivModelConfig(
             provider_name=provider_name,
             endpoint_type=endpoint_type,
+            deployment=deployment,
+            model_id=model_id,
         )
 
         request = Request(
