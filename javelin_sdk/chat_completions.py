@@ -169,6 +169,13 @@ class BaseCompletions:
     ) -> Dict[str, Any]:
         """Build the request data for the API call"""
         is_completions = route_type == "completions"
+        is_embeddings = route_type == "embeddings"
+        if is_embeddings:
+            return {
+                "type": route_type,
+                "input": messages_or_prompt,
+                **additional_kwargs,
+            }
         request_data = {
             "temperature": temperature,
             **({"max_tokens": max_tokens} if max_tokens is not None else {}),
@@ -245,3 +252,24 @@ class Chat:
 
     def __init__(self, client):
         self.completions = ChatCompletions(client)
+
+
+class Embeddings(BaseCompletions):
+    """Main embeddings interface"""
+
+    def create(
+        self,
+        route: str,
+        input: str,
+        model: Optional[str] = None,
+        encoding_format: Optional[str] = None,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """Create a chat completion request"""
+        return self._create_request(
+            route,
+            input,
+            model=model,
+            encoding_format=encoding_format,
+            **kwargs,
+        )

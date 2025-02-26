@@ -9,7 +9,7 @@ import httpx
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 from opentelemetry.trace import SpanKind, Status, StatusCode
 
-from javelin_sdk.chat_completions import Chat, Completions
+from javelin_sdk.chat_completions import Chat, Completions, Embeddings
 from javelin_sdk.models import HttpMethod, JavelinConfig, Request
 from javelin_sdk.services.gateway_service import GatewayService
 from javelin_sdk.services.modelspec_service import ModelSpecService
@@ -89,6 +89,7 @@ class JavelinClient:
 
         self.chat = Chat(self)
         self.completions = Completions(self)
+        self.embeddings = Embeddings(self)
 
         self.tracer = configure_span_exporter()
 
