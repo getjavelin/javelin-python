@@ -1,13 +1,13 @@
-from langchain_openai import OpenAIEmbeddings
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
 import os
+
 import dotenv
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 dotenv.load_dotenv()
 
-javelin_api_key = os.getenv('JAVELIN_API_KEY')
+javelin_api_key = os.getenv("JAVELIN_API_KEY")
 llm_api_key = os.getenv("OPENAI_API_KEY")
 
 embeddings = OpenAIEmbeddings(openai_api_key=llm_api_key)
@@ -23,7 +23,7 @@ print(f"First 5 values: {embedding_vector[:5]}")
 texts = [
     "The chemical composition of sugar is C6H12O6.",
     "Water has the chemical formula H2O.",
-    "Salt is composed of sodium and chloride ions."
+    "Salt is composed of sodium and chloride ions.",
 ]
 
 embedded_texts = embeddings.embed_documents(texts)
@@ -34,23 +34,23 @@ for i, embedding in enumerate(embedded_texts):
     print(f"First 5 values: {embedding[:5]}")
     print()
 
-javelin_headers = {
-    "x-api-key": javelin_api_key,
-    "x-javelin-route": "myusers"
-}
+javelin_headers = {"x-api-key": javelin_api_key, "x-javelin-route": "myusers"}
 
 llm = ChatOpenAI(
     openai_api_base="https://api.javelin.live/v1/query",
     openai_api_key=llm_api_key,
-    model_kwargs={
-        "extra_headers": javelin_headers
-    },
+    model_kwargs={"extra_headers": javelin_headers},
 )
 
-prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are a helpful assistant that explains scientific concepts."),
-    ("user", "Using the embedding of '{text}', explain the concept in simple terms.")
-])
+prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", "You are a helpful assistant that explains scientific concepts."),
+        (
+            "user",
+            "Using the embedding of '{text}', explain the concept in simple terms.",
+        ),
+    ]
+)
 
 output_parser = StrOutputParser()
 

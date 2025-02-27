@@ -1,7 +1,6 @@
 from typing import List
 
 import httpx
-
 from javelin_sdk.exceptions import (
     BadRequest,
     InternalServerError,
@@ -116,7 +115,12 @@ class SecretService:
                 raise exc
 
         response = self.client._send_request_sync(
-            Request(method=HttpMethod.PUT, secret=secret.api_key, data=secret.dict(), provider=secret.provider_name)
+            Request(
+                method=HttpMethod.PUT,
+                secret=secret.api_key,
+                data=secret.dict(),
+                provider=secret.provider_name,
+            )
         )
 
         ## Reload the secret
@@ -131,7 +135,6 @@ class SecretService:
             "provider_name",
             "provider_config",
         ]
-
 
         ## Get the current secret
         current_secret = self.get_secret(secret.api_key, secret.provider_name)
@@ -148,7 +151,12 @@ class SecretService:
                 raise exc
 
         response = await self.client._send_request_async(
-            Request(method=HttpMethod.PUT, secret=secret.api_key, data=secret.dict(), provider=secret.provider_name)
+            Request(
+                method=HttpMethod.PUT,
+                secret=secret.api_key,
+                data=secret.dict(),
+                provider=secret.provider_name,
+            )
         )
 
         ## Reload the secret
@@ -157,7 +165,9 @@ class SecretService:
 
     def delete_secret(self, secret_name: str, provider_name: str) -> str:
         response = self.client._send_request_sync(
-            Request(method=HttpMethod.DELETE, secret=secret_name, provider=provider_name)
+            Request(
+                method=HttpMethod.DELETE, secret=secret_name, provider=provider_name
+            )
         )
 
         ## Reload the secret
@@ -166,19 +176,26 @@ class SecretService:
 
     async def adelete_secret(self, secret_name: str, provider_name: str) -> str:
         response = await self.client._send_request_async(
-            Request(method=HttpMethod.DELETE, secret=secret_name, provider=provider_name)
+            Request(
+                method=HttpMethod.DELETE, secret=secret_name, provider=provider_name
+            )
         )
 
         ## Reload the secret
         self.areload_secret(secret_name=secret_name)
         return self._process_secret_response_ok(response)
-    
+
     def reload_secret(self, secret_name: str) -> str:
         """
         Reload a secret
         """
         response = self.client._send_request_sync(
-            Request(method=HttpMethod.POST, secret=f"{secret_name}/reload", data="", is_reload=True)
+            Request(
+                method=HttpMethod.POST,
+                secret=f"{secret_name}/reload",
+                data="",
+                is_reload=True,
+            )
         )
         return response
 
@@ -187,6 +204,11 @@ class SecretService:
         Reload a secret in an asynchronous way
         """
         response = await self.client._send_request_async(
-            Request(method=HttpMethod.POST, secret=f"{secret_name}/reload", data="", is_reload=True)
+            Request(
+                method=HttpMethod.POST,
+                secret=f"{secret_name}/reload",
+                data="",
+                is_reload=True,
+            )
         )
         return response
