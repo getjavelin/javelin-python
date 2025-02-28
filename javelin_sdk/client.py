@@ -883,7 +883,7 @@ class JavelinClient:
     aquery_llama = lambda self, route_name, query_body: self.route_service.aquery_llama(
         route_name, query_body
     )
-    query_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None: self.route_service.query_unified_endpoint(
+    query_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None, stream_response_path=None: self.route_service.query_unified_endpoint(
         provider_name,
         endpoint_type,
         query_body,
@@ -891,8 +891,9 @@ class JavelinClient:
         query_params,
         deployment,
         model_id,
+        stream_response_path,
     )
-    aquery_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None: self.route_service.aquery_unified_endpoint(
+    aquery_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None, stream_response_path=None: self.route_service.aquery_unified_endpoint(
         provider_name,
         endpoint_type,
         query_body,
@@ -900,6 +901,7 @@ class JavelinClient:
         query_params,
         deployment,
         model_id,
+        stream_response_path,
     )
 
     # Secret methods
