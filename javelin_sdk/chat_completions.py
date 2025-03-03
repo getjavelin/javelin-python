@@ -22,6 +22,10 @@ class EndpointType(Enum):
     COMPLETION = "completion"
     EMBEDDINGS = "embeddings"
 
+    # Anthropic endpoints
+    MESSAGES = "messages"
+    COMPLETE = "complete"
+
 
 class BaseCompletions:
     """Base class for handling completions"""
@@ -153,6 +157,8 @@ class BaseCompletions:
                     if stream
                     else EndpointType.INVOKE.value
                 )
+            elif provider_name == "anthropic":
+                endpoint_type = EndpointType.MESSAGES.value
             else:
                 endpoint_type = EndpointType.CHAT.value
         request_data = self._build_request_data(
@@ -165,6 +171,13 @@ class BaseCompletions:
             # Construct the path: <base_url>/model/<model_name>/<endpoint_type>
             rules_url = f"{base_url}/model/{model}/{endpoint_type}"
             model_rules = self.rule_manager.get_rules(rules_url, model)
+            transformed_request = self.transformer.transform(
+                request_data, model_rules.input_rules
+            )
+        elif provider_name == "anthropic":
+            base_url = provider_api_base.rstrip("/")
+            model_rules = self.rule_manager.get_rules(base_url, model)
+            print("model_rules", model_rules)
             transformed_request = self.transformer.transform(
                 request_data, model_rules.input_rules
             )
@@ -196,6 +209,8 @@ class BaseCompletions:
             return "openai"
         elif "google" in provider_api_base:
             return "gemini"
+        elif "anthropic" in provider_api_base:
+            return "anthropic"
         else:
             return "bedrock"
 

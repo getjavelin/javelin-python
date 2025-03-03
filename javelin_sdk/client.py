@@ -64,7 +64,7 @@ class JavelinClient:
         self.config = config
         self.base_url = urljoin(config.base_url, config.api_version or "/v1")
 
-        self._headers = {"x-api-key": config.javelin_api_key}
+        self._headers = {"x-javelin-apikey": config.javelin_api_key}
         if config.llm_api_key:
             self._headers["Authorization"] = f"Bearer {config.llm_api_key}"
         if config.javelin_virtualapikey:
@@ -1033,6 +1033,11 @@ class JavelinClient:
                 return f"{base_url}/model/{model_id}/invoke-with-response-stream"
             elif endpoint_type == "converse_stream":
                 return f"{base_url}/model/{model_id}/converse-stream"
+        elif provider_name == "anthropic":
+            if endpoint_type == "messages":
+                return f"{base_url}/model/messages"
+            elif endpoint_type == "complete":
+                return f"{base_url}/model/complete"
         else:
             # Handle OpenAI compatible endpoints
             if endpoint_type == "chat":
