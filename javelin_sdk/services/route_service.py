@@ -173,7 +173,6 @@ class RouteService:
 
                                 bytes_data = base64.b64decode(data["bytes"])
                                 decoded_data = json.loads(bytes_data)
-
                                 matches = jsonpath_expr.find(decoded_data)
                                 if matches and matches[0].value:
                                     return matches[0].value
@@ -318,7 +317,8 @@ class RouteService:
         query_params: Optional[Dict[str, Any]] = None,
         deployment: Optional[str] = None,
         model_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        stream_response_path: Optional[str] = None,
+    ) -> Union[Dict[str, Any], Generator[str, None, None], httpx.Response]:
         univ_model_config = UnivModelConfig(
             provider_name=provider_name,
             endpoint_type=endpoint_type,
@@ -335,7 +335,26 @@ class RouteService:
         )
 
         response = self.client._send_request_sync(request)
-        return response.json()
+
+        # Only parse JSON for application/json responses
+        content_type = response.headers.get("content-type", "").lower()
+        print(f"Content-Type: {content_type}")
+        if "application/json" in content_type:
+            print(f"Response: {response.json()}")
+            return response.json()
+
+        # Handle streaming response if stream_response_path is provided
+        jsonpath_expr = parse(stream_response_path)
+
+        def generate_stream():
+            for line in response.iter_lines():
+                if line:
+                    line_str = line.decode("utf-8") if isinstance(line, bytes) else line
+                    text = self._process_stream_line(line_str, jsonpath_expr)
+                    if text:
+                        yield text
+
+        return generate_stream()
 
     async def aquery_unified_endpoint(
         self,
@@ -346,7 +365,8 @@ class RouteService:
         query_params: Optional[Dict[str, Any]] = None,
         deployment: Optional[str] = None,
         model_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        stream_response_path: Optional[str] = None,
+    ) -> Union[Dict[str, Any], AsyncGenerator[str, None], httpx.Response]:
         univ_model_config = UnivModelConfig(
             provider_name=provider_name,
             endpoint_type=endpoint_type,
@@ -362,4 +382,23 @@ class RouteService:
             query_params=query_params,
         )
         response = await self.client._send_request_async(request)
-        return response.json()
+
+        # Only parse JSON for application/json responses
+        content_type = response.headers.get("content-type", "").lower()
+        if "application/json" in content_type:
+            return response.json()
+
+        # Handle streaming response if stream_response_path is provided
+        jsonpath_expr = parse(stream_response_path)
+
+        async def generate_stream():
+            async for line in response.aiter_lines():
+                if line:
+                    line_str = line.decode("utf-8") if isinstance(line, bytes) else line
+                    text = self._process_stream_line(
+                        line_str, jsonpath_expr, is_bedrock=True
+                    )
+                    if text:
+                        yield text
+
+        return generate_stream()

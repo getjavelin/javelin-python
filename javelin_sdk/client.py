@@ -64,7 +64,7 @@ class JavelinClient:
         self.config = config
         self.base_url = urljoin(config.base_url, config.api_version or "/v1")
 
-        self._headers = {"x-api-key": config.javelin_api_key}
+        self._headers = {"x-javelin-apikey": config.javelin_api_key}
         if config.llm_api_key:
             self._headers["Authorization"] = f"Bearer {config.llm_api_key}"
         if config.javelin_virtualapikey:
@@ -883,7 +883,7 @@ class JavelinClient:
     aquery_llama = lambda self, route_name, query_body: self.route_service.aquery_llama(
         route_name, query_body
     )
-    query_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None: self.route_service.query_unified_endpoint(
+    query_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None, stream_response_path=None: self.route_service.query_unified_endpoint(
         provider_name,
         endpoint_type,
         query_body,
@@ -891,8 +891,9 @@ class JavelinClient:
         query_params,
         deployment,
         model_id,
+        stream_response_path,
     )
-    aquery_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None: self.route_service.aquery_unified_endpoint(
+    aquery_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None, stream_response_path=None: self.route_service.aquery_unified_endpoint(
         provider_name,
         endpoint_type,
         query_body,
@@ -900,6 +901,7 @@ class JavelinClient:
         query_params,
         deployment,
         model_id,
+        stream_response_path,
     )
 
     # Secret methods
@@ -1031,6 +1033,11 @@ class JavelinClient:
                 return f"{base_url}/model/{model_id}/invoke-with-response-stream"
             elif endpoint_type == "converse_stream":
                 return f"{base_url}/model/{model_id}/converse-stream"
+        elif provider_name == "anthropic":
+            if endpoint_type == "messages":
+                return f"{base_url}/model/messages"
+            elif endpoint_type == "complete":
+                return f"{base_url}/model/complete"
         else:
             # Handle OpenAI compatible endpoints
             if endpoint_type == "chat":
