@@ -1301,8 +1301,13 @@ def add_issue_to_project_graphql(token, project_owner, project_number, repo_owne
     
     result = response.json()
     
-    if result.get("errors"):
-        return f"Error adding issue to project: {result['errors'][0].get('message', 'Unknown error')}"
+    if "errors" in result:
+        if isinstance(result['errors'], list) and len(result['errors']) > 0:
+            error_msg = result['errors'][0].get('message', 'Unknown error')
+            error_type = result['errors'][0].get('type', 'Unknown type')
+            return f"GraphQL Error: {error_msg} (Type: {error_type})"
+        else:
+            return f"GraphQL Error: Unknown error format in response"
     
     if result.get("data", {}).get("addProjectV2ItemById", {}).get("item", {}).get("id"):
         return f"✅ Issue successfully added to project: {project_url}"
@@ -1312,6 +1317,13 @@ def add_issue_to_project_graphql(token, project_owner, project_number, repo_owne
 
 def handle_list_org_repositories(github_client, org_name):
     """Handle listing repositories for a specific organization."""
+    # Input validation
+    if not org_name or not isinstance(org_name, str):
+        return "Error: Organization name is required and must be a string."
+    
+    if not re.match(r'^[a-zA-Z0-9-]+$', org_name.split('/')[0]):
+        return "Invalid organization name. Please use a valid GitHub organization name (letters, numbers, and hyphens only)."
+    
     try:
         # Try direct access to the repository if we know the name
         if '/' in org_name:
@@ -2370,7 +2382,8 @@ def assign_issue_to_user(github_client, repo_owner, repo_name, issue_number, ass
         else:
             return f"GitHub API Error: {e.data.get('message', str(e))}"
     except Exception as e:
-        return f"Error assigning issue: {str(e)}"
+        import traceback
+        return f"Error assigning issue: {str(e)}\n\nTraceback: {traceback.format_exc()}"
 
 
 # Add this code at the end of the file
