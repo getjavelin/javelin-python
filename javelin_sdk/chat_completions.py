@@ -1,10 +1,30 @@
 import logging
 from typing import Any, Dict, Generator, List, Optional, Union
+from enum import Enum
 
 from javelin_sdk.model_adapters import ModelTransformer, TransformationRuleManager
 from javelin_sdk.models import EndpointType
 
 logger = logging.getLogger(__name__)
+
+
+class EndpointType(Enum):
+    """Valid endpoint types for API calls"""
+
+    # Bedrock endpoints
+    INVOKE = "invoke"
+    INVOKE_STREAM = "invoke_stream"
+    CONVERSE = "converse"
+    CONVERSE_STREAM = "converse_stream"
+
+    # Standard endpoints
+    CHAT = "chat"
+    COMPLETION = "completion"
+    EMBEDDINGS = "embeddings"
+
+    # Anthropic endpoints
+    MESSAGES = "messages"
+    COMPLETE = "complete"
 
 
 class BaseCompletions:
@@ -25,6 +45,7 @@ class BaseCompletions:
         stream: bool = False,
         model: Optional[str] = None,
         deployment_name: Optional[str] = None,
+        endpoint_type: Optional[str] = None,
         **kwargs,
     ) -> Union[Dict[str, Any], Generator[str, None, None]]:
         """Create and process a request"""
@@ -45,6 +66,7 @@ class BaseCompletions:
                     api_version,
                     stream,
                     deployment_name,
+                    endpoint_type,
                     kwargs,
                 )
             else:
@@ -100,6 +122,7 @@ class BaseCompletions:
         api_version: Optional[str],
         stream: bool,
         deployment_name: Optional[str],
+        endpoint_type: Optional[str],
         kwargs: Dict[str, Any],
     ) -> Union[Dict[str, Any], Generator[str, None, None]]:
         """Handle the flow when a model is provided"""
@@ -117,20 +140,49 @@ class BaseCompletions:
             self.client.set_headers({"x-javelin-provider": provider_api_base})
 
         provider_name = self._determine_provider_name(provider_api_base)
-        endpoint_type = "invoke" if provider_name == "bedrock" else "chat"
 
+        # First validate if endpoint_type is provided
+        if endpoint_type:
+            if endpoint_type not in [e.value for e in EndpointType]:
+                valid_types = ", ".join([e.value for e in EndpointType])
+                raise ValueError(
+                    f"Invalid endpoint_type: {endpoint_type}. "
+                    f"Valid types are: {valid_types}"
+                )
+        # Only set defaults if no endpoint_type provided
+        else:
+            if provider_name == "bedrock":
+                endpoint_type = (
+                    EndpointType.INVOKE_STREAM.value
+                    if stream
+                    else EndpointType.INVOKE.value
+                )
+            elif provider_name == "anthropic":
+                endpoint_type = EndpointType.MESSAGES.value
+            else:
+                endpoint_type = EndpointType.CHAT.value
         request_data = self._build_request_data(
             "chat", messages_or_prompt, temperature, max_tokens, kwargs
         )
 
         if provider_name == "bedrock":
-            model_rules = self.rule_manager.get_rules(provider_api_base, model)
+            # Ensure provider_api_base doesn't end with slash and endpoint_type is valid
+            base_url = provider_api_base.rstrip("/")
+            # Construct the path: <base_url>/model/<model_name>/<endpoint_type>
+            rules_url = f"{base_url}/model/{model}/{endpoint_type}"
+            model_rules = self.rule_manager.get_rules(rules_url, model)
+            transformed_request = self.transformer.transform(
+                request_data, model_rules.input_rules
+            )
+        elif provider_name == "anthropic":
+            base_url = provider_api_base.rstrip("/")
+            model_rules = self.rule_manager.get_rules(base_url, model)
+            print("model_rules", model_rules)
             transformed_request = self.transformer.transform(
                 request_data, model_rules.input_rules
             )
         else:
             transformed_request = request_data
-
         deployment = deployment_name if deployment_name else model
         if api_version:
             kwargs["query_params"] = {"api-version": api_version}
@@ -143,6 +195,7 @@ class BaseCompletions:
             query_params=kwargs.get("query_params"),
             deployment=deployment,
             model_id=model,
+            stream_response_path=model_rules.stream_response_path,
         )
         if stream or provider_name != "bedrock":
             return model_response
@@ -156,6 +209,8 @@ class BaseCompletions:
             return "openai"
         elif "google" in provider_api_base:
             return "gemini"
+        elif "anthropic" in provider_api_base:
+            return "anthropic"
         else:
             return "bedrock"
 
@@ -202,9 +257,35 @@ class ChatCompletions(BaseCompletions):
         api_version: Optional[str] = None,
         stream: bool = False,
         deployment_name: Optional[str] = None,
+        endpoint_type: Optional[str] = None,
         **kwargs,
     ) -> Dict[str, Any]:
-        """Create a chat completion request"""
+        """Create a chat completion request
+
+        Args:
+            messages: List of message dictionaries
+            route: Optional route name
+            model: Optional model identifier
+            temperature: Sampling temperature (default: 0.7)
+            max_tokens: Maximum tokens to generate
+            api_version: Optional API version
+            stream: Whether to stream the response
+            deployment_name: Optional deployment name
+            endpoint_type: Optional endpoint type. For Bedrock, valid values are:
+                - "invoke": Standard synchronous invocation
+                - "invoke_stream": Streaming invocation
+                - "converse": Standard synchronous conversation
+                - "converse_stream": Streaming conversation
+                If not specified, defaults to "invoke"/"invoke_stream" based on stream parameter.
+                For non-Bedrock providers, this parameter is ignored.
+            **kwargs: Additional keyword arguments
+
+        Returns:
+            Dict[str, Any]: The completion response
+
+        Raises:
+            ValueError: If invalid endpoint_type is provided for Bedrock
+        """
         return self._create_request(
             messages,
             route=route,
@@ -214,6 +295,7 @@ class ChatCompletions(BaseCompletions):
             api_version=api_version,
             stream=stream,
             deployment_name=deployment_name,
+            endpoint_type=endpoint_type,
             **kwargs,
         )
 
