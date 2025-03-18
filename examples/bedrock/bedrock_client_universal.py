@@ -63,22 +63,18 @@ def bedrock_converse_example(bedrock_runtime_client):
     Still uses 'invoke_model', but the request body includes additional fields.
     """
     response = bedrock_runtime_client.invoke_model(
-        modelId="anthropic.claude-3-5-sonnet-20240620-v1:0",  # Example model ID
+        modelId="anthropic.claude-3-5-sonnet-20240620-v1:0",
         body=json.dumps(
             {
                 "anthropic_version": "bedrock-2023-05-31",
                 "max_tokens": 500,
                 "system": [
-                    {"text": "You are an economist with access to lots of data"}
+                    {"type": "text", "text": "You are an economist with access to lots of data"}
                 ],
                 "messages": [
                     {
                         "role": "user",
-                        "content": [
-                            {
-                                "text": "Write an article about the impact of high inflation on a country's GDP"
-                            }
-                        ],
+                        "content": [{"type": "text", "text": "Write an article about the impact of high inflation on a country's GDP"}]
                     }
                 ],
             }
@@ -88,6 +84,7 @@ def bedrock_converse_example(bedrock_runtime_client):
 
     response_body = json.loads(response["body"].read())
     return json.dumps(response_body, indent=2)
+
 
 
 def bedrock_invoke_stream_example(bedrock_runtime_client):
@@ -124,22 +121,18 @@ def bedrock_converse_stream_example(bedrock_runtime_client):
     Iterates over the streaming response lines for a conversation style input.
     """
     response = bedrock_runtime_client.invoke_model(
-        modelId="anthropic.claude-3-5-sonnet-20240620-v1:0",  # Example model ID
+        modelId="anthropic.claude-3-5-sonnet-20240620-v1:0",
         body=json.dumps(
             {
                 "anthropic_version": "bedrock-2023-05-31",
                 "max_tokens": 500,
                 "system": [
-                    {"text": "You are an economist with access to lots of data"}
+                    {"type": "text", "text": "You are an economist with access to lots of data"}
                 ],
                 "messages": [
                     {
                         "role": "user",
-                        "content": [
-                            {
-                                "text": "Write an article about the impact of high inflation on a country's GDP"
-                            }
-                        ],
+                        "content": [{"type": "text", "text": "Write an article about the impact of high inflation on a country's GDP"}]
                     }
                 ],
             }
