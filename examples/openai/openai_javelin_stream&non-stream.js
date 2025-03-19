@@ -1,9 +1,9 @@
 // NOTE: this is for non streaming response.
 import OpenAI from "openai";
 
-const openai = new OpenAI({
+const openai_client = new OpenAI({
   apiKey: "",  // add your api key
-  baseURL: "hhttps://api.javelin.live/v1/query",
+  baseURL: "https://api.javelin.live/v1/query",
   defaultHeaders: {
     "x-api-key": "", // add here javelin api key
     "x-javelin-route": "OpenAIInspect",
@@ -12,7 +12,7 @@ const openai = new OpenAI({
 
 async function main() {
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await openai_client.chat.completions.create({
       messages: [{ role: "system", content: "You are a helpful assistant. Tell me a joke" }],
       model: "gpt-3.5-turbo",
     });
