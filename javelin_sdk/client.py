@@ -19,11 +19,21 @@ from javelin_sdk.services.secret_service import SecretService
 from javelin_sdk.services.template_service import TemplateService
 from javelin_sdk.services.trace_service import TraceService
 from javelin_sdk.tracing_setup import configure_span_exporter
+import inspect
+from opentelemetry.trace import SpanKind
+from opentelemetry.trace import Status, StatusCode
+from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
 API_TIMEOUT = 10
 
+
+class JavelinRequestWrapper:
+    """A wrapper around Botocore's request object to store additional metadata."""
+    def __init__(self, original_request, span):
+        self.original_request = original_request
+        self.span = span
 
 class JavelinClient:
     BEDROCK_RUNTIME_OPERATIONS = frozenset(
@@ -162,7 +172,7 @@ class JavelinClient:
 
         client_id = id(openai_client)
         if client_id in self.patched_clients:
-            print(f"Client {client_id} already patched")
+            print (f"Client {client_id} already patched")
             return openai_client  # Skip if already patched
 
         self.patched_clients.add(client_id)  # Mark as patched
@@ -305,17 +315,106 @@ class JavelinClient:
 
         # Helper to capture response details
         def _capture_response_details(span, response, kwargs, system_name):
-            if hasattr(response, "to_json"):
-                response_data = response.to_dict()
+            try:
+                # print(f"type(response) = {type(response)}")
+                if hasattr(response, "to_dict"):
+                    # print("Response is a model object (has to_dict).")
+                    try:
+                        response_data = response.to_dict()
+                        # print(f"DEBUG: after to_dict(), response_data = {response_data}")
+                        if not response_data:
+                            # print("response.to_dict() returned None or empty. Fallback.")
+                            response_data = None
+                    except Exception as e:
+                        # print(f"to_dict() raised exception: {e}")
+                        response_data = None
+                elif hasattr(response, "model_dump"):
+                    # print("Response is likely Pydantic 2.x (has model_dump).")
+                    try:
+                        response_data = response.model_dump()
+                    except Exception as e:
+                        # print(f"model_dump() failed: {e}")
+                        response_data = None
+                elif hasattr(response, "dict"):
+                    # print("Response might be Pydantic 1.x (has .dict).")
+                    try:
+                        response_data = response.dict()
+                    except Exception as e:
+                        print(f"dict() failed: {e}")
+                        response_data = None
+                elif isinstance(response, dict):
+                    # print("Response is already a dictionary.")
+                    response_data = response
+                elif hasattr(response, "__iter__") and not isinstance(response, (str, bytes, dict, list)):
+                    # print("DEBUG: Response is a stream/iterator (likely streaming).")
+                    response_data = {"object": "thread.message.delta", "streamed_text": ""}
+
+                    # Iterate over chunks from the streaming response
+                    for index, chunk in enumerate(response):
+                        # print(f"DEBUG: Received chunk #{index}: {chunk}")
+
+                        # **Fix: Convert `ChatCompletionChunk` to a dictionary**
+                        if hasattr(chunk, "to_dict"):
+                            chunk = chunk.to_dict()  # Convert chunk to a dictionary
+
+                        if not isinstance(chunk, dict):
+                            # print("DEBUG: Chunk is still not a dict; skipping.")
+                            continue
+
+                        choices = chunk.get("choices", [])
+                        if not choices:
+                            # print("DEBUG: No 'choices' in chunk; skipping.")
+                            continue
+
+                        # Extract the delta
+                        delta_dict = choices[0].get("delta", {})
+                        # print(f"DEBUG: delta_dict = {delta_dict}")
+
+                        # Get streamed text content
+                        streamed_text = delta_dict.get("content", "")
+                        # print(f"DEBUG: streamed_text extracted = '{streamed_text}'")
+
+                        # Accumulate the streamed text
+                        response_data["streamed_text"] += streamed_text
+                        # print(f"DEBUG: accumulated streamed_text so far = '{response_data['streamed_text']}'")
+
+                        '''
+                        # Fire OpenTelemetry event for each chunk
+                        JavelinClient.add_event_with_attributes(
+                            span,
+                            "gen_ai.streaming.delta",
+                            {
+                                "gen_ai.system": system_name,
+                                "streamed_content": streamed_text,
+                                "chunk_index": index,
+                            },
+                        )
+                        '''
+
+                    # Store the final streamed text in the span
+                    final_text = response_data["streamed_text"]
+                    # print(f"DEBUG: Final accumulated streamed_text = '{final_text}'")
+                    JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_COMPLETION, final_text)
+
+                    return  # Exit early since we've handled streaming
+
+                else:
+                    # print(f"Trying to parse JSON from response: {response}")
+                    try:
+                        response_data = json.loads(str(response))
+                    except (TypeError, ValueError):
+                        # print("Response is not valid JSON.")
+                        response_data = None
+
+                # If response_data is still None, set the raw response
+                if response_data is None:
+                    span.set_attribute("javelin.response.body", str(response))
+                    return
 
                 # Set status code based on response
-                status_code = response_data.get("status_code", 200)
-                status_message = response_data.get("status_message", "OK")
-
-                if status_code >= 400:
-                    span.set_status(Status(StatusCode.ERROR, status_message))
-                else:
-                    span.set_status(Status(StatusCode.OK, status_message))
+                # status_code = response_data.get("status_code", 200)
+                # status_message = response_data.get("status_message", "OK")
+                # span.set_status(Status(StatusCode.ERROR if status_code >= 400 else StatusCode.OK, status_message))
 
                 # Set basic response attributes
                 JavelinClient.set_span_attribute_if_not_none(
@@ -339,79 +438,53 @@ class JavelinClient:
 
                 # Finish reasons for choices
                 finish_reasons = [
-                    choice.get("finish_reason")
-                    for choice in response_data.get("choices", [])
-                    if choice.get("finish_reason")
+                    choice.get('finish_reason')
+                    for choice in response_data.get('choices', [])
+                    if choice.get('finish_reason')
                 ]
                 JavelinClient.set_span_attribute_if_not_none(
                     span,
                     gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS,
-                    json.dumps(finish_reasons) if finish_reasons else None,
+                    json.dumps(finish_reasons) if finish_reasons else None
                 )
 
                 # Token usage
-                usage = response_data.get("usage", {})
-                JavelinClient.set_span_attribute_if_not_none(
-                    span,
-                    gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS,
-                    usage.get("prompt_tokens"),
-                )
-                JavelinClient.set_span_attribute_if_not_none(
-                    span,
-                    gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS,
-                    usage.get("completion_tokens"),
-                )
+                usage = response_data.get('usage', {})
+                JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS, usage.get('prompt_tokens'))
+                JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS, usage.get('completion_tokens'))
 
                 # System message event
                 system_message = next(
-                    (
-                        msg.get("content")
-                        for msg in kwargs.get("messages", [])
-                        if msg.get("role") == "system"
-                    ),
-                    None,
+                    (msg.get('content') for msg in kwargs.get('messages', []) if msg.get('role') == 'system'),
+                    None
                 )
-                JavelinClient.add_event_with_attributes(
-                    span,
-                    "gen_ai.system.message",
-                    {"gen_ai.system": system_name, "content": system_message},
-                )
+                JavelinClient.add_event_with_attributes(span, "gen_ai.system.message", {"gen_ai.system": system_name, "content": system_message})
 
                 # User message event
                 user_message = next(
-                    (
-                        msg.get("content")
-                        for msg in kwargs.get("messages", [])
-                        if msg.get("role") == "user"
-                    ),
-                    None,
+                    (msg.get('content') for msg in kwargs.get('messages', []) if msg.get('role') == 'user'),
+                    None
                 )
-                JavelinClient.add_event_with_attributes(
-                    span,
-                    "gen_ai.user.message",
-                    {"gen_ai.system": system_name, "content": user_message},
-                )
+                JavelinClient.add_event_with_attributes(span, "gen_ai.user.message", {"gen_ai.system": system_name, "content": user_message})
 
                 # Choice events
-                choices = response_data.get("choices", [])
+                choices = response_data.get('choices', [])
                 for index, choice in enumerate(choices):
                     choice_attributes = {"gen_ai.system": system_name, "index": index}
                     message = choice.pop("message", {})
                     choice.update(message)
 
-                    # Add attributes dynamically, filtering out None values
-                    for key, value in choice.items():
-                        if isinstance(value, (dict, list)):
-                            value = json.dumps(value)
-                        choice_attributes[key] = value if value is not None else None
+                        for key, value in choice.items():
+                            if isinstance(value, (dict, list)):
+                                value = json.dumps(value)
+                            choice_attributes[key] = value if value is not None else None
 
-                    JavelinClient.add_event_with_attributes(
-                        span, "gen_ai.choice", choice_attributes
-                    )
+                    JavelinClient.add_event_with_attributes(span, "gen_ai.choice", choice_attributes)
 
             else:
                 span.set_attribute("javelin.response.body", str(response))
 
+        
         def get_nested_attr(obj, attr_path):
             attrs = attr_path.split(".")
             for attr in attrs:
@@ -645,15 +718,178 @@ class JavelinClient:
                 print(f"Failed to override endpoint URL: {str(e)}")
                 pass
 
+        def debug_before_send(*args, **kwargs):
+            print("DEBUG: debug_before_send was invoked!")
+            print("DEBUG: args =", args)
+            print("DEBUG: kwargs =", kwargs)
+    
+        def bedrock_before_send(http_request, model, context, event_name, **kwargs):
+            """Creates a new OTel span for each Bedrock invocation."""
+
+            if self.tracer is None:
+                return  # If no tracer, skip
+
+            operation_name = kwargs.get("operation_name", "InvokeModel")
+            system_name = "aws.bedrock"
+            model = request.headers.get("x-javelin-model", "unknown-model")
+            span_name = f"{operation_name} {model}"
+
+            # Start the span
+            span = self.tracer.start_span(span_name, kind=trace.SpanKind.CLIENT)
+
+            # Set semantic attributes
+            span.set_attribute(gen_ai_attributes.GEN_AI_SYSTEM, system_name)
+            span.set_attribute(gen_ai_attributes.GEN_AI_OPERATION_NAME, operation_name)
+            span.set_attribute(gen_ai_attributes.GEN_AI_REQUEST_MODEL, model)
+
+            # Store in the BOTOCORE context dictionary
+            context["javelin_request_wrapper"] = JavelinRequestWrapper(request, span)
+
+            print(f"DEBUG: Bedrock span created: {span_name}")
+
+        def debug_before_call(*args, **kwargs):
+            print("DEBUG: debug_before_call invoked!")
+            print("  args =", args)
+            print("  kwargs =", kwargs)
+
+        def debug_after_call(*args, **kwargs):
+            print("DEBUG: debug_after_call invoked!")
+            print("  args =", args)
+            print("  kwargs =", kwargs)
+    
+        '''
+        def bedrock_after_call(**kwargs):
+            """Ends the OTel span after the Bedrock request completes."""
+
+            # (1) Pull from kwargs:
+            http_response = kwargs.get("http_response")
+            parsed = kwargs.get("parsed")
+            model = kwargs.get("model")
+            context = kwargs.get("context")
+            event_name = kwargs.get("event_name")  # e.g., "after-call.bedrock-runtime.InvokeModel"
+
+            # (2) If you want to parse the operation name, you can do:
+            #     operation_name = op_string.split(".")[-1]  # "InvokeModel", etc.
+            # from event_name = "after-call.bedrock-runtime.InvokeModel"
+            if event_name and event_name.startswith("after-call.bedrock-runtime."):
+                operation_name = event_name.split(".")[-1]
+            else:
+                operation_name = "UnknownOperation"
+
+            # (3) If you need a reference to the request object to retrieve attached spans,
+            #     you’ll notice it’s NOT in kwargs by default for Bedrock. 
+            #     Instead, you can do your OTel instrumentation purely via context:
+            wrapper = context.get("javelin_request_wrapper")
+            if not wrapper:
+                print("DEBUG: No wrapped request object found in context.")
+                return
+
+            span = getattr(wrapper, "span", None)
+            if not span:
+                print("DEBUG: No span found for the request.")
+                return
+
+            try:
+                http_status = getattr(http_response, "status_code", None)
+                if http_status is not None:
+                    if http_status >= 400:
+                        span.set_status(Status(StatusCode.ERROR, f"HTTP {http_status}"))
+                    else:
+                        span.set_status(Status(StatusCode.OK, f"HTTP {http_status}"))
+
+                    span.add_event(
+                        name="bedrock.response",
+                        attributes={
+                            "http.status_code": http_status,
+                            "parsed_response": str(parsed)[:500],
+                        },
+                    )
+            finally:
+                print(f"DEBUG: Bedrock span ended: {span.name}")
+                span.end()
+        '''
+
+        def bedrock_before_call(**kwargs):
+            """
+            Start a new OTel span and store it in the Botocore context dict
+            so it can be retrieved in after-call.
+            """
+
+            if self.tracer is None:
+                return  # If no tracer, skip
+
+            context = kwargs.get("context")
+            if context is None:
+                print("DEBUG: No context. Cannot store OTel span.")
+                return
+
+            event_name = kwargs.get("event_name", "")
+            # e.g., "before-call.bedrock-runtime.InvokeModel"
+            operation_name = event_name.split(".")[-1] if event_name else "Unknown"
+
+            # Create & start the OTel span
+            span = self.tracer.start_span(operation_name, kind=trace.SpanKind.CLIENT)
+
+            # Store it in the context
+            # Optionally wrap it in a JavelinRequestWrapper or something else
+            context["javelin_request_wrapper"] = JavelinRequestWrapper(None, span)
+
+            print(f"DEBUG: Span created for {operation_name}")
+
+        def bedrock_after_call(**kwargs):
+            """
+            End the OTel span by retrieving it from Botocore's context dict.
+            """
+            context = kwargs.get("context")
+            if not context:
+                print("DEBUG: No context. Cannot retrieve OTel span.")
+                return
+
+            wrapper = context.get("javelin_request_wrapper")
+            if not wrapper:
+                print("DEBUG: No wrapped request object found in context.")
+                return
+
+            span = getattr(wrapper, "span", None)
+            if not span:
+                print("DEBUG: No span found in the wrapper.")
+                return
+
+            # Optionally set status from the HTTP response
+            http_response = kwargs.get("http_response")
+            if http_response is not None and hasattr(http_response, "status_code"):
+                if http_response.status_code >= 400:
+                    span.set_status(Status(StatusCode.ERROR, "HTTP %d" % http_response.status_code))
+                else:
+                    span.set_status(Status(StatusCode.OK, "HTTP %d" % http_response.status_code))
+
+            # End the span
+            print(f"DEBUG: Ending span: {span.name}")
+            span.end()
+
+
         # Register header modification & URL override for specific operations
         for op in self.BEDROCK_RUNTIME_OPERATIONS:
+            event_name_before_send = f"before-send.bedrock-runtime.{op}"
+            event_name_before_call = f"before-call.bedrock-runtime.{op}"
+            event_name_after_call = f"after-call.bedrock-runtime.{op}"
+
+            # Add headers + override endpoint just like your existing code
+            self.bedrock_runtime_client.meta.events.register(event_name_before_send, add_custom_headers)
+            self.bedrock_runtime_client.meta.events.register(event_name_before_send, override_endpoint_url)
+
+            # Add OTel instrumentation
+            # self.bedrock_runtime_client.meta.events.register(event_name_before_send, bedrock_before_send)
+            self.bedrock_runtime_client.meta.events.register(event_name_before_call, bedrock_before_call)
+            self.bedrock_runtime_client.meta.events.register(event_name_after_call, bedrock_after_call)
+            # self.bedrock_runtime_client.meta.events.register(event_name_before_call, debug_before_call)
+            # self.bedrock_runtime_client.meta.events.register(event_name_after_call, debug_after_call)
+
+        '''
+        for op in self.BEDROCK_RUNTIME_OPERATIONS:
             event_name = f"before-send.bedrock-runtime.{op}"
-            self.bedrock_runtime_client.meta.events.register(
-                event_name, add_custom_headers
-            )
-            self.bedrock_runtime_client.meta.events.register(
-                event_name, override_endpoint_url
-            )
+            self.bedrock_runtime_client.meta.events.register(event_name, add_custom_headers)
+            self.bedrock_runtime_client.meta.events.register(event_name, override_endpoint_url)
 
     def _prepare_request(self, request: Request) -> tuple:
         url = self._construct_url(

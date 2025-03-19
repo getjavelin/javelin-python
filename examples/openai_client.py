@@ -10,14 +10,14 @@ from pydantic import BaseModel
 from javelin_sdk import JavelinClient, JavelinConfig
 
 # Environment Variables
+javelin_base_url = os.getenv("JAVELIN_BASE_URL")
 openai_api_key = os.getenv("OPENAI_API_KEY")
 javelin_api_key = os.getenv("JAVELIN_API_KEY")
 gemini_api_key = os.getenv("GEMINI_API_KEY")
 
 # Global JavelinClient, used for everything
 config = JavelinConfig(
-    base_url="https://api-dev.javelin.live",
-    # base_url="http://localhost:8000",
+    base_url=javelin_base_url,
     javelin_api_key=javelin_api_key,
 )
 client = JavelinClient(config)  # Global JavelinClient
@@ -26,8 +26,7 @@ client = JavelinClient(config)  # Global JavelinClient
 # Initialize Javelin Client
 def initialize_javelin_client():
     config = JavelinConfig(
-        base_url="https://api-dev.javelin.live",
-        # base_url="http://localhost:8000",
+        base_url=javelin_base_url,
         javelin_api_key=javelin_api_key,
     )
     return JavelinClient(config)
@@ -144,7 +143,7 @@ def gemini_chat_completions(openai_client):
 
 # Gemini Streaming Chat Completions
 def gemini_streaming_chat(openai_client):
-    response = openai_client.chat.completions.create(
+    stream = openai_client.chat.completions.create(
         model="gemini-1.5-flash",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
@@ -152,8 +151,13 @@ def gemini_streaming_chat(openai_client):
         ],
         stream=True,
     )
+    '''
     for chunk in response:
         print(chunk.choices[0].delta)
+    '''
+    
+    for chunk in stream:
+        print(chunk.choices[0].delta.content or "", end="")
 
 
 # Gemini Function Calling
@@ -295,9 +299,7 @@ def deepseek_chat_completions(openai_client):
 # DeepSeek Reasoning Model
 def deepseek_reasoning_model():
     deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
-    openai_client = OpenAI(
-        api_key=deepseek_api_key, base_url="https://api.deepseek.com"
-    )
+    openai_client = OpenAI(api_key=deepseek_api_key, base_url="https://api.deepseek.com")
 
     # Round 1
     messages = [{"role": "user", "content": "9.11 and 9.8, which is greater?"}]
@@ -339,15 +341,17 @@ def main_sync():
     openai_completions()
     openai_embeddings()
     openai_streaming_chat()
-
-    openai_client = create_azureopenai_client()  # same global client
+    
+    openai_client = create_azureopenai_client() # same global client
     register_azureopenai(client, openai_client)
+
     azure_openai_chat_completions(openai_client)
 
     # Pending: model specs, uncomment after model is available
-    """
+    '''
     openai_client = create_gemini_client()
     register_gemini(client, openai_client)
+
     gemini_chat_completions(openai_client)
     gemini_streaming_chat(openai_client)
     gemini_function_calling(openai_client)
@@ -355,12 +359,16 @@ def main_sync():
     gemini_structured_output(openai_client)
     gemini_embeddings(openai_client)
 
+    '''
+    # Pending: model specs, uncomment after model is available
     openai_client = create_deepseek_client()
     register_deepseek(client, openai_client)
-    deepseek_chat_completions(openai_client)
+    # deepseek_chat_completions(openai_client)
 
-    # deepseek_reasoning_model()
+    # deepseek_reasoning_model(openai_client)
+    '''
 
+    '''
     mistral_chat_completions()
     """
 
