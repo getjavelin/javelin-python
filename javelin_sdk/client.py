@@ -2,6 +2,8 @@ import functools
 import inspect
 import json
 import re
+import asyncio
+import trace
 from typing import Any, Coroutine, Dict, Optional, Union
 from urllib.parse import unquote, urljoin, urlparse, urlunparse
 
@@ -181,7 +183,7 @@ class JavelinClient:
         self.openai_base_url = openai_client.base_url
 
         # Point the OpenAI client to Javelin's base URL
-        openai_client.base_url = f"{self.base_url}/{provider_name}"
+        openai_client.base_url = f"{self.base_url}"
 
         if not hasattr(openai_client, "_custom_headers"):
             openai_client._custom_headers = {}
@@ -411,11 +413,6 @@ class JavelinClient:
                     span.set_attribute("javelin.response.body", str(response))
                     return
 
-                # Set status code based on response
-                # status_code = response_data.get("status_code", 200)
-                # status_message = response_data.get("status_message", "OK")
-                # span.set_status(Status(StatusCode.ERROR if status_code >= 400 else StatusCode.OK, status_message))
-
                 # Set basic response attributes
                 JavelinClient.set_span_attribute_if_not_none(
                     span,
@@ -474,15 +471,16 @@ class JavelinClient:
                     message = choice.pop("message", {})
                     choice.update(message)
 
-                        for key, value in choice.items():
-                            if isinstance(value, (dict, list)):
-                                value = json.dumps(value)
-                            choice_attributes[key] = value if value is not None else None
+                    for key, value in choice.items():
+                        if isinstance(value, (dict, list)):
+                            value = json.dumps(value)
+                        choice_attributes[key] = value if value is not None else None
 
                     JavelinClient.add_event_with_attributes(span, "gen_ai.choice", choice_attributes)
 
-            else:
+            except Exception as e:
                 span.set_attribute("javelin.response.body", str(response))
+                span.set_attribute("javelin.error", str(e))
 
         
         def get_nested_attr(obj, attr_path):
@@ -731,7 +729,7 @@ class JavelinClient:
 
             operation_name = kwargs.get("operation_name", "InvokeModel")
             system_name = "aws.bedrock"
-            model = request.headers.get("x-javelin-model", "unknown-model")
+            model = http_request.headers.get("x-javelin-model", "unknown-model")
             span_name = f"{operation_name} {model}"
 
             # Start the span
@@ -743,7 +741,7 @@ class JavelinClient:
             span.set_attribute(gen_ai_attributes.GEN_AI_REQUEST_MODEL, model)
 
             # Store in the BOTOCORE context dictionary
-            context["javelin_request_wrapper"] = JavelinRequestWrapper(request, span)
+            context["javelin_request_wrapper"] = JavelinRequestWrapper(http_request, span)
 
             print(f"DEBUG: Bedrock span created: {span_name}")
 
@@ -777,7 +775,7 @@ class JavelinClient:
                 operation_name = "UnknownOperation"
 
             # (3) If you need a reference to the request object to retrieve attached spans,
-            #     you’ll notice it’s NOT in kwargs by default for Bedrock. 
+            #     you'll notice it's NOT in kwargs by default for Bedrock. 
             #     Instead, you can do your OTel instrumentation purely via context:
             wrapper = context.get("javelin_request_wrapper")
             if not wrapper:
@@ -885,7 +883,6 @@ class JavelinClient:
             # self.bedrock_runtime_client.meta.events.register(event_name_before_call, debug_before_call)
             # self.bedrock_runtime_client.meta.events.register(event_name_after_call, debug_after_call)
 
-        '''
         for op in self.BEDROCK_RUNTIME_OPERATIONS:
             event_name = f"before-send.bedrock-runtime.{op}"
             self.bedrock_runtime_client.meta.events.register(event_name, add_custom_headers)
