@@ -2,6 +2,101 @@
 ## [Unreleased]
 
 
+<a name="v0.2.29"></a>
+## [v0.2.29] - 2025-02-26
+### Bug Fixes
+- resolve merge conflicts
+- update readme
+- add readme
+- openai compatible univ endpoints
+- isort and black command to format the files
+- support embedding in openai compatible sdk
+- add support for univ endpoints in javelin sdk
+- apply formatting and linting fixes
+- apply formatting and linting fixes
+- apply formatting and linting fixes
+- revert changes in pre commit config
+- linting issues
+- linting issues
+- resolve conflicts
+- clean make file
+- format files before building
+- linting issues
+- fixed javelin universal rout and updated agentic code using javelin unified rout
+- javelin configuration setup changed
+- fixed rout name
+- handle empty stream_response_path list to avoid index error
+- load dot env
+- integrate modelspecs 2.0
+- Fixed agents examples in seperate /agents
+- Removed rout from javelin config
+- No open ai credentials passed
+
+### DevOps
+- Update CHANGELOG for v0.2.28
+
+### Features
+- Updated providers features branch
+- Added langchain respected providers , having .py file with seperate functionalities
+- added universal endpoint files
+
+### Pull Requests
+- Merge pull request [#149](https://github.com/getjavelin/javelin-python/issues/149) from getjavelin/univ_endpoints
+- Merge pull request [#148](https://github.com/getjavelin/javelin-python/issues/148) from getjavelin/ISSUE-31
+- Merge pull request [#141](https://github.com/getjavelin/javelin-python/issues/141) from getjavelin/fix-rout-branch
+- Merge pull request [#145](https://github.com/getjavelin/javelin-python/issues/145) from getjavelin/univ_endpoints
+- Merge pull request [#144](https://github.com/getjavelin/javelin-python/issues/144) from getjavelin/fix_linting_issues
+- Merge pull request [#142](https://github.com/getjavelin/javelin-python/issues/142) from getjavelin/javelin-rout-f
+- Merge pull request [#140](https://github.com/getjavelin/javelin-python/issues/140) from getjavelin/fix-rout-branch
+- Merge pull request [#139](https://github.com/getjavelin/javelin-python/issues/139) from getjavelin/null-branch
+- Merge pull request [#138](https://github.com/getjavelin/javelin-python/issues/138) from getjavelin/modelspecs2.0
+- Merge pull request [#137](https://github.com/getjavelin/javelin-python/issues/137) from getjavelin/feature-update-branch
+- Merge pull request [#136](https://github.com/getjavelin/javelin-python/issues/136) from getjavelin/modelspecs2.0
+- Merge pull request [#130](https://github.com/getjavelin/javelin-python/issues/130) from getjavelin/cicd-changelog
+- Merge pull request [#133](https://github.com/getjavelin/javelin-python/issues/133) from getjavelin/new-feature
+
+
+<a name="v0.2.28"></a>
+## [v0.2.28] - 2025-02-11
+### Features
+- Refactor JavelinClient initialization, improve tracing with OpenTelemetry status handling, and simplify OpenAI base URL logic
+
+### Pull Requests
+- Merge pull request [#135](https://github.com/getjavelin/javelin-python/issues/135) from getjavelin/feature/openai-register
+
+
+<a name="v0.2.27"></a>
+## [v0.2.27] - 2025-02-11
+### Features
+- Integrate OpenTelemetry tracing with OpenAI, Gemini, and Azure OpenAI support
+
+### Pull Requests
+- Merge pull request [#131](https://github.com/getjavelin/javelin-python/issues/131) from getjavelin/feature/openai-register
+
+
+<a name="v0.2.26"></a>
+## [v0.2.26] - 2025-02-06
+### Bug Fixes
+- Removing the code and moving to other repo
+
+### DevOps
+- Update CHANGELOG for v0.2.25
+
+### Features
+- Enhance OpenAI client registration with provider handling and model-specific headers
+- Enhance OpenAI client registration with provider handling and model-specific headers
+- Add /completions, /chat/completions, /embeddings endpoints
+- Add register_openai method to JavelinClient
+- Implement agent for test case generation, execution, and evaluation
+
+### Pull Requests
+- Merge pull request [#129](https://github.com/getjavelin/javelin-python/issues/129) from getjavelin/feature/openai-register
+- Merge pull request [#127](https://github.com/getjavelin/javelin-python/issues/127) from getjavelin/feature/openai-register
+- Merge pull request [#128](https://github.com/getjavelin/javelin-python/issues/128) from getjavelin/lg-agent-eval-branch
+- Merge pull request [#124](https://github.com/getjavelin/javelin-python/issues/124) from getjavelin/lg-agent-eval-branch
+- Merge pull request [#125](https://github.com/getjavelin/javelin-python/issues/125) from getjavelin/cicd-changelog
+
+
 <a name="v0.2.25"></a>
 ## [v0.2.25] - 2025-02-04
 ### Features
@@ -337,7 +432,11 @@
 <a name="v0.1.5"></a>
 ## v0.1.5 - 2023-09-04
 
-[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.25...HEAD
+[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.29...HEAD
+[v0.2.29]: https://github.com/getjavelin/javelin-python/compare/v0.2.28...v0.2.29
+[v0.2.28]: https://github.com/getjavelin/javelin-python/compare/v0.2.27...v0.2.28
+[v0.2.27]: https://github.com/getjavelin/javelin-python/compare/v0.2.26...v0.2.27
+[v0.2.26]: https://github.com/getjavelin/javelin-python/compare/v0.2.25...v0.2.26
 [v0.2.25]: https://github.com/getjavelin/javelin-python/compare/v0.2.24...v0.2.25
 [v0.2.24]: https://github.com/getjavelin/javelin-python/compare/v0.2.23...v0.2.24
 [v0.2.23]: https://github.com/getjavelin/javelin-python/compare/v0.2.22...v0.2.23

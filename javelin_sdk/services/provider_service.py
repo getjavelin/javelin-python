@@ -1,7 +1,6 @@
 from typing import Any, Dict, List
 
 import httpx
-
 from javelin_sdk.exceptions import (
     BadRequest,
     InternalServerError,
@@ -10,7 +9,14 @@ from javelin_sdk.exceptions import (
     RateLimitExceededError,
     UnauthorizedError,
 )
-from javelin_sdk.models import HttpMethod, Provider, Providers, Request, Secrets, EndpointType
+from javelin_sdk.models import (
+    EndpointType,
+    HttpMethod,
+    Provider,
+    Providers,
+    Request,
+    Secrets,
+)
 
 
 class ProviderService:
@@ -168,7 +174,10 @@ class ProviderService:
             return Secrets(secrets=[])
 
     def get_transformation_rules(
-        self, provider_name: str, model_name: str, endpoint: EndpointType = EndpointType.UNKNOWN
+        self,
+        provider_name: str,
+        model_name: str,
+        endpoint: EndpointType = EndpointType.UNKNOWN,
     ) -> Dict[str, Any]:
         """Get transformation rules from the provider configuration"""
         try:
@@ -176,10 +185,7 @@ class ProviderService:
                 Request(
                     method=HttpMethod.GET,
                     provider=provider_name,
-                    query_params={
-                        "model_name": model_name,
-                        "endpoint": endpoint.value
-                    },
+                    query_params={"model_name": model_name, "endpoint": endpoint.value},
                     is_transformation_rules=True,
                 )
             )
@@ -193,7 +199,10 @@ class ProviderService:
             return None
 
     async def aget_transformation_rules(
-        self, provider_name: str, model_name: str, endpoint: EndpointType = EndpointType.UNKNOWN
+        self,
+        provider_name: str,
+        model_name: str,
+        endpoint: EndpointType = EndpointType.UNKNOWN,
     ) -> Dict[str, Any]:
         """Get transformation rules from the provider configuration asynchronously"""
         try:
@@ -202,10 +211,7 @@ class ProviderService:
                     method=HttpMethod.GET,
                     provider=provider_name,
                     route="transformation-rules",
-                    query_params={
-                        "model_name": model_name,
-                        "endpoint": endpoint.value
-                    }
+                    query_params={"model_name": model_name, "endpoint": endpoint.value},
                 )
             )
 
@@ -222,7 +228,12 @@ class ProviderService:
         Reload a provider
         """
         response = self.client._send_request_sync(
-            Request(method=HttpMethod.POST, provider=f"{provider_name}/reload", data="", is_reload=True)
+            Request(
+                method=HttpMethod.POST,
+                provider=f"{provider_name}/reload",
+                data="",
+                is_reload=True,
+            )
         )
         return response
 
@@ -231,6 +242,11 @@ class ProviderService:
         Reload a provider in an asynchronous way
         """
         response = await self.client._send_request_async(
-            Request(method=HttpMethod.POST, provider=f"{provider_name}/reload", data="", is_reload=True)
+            Request(
+                method=HttpMethod.POST,
+                provider=f"{provider_name}/reload",
+                data="",
+                is_reload=True,
+            )
         )
         return response

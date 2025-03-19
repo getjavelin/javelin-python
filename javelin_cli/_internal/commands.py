@@ -2,8 +2,6 @@ import json
 import os
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from javelin_sdk.client import JavelinClient
 from javelin_sdk.exceptions import (
     BadRequest,
@@ -29,6 +27,7 @@ from javelin_sdk.models import (
     Template,
     Templates,
 )
+from pydantic import ValidationError
 
 
 def get_javelin_client():
@@ -44,7 +43,13 @@ def get_javelin_client():
         cache_data = json.load(json_file)
 
     # Retrieve the list of gateways
-    gateways = cache_data.get("memberships", {}).get("data", [{}])[0].get("organization", {}).get("public_metadata", {}).get("Gateways", [])
+    gateways = (
+        cache_data.get("memberships", {})
+        .get("data", [{}])[0]
+        .get("organization", {})
+        .get("public_metadata", {})
+        .get("Gateways", [])
+    )
     if not gateways:
         raise ValueError("No gateways found in the configuration.")
 
@@ -138,7 +143,13 @@ def list_gateways(args):
         cache_data = json.load(json_file)
 
     # Retrieve the list of gateways
-    gateways = cache_data.get("memberships", {}).get("data", [{}])[0].get("organization", {}).get("public_metadata", {}).get("Gateways", [])
+    gateways = (
+        cache_data.get("memberships", {})
+        .get("data", [{}])[0]
+        .get("organization", {})
+        .get("public_metadata", {})
+        .get("Gateways", [])
+    )
     if not gateways:
         print("No gateways found in the configuration.")
         return
