@@ -13,11 +13,16 @@ dotenv.load_dotenv()
 javelin_api_key = os.getenv("JAVELIN_API_KEY")
 
 # Initialize Bedrock Client
-bedrock_client = boto3.client(
+bedrockruntime_client = boto3.client(
     service_name="bedrock-runtime",
     region_name="us-east-1"
 )
 
+# Initialize Bedrock Client
+bedrock_client = boto3.client(
+    service_name="bedrock",
+    region_name="us-east-1"
+)
 
 # Initialize Javelin Client
 config = JavelinConfig(
@@ -25,22 +30,21 @@ config = JavelinConfig(
     javelin_api_key=javelin_api_key,
 )
 client = JavelinClient(config)
-client.register_bedrock_runtime(bedrock_client)
-
+client.register_bedrock(bedrockruntime_client, bedrock_client, route_name="bedrock")
 
 # Call Bedrock Model
-response = bedrock_client.invoke_model(
+response = bedrockruntime_client.invoke_model(
                 modelId="anthropic.claude-3-sonnet-20240229-v1:0",
                 body=json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 100,
-            "messages": [
-                {
-                "content": "What is machine learning?",
-                "role": "user"
-                }
-            ]
-        }),
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 100,
+                    "messages": [
+                        {
+                            "content": "What is machine learning?",
+                            "role": "user"
+                        }
+                    ]
+                }),
                 contentType="application/json"
             )
 response_body = json.loads(response["body"].read())
