@@ -2,6 +2,33 @@
 ## [Unreleased]
 
 
+<a name="v0.2.30"></a>
+## [v0.2.30] - 2025-03-20
+### Bug Fixes
+- merge issues ([#165](https://github.com/getjavelin/javelin-python/issues/165))
+- move example scripts to right folders ([#164](https://github.com/getjavelin/javelin-python/issues/164))
+- Resolved merge conflicts in examples/bedrock_client.py
+- LangChain OpenAI base URL & Bedrock API message format ([#161](https://github.com/getjavelin/javelin-python/issues/161))
+- streaming+univ endpoints via sdk ([#155](https://github.com/getjavelin/javelin-python/issues/155))
+- cleanup accidental file checkin ([#159](https://github.com/getjavelin/javelin-python/issues/159))
+
+### DevOps
+- Adding reusable pipeline
+- Adding support for reusable workflow in PR pipelines
+- Update CHANGELOG for v0.2.29
+
+### Features
+- Updated Bedrock and OpenAI clients with tracing and refactored request handling
+- Updated the code for general routs testing ([#156](https://github.com/getjavelin/javelin-python/issues/156))
+- Code for function calling using 01/o3 models ([#152](https://github.com/getjavelin/javelin-python/issues/152))
+
+### Pull Requests
+- Merge pull request [#163](https://github.com/getjavelin/javelin-python/issues/163) from getjavelin/feature/openai-register
+- Merge pull request [#162](https://github.com/getjavelin/javelin-python/issues/162) from getjavelin/cicd-patch
+- Merge pull request [#158](https://github.com/getjavelin/javelin-python/issues/158) from getjavelin/cicd-patch
+- Merge pull request [#151](https://github.com/getjavelin/javelin-python/issues/151) from getjavelin/cicd-changelog
+
+
 <a name="v0.2.29"></a>
 ## [v0.2.29] - 2025-02-26
 ### Bug Fixes
@@ -432,7 +459,8 @@
 <a name="v0.1.5"></a>
 ## v0.1.5 - 2023-09-04
 
-[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.29...HEAD
+[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.30...HEAD
+[v0.2.30]: https://github.com/getjavelin/javelin-python/compare/v0.2.29...v0.2.30
 [v0.2.29]: https://github.com/getjavelin/javelin-python/compare/v0.2.28...v0.2.29
 [v0.2.28]: https://github.com/getjavelin/javelin-python/compare/v0.2.27...v0.2.28
 [v0.2.27]: https://github.com/getjavelin/javelin-python/compare/v0.2.26...v0.2.27
