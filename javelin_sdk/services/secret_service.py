@@ -43,13 +43,13 @@ class SecretService:
 
     def create_secret(self, secret: Secret) -> str:
         response = self.client._send_request_sync(
-            Request(method=HttpMethod.POST, secret=secret.name, data=secret.dict())
+            Request(method=HttpMethod.POST, secret=secret.api_key, data=secret.dict(), provider=secret.provider_name)
         )
         return self._process_secret_response_ok(response)
 
     async def acreate_secret(self, secret: Secret) -> str:
         response = await self.client._send_request_async(
-            Request(method=HttpMethod.POST, secret=secret.name, data=secret.dict())
+            Request(method=HttpMethod.POST, secret=secret.api_key, data=secret.dict(), provider=secret.provider_name)
         )
         return self._process_secret_response_ok(response)
 
