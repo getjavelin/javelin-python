@@ -1,8 +1,8 @@
-## Javelin: an Enterprise-Scale, Fast LLM Gateway
+## Javelin: an Enterprise-Scale, Fast LLM Gateway/Edge
 
 This is the Python client package for Javelin.
 
-For more information about Javelin, see https://getjavelin.io  
+For more information about Javelin, see https://getjavelin.com
 Javelin Documentation: https://docs.getjavelin.io
 
 ### Development
