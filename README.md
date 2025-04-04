@@ -15,7 +15,7 @@ For local development, Please change `version = "RELEASE_VERSION"` with any sema
 ### Installation
 
 ```python
-  pip install javelin_sdk
+  pip install javelin-sdk
 ```
 
 ### Quick Start Guide
@@ -56,7 +56,7 @@ poetry install
 
 ```bash
 # Uninstall any existing version
-pip uninstall javelin_sdk -y
+pip uninstall javelin-sdk -y
 
 # Build the package
 poetry build
