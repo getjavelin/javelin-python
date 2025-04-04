@@ -3,6 +3,7 @@
 This is the Python client package for Javelin.
 
 For more information about Javelin, see https://getjavelin.com
+
 Javelin Documentation: https://docs.getjavelin.io
 
 ### Development
@@ -64,96 +65,6 @@ poetry build
 pip install dist/javelin_sdk-<version>-py3-none-any.whl
 ```
 
-### Direct OpenAI-Compatible Usage
-
-```python
-from openai import OpenAI
-
-# Initialize client with Javelin endpoint
-client = OpenAI(
-    base_url="https://api.javelin.live/v1/query/your_route",
-    api_key="your_api_key"
-)
-
-# Make requests using standard OpenAI format
-response = client.chat.completions.create(
-    model="gpt-3.5-turbo",
-    messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "Hello!"}
-    ]
-)
-```
-
-### Using Javelin SDK
-
-```python
-import os
-from openai import OpenAI
-import dotenv
-dotenv.load_dotenv()
-# Configure regular route with Javelin headers
-javelin_api_key = os.getenv("JAVELIN_API_KEY")
-llm_api_key = os.getenv("OPENAI_API_KEY")
-javelin_headers = {
-    "x-api-key": javelin_api_key,
-}
-
-client = OpenAI(
-    base_url="https://api-dev.javelin.live/v1/query/<route>",
-    default_headers=javelin_headers
-)
-
-response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[
-        {"role": "user", "content": "hello"}
-    ],
-)
-
-print(response.model_dump_json(indent=2))
-```
-
-### Using Universal Endpoints in OpenAI-Compatible Format
-
-```python
-from javelin_sdk import JavelinClient, JavelinConfig
-
-# Setup client configuration
-config = JavelinConfig(
-    base_url="https://api.javelin.live",
-    javelin_api_key="your_javelin_api_key"
-)
-
-client = JavelinClient(config)
-
-# Set headers for universal endpoint
-custom_headers = {
-    "Content-Type": "application/json",
-    "x-javelin-route": "univ_bedrock"  # Change route as needed (univ_azure, univ_bedrock, univ_gemini)
-}
-client.set_headers(custom_headers)
-
-# Make requests using OpenAI format
-response = client.chat.completions.create(
-    messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "What are the three primary colors?"}
-    ],
-    temperature=0.7,
-    max_tokens=150,
-    model="amazon.titan-text-express-v1"  # Use appropriate model for your endpoint
-)
-```
-
-## Additional Integration Patterns
-
-For more detailed examples and integration patterns, check out:
-
-- [Azure OpenAI Integration](https://docs.getjavelin.io/docs/javelin-core/integration#2-azure-openai-api-endpoints)
-- [AWS Bedrock Integration](https://docs.getjavelin.io/docs/javelin-core/integration#2-azure-openai-api-endpoints)
-- [Supported Language Models](https://docs.getjavelin.io/docs/javelin-core/supported-llms)
-
 ## [Universal Endpoints](https://docs.getjavelin.io/docs/javelin-core/integration#unified-endpoints)
 
 Javelin provides universal endpoints that allow you to use a consistent interface across different LLM providers. Here are the main patterns:
@@ -173,7 +84,6 @@ Javelin provides universal endpoints that allow you to use a consistent interfac
 - [Universal endpoint implementation](examples/gemini/javelin_gemini_univ_endpoint.py)
 - [OpenAI-compatible interface](examples/gemini/openai_compatible_univ_gemini.py)
 
-
 ### Agent Examples
 - [CrewAI integration](examples/agents/crewai_javelin.ipynb)
 - [LangGraph integration](examples/agents/langgraph_javelin.ipynb)
@@ -186,3 +96,11 @@ Javelin provides universal endpoints that allow you to use a consistent interfac
 ### Advanced Examples
 - [Document processing](examples/gemini/document_processing.py)
 - [RAG implementation](examples/rag/javelin_rag_embeddings_demo.ipynb)
+
+## Additional Integration Patterns
+
+For more detailed examples and integration patterns, check out:
+
+- [Azure OpenAI Integration](https://docs.getjavelin.io/docs/javelin-core/integration#2-azure-openai-api-endpoints)
+- [AWS Bedrock Integration](https://docs.getjavelin.io/docs/javelin-core/integration#2-azure-openai-api-endpoints)
+- [Supported Language Models](https://docs.getjavelin.io/docs/javelin-core/supported-llms)
