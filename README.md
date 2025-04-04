@@ -173,15 +173,16 @@ Javelin provides universal endpoints that allow you to use a consistent interfac
 - [Universal endpoint implementation](examples/gemini/javelin_gemini_univ_endpoint.py)
 - [OpenAI-compatible interface](examples/gemini/openai_compatible_univ_gemini.py)
 
+
 ### Agent Examples
 - [CrewAI integration](examples/agents/crewai_javelin.ipynb)
 - [LangGraph integration](examples/agents/langgraph_javelin.ipynb)
 
 ### Basic Examples
-- [Asynchronous example](examples/aexample.py)
-- [Synchronous example](examples/example.py)
-- [Drop-in replacement example](examples/drop_in_replacement.py)
+- [Asynchronous example](examples/route_examples/aexample.py)
+- [Synchronous example](examples/route_examples/example.py)
+- [Drop-in replacement example](examples/route_examples/drop_in_replacement.py)
 
 ### Advanced Examples
-- [Document processing](examples/document_processing.py)
-- [RAG implementation](examples/javelin_rag_embeddings_demo.ipynb)
+- [Document processing](examples/gemini/document_processing.py)
+- [RAG implementation](examples/rag/javelin_rag_embeddings_demo.ipynb)
