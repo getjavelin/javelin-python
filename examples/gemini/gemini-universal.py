@@ -39,7 +39,7 @@ def init_gemini_client():
     # Javelin configuration
 
     javelin_api_key = os.getenv("JAVELIN_API_KEY")  # define your javelin api key here
-    config = JavelinConfig(javelin_api_key=javelin_api_key)
+    config = JavelinConfig(javelin_api_key=javelin_api_key, base_url=os.getenv("JAVELIN_BASE_URL"))
     client = JavelinClient(config)
     rout_name = "google_univ"  # define your universal route name here
     # Register the Gemini client with Javelin

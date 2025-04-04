@@ -4,12 +4,11 @@ import { Stream } from 'openai/streaming.mjs';
 const javelinApiKey = ""; // javelin api key here
 const llmApiKey = ""; // llm api key
 
-const javelinBaseUrl = 'https://api.javelin.live/v1/query';
 
 async function getCompletion() {
   try {
     const routeName = 'AzureOpenAIRoute';
-    const url = "https://api.javelin.live/v1/query/AzureOpenAIRoute";
+    const url = `${process.env.JAVELIN_BASE_URL}/v1/query/${routeName}`;
 
     const response = await axios.post(
       url,

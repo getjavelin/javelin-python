@@ -3,7 +3,7 @@ import OpenAI from "openai";
 
 const openai_client = new OpenAI({
   apiKey: "",  // add your api key
-  baseURL: "https://api.javelin.live/v1/query",
+  baseURL: `${process.env.JAVELIN_BASE_URL}/v1/query`,
   defaultHeaders: {
     "x-api-key": "", // add here javelin api key
     "x-javelin-route": "OpenAIInspect",

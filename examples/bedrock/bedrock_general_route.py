@@ -56,7 +56,7 @@ def get_bedrock_client():
         client = boto3.client(
             service_name="bedrock-runtime",
             region_name="us-east-1",
-            endpoint_url="https://api-dev.javelin.live/v1/",
+            endpoint_url=os.path.join(os.getenv("JAVELIN_BASE_URL"), "v1"),
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key
         )
