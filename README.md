@@ -102,5 +102,5 @@ Javelin provides universal endpoints that allow you to use a consistent interfac
 For more detailed examples and integration patterns, check out:
 
 - [Azure OpenAI Integration](https://docs.getjavelin.io/docs/javelin-core/integration#2-azure-openai-api-endpoints)
-- [AWS Bedrock Integration](https://docs.getjavelin.io/docs/javelin-core/integration#2-azure-openai-api-endpoints)
+- [AWS Bedrock Integration](https://docs.getjavelin.io/docs/javelin-core/integration#3-aws-bedrock-api-endpoints)
 - [Supported Language Models](https://docs.getjavelin.io/docs/javelin-core/supported-llms)
