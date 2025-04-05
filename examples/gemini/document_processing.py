@@ -26,6 +26,7 @@ def initialize_javelin_client():
     javelin_api_key = os.getenv("JAVELIN_API_KEY")
     config = JavelinConfig(
         javelin_api_key=javelin_api_key,
+        base_url=os.getenv("JAVELIN_BASE_URL")
     )
     return JavelinClient(config)
 

@@ -18,7 +18,7 @@ def init_azure_client_sync():
         javelin_headers = {"x-api-key": javelin_api_key}
         client = AzureOpenAI(
             api_key=llm_api_key,
-            base_url="https://api-dev.javelin.live/v1/query/azure-openai",
+            base_url=f"{os.getenv('JAVELIN_BASE_URL')}/v1/query/azure-openai",
             default_headers=javelin_headers,
             api_version="2024-02-15-preview"
         )

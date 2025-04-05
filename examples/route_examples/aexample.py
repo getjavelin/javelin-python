@@ -183,7 +183,7 @@ async def main():
 
     try:
         config = JavelinConfig(
-            base_url="https://api.javelin.live",
+            base_url=os.getenv("JAVELIN_BASE_URL"),
             javelin_api_key=javelin_api_key,
             javelin_virtualapikey=javelin_virtualapikey,
             llm_api_key=llm_api_key,

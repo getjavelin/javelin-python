@@ -20,7 +20,7 @@ JAVELIN_API_KEY = os.environ.get("JAVELIN_API_KEY")  # add your javelin api key 
 MODEL_NAME_CHAT = "gpt-3.5-turbo"  # For chat
 MODEL_NAME_EMBED = "text-embedding-ada-002"
 ROUTE_NAME = "openai_univ"
-BASE_URL = os.getenv("JAVELIN_BASE_URL", "https://api.javelin.live")  # Default base URL
+BASE_URL = os.getenv("JAVELIN_BASE_URL")  # Default base URL
 
 
 def init_chat_llm_non_streaming():

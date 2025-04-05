@@ -21,7 +21,7 @@ def init_sync_openai_client():
         print(f"[DEBUG] Synchronous OpenAI client key: {openai_api_key}")
         return OpenAI(
             api_key=openai_api_key,
-            base_url="https://api-dev.javelin.live/v1/query/openai",
+            base_url=f"{os.getenv('JAVELIN_BASE_URL')}/v1/query/openai",
             default_headers=javelin_headers
         )
     except Exception as e:
