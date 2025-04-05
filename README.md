@@ -15,7 +15,7 @@ For local development, Please change `version = "RELEASE_VERSION"` with any sema
 ### Installation
 
 ```python
-  pip install javelin_sdk
+  pip install javelin-sdk
 ```
 
 ### Quick Start Guide
@@ -56,7 +56,7 @@ poetry install
 
 ```bash
 # Uninstall any existing version
-pip uninstall javelin_sdk -y
+pip uninstall javelin-sdk -y
 
 # Build the package
 poetry build
@@ -69,33 +69,39 @@ pip install dist/javelin_sdk-<version>-py3-none-any.whl
 
 Javelin provides universal endpoints that allow you to use a consistent interface across different LLM providers. Here are the main patterns:
 
-#### Azure OpenAI
+### Azure OpenAI
+
 - [Basic Azure OpenAI integration](examples/azure-openai/azure-universal.py)
 - [Universal endpoint implementation](examples/azure-openai/javelin_azureopenai_univ_endpoint.py)
 - [OpenAI-compatible interface](examples/azure-openai/openai_compatible_univ_azure.py)
 
-#### Bedrock
+### Bedrock
+
 - [Basic Bedrock integration](examples/bedrock/bedrock_client_universal.py)
 - [Universal endpoint implementation](examples/bedrock/javelin_bedrock_univ_endpoint.py)
 - [OpenAI-compatible interface](examples/bedrock/openai_compatible_univ_bedrock.py)
 
-#### Gemini
+### Gemini
+
 - [Basic Gemini integration](examples/gemini/gemini-universal.py)
 - [Universal endpoint implementation](examples/gemini/javelin_gemini_univ_endpoint.py)
 - [OpenAI-compatible interface](examples/gemini/openai_compatible_univ_gemini.py)
 
-### Agent Examples
-- [CrewAI integration](examples/agents/crewai_javelin.ipynb)
-- [LangGraph integration](examples/agents/langgraph_javelin.ipynb)
-
 ### Basic Examples
+
 - [Asynchronous example](examples/route_examples/aexample.py)
 - [Synchronous example](examples/route_examples/example.py)
 - [Drop-in replacement example](examples/route_examples/drop_in_replacement.py)
 
 ### Advanced Examples
+
 - [Document processing](examples/gemini/document_processing.py)
 - [RAG implementation](examples/rag/javelin_rag_embeddings_demo.ipynb)
+
+### Agent Examples
+
+- [CrewAI integration](examples/agents/crewai_javelin.ipynb)
+- [LangGraph integration](examples/agents/langgraph_javelin.ipynb)
 
 ## Additional Integration Patterns
 

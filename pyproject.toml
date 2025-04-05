@@ -2,14 +2,14 @@
 name = "javelin-sdk"
 version = "RELEASE_VERSION"
 description = "Python client for Javelin"
-authors = ["Sharath Rajasekar <sharath@getjavelin.io>"]
+authors = ["Sharath Rajasekar <sharath@getjavelin.com>"]
 readme = "README.md"
 license = "Apache-2.0"
 packages = [
     { include = "javelin_cli" },
     { include = "javelin_sdk" },
 ]
-homepage = "https://getjavelin.io"
+homepage = "https://getjavelin.com"
 
 [tool.poetry.scripts]
 javelin = "javelin_cli.cli:main"
