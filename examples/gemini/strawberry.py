@@ -47,7 +47,7 @@ def openai_chat_completions():
 def initialize_javelin_client():
     javelin_api_key = os.getenv("JAVELIN_API_KEY")
     config = JavelinConfig(
-        base_url="https://api-dev.javelin.live",
+        base_url=os.getenv("JAVELIN_BASE_URL"),
         javelin_api_key=javelin_api_key,
     )
     return JavelinClient(config)

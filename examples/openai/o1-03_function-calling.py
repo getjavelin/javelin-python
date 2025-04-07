@@ -19,7 +19,7 @@ def init_openai_client():
 
 def init_javelin_client(openai_client, route_name="openai_univ"):
     javelin_api_key = os.getenv("JAVELIN_API_KEY")
-    config = JavelinConfig(javelin_api_key=javelin_api_key)
+    config = JavelinConfig(javelin_api_key=javelin_api_key, base_url=os.getenv("JAVELIN_BASE_URL"))
     client = JavelinClient(config)
     client.register_openai(openai_client, route_name=route_name)
     return client

@@ -14,7 +14,7 @@ def print_response(provider: str, response: Dict[str, Any]) -> None:
 
 # Setup client configuration
 config = JavelinConfig(
-    base_url="https://api-dev.javelin.live",
+    base_url=os.getenv("JAVELIN_BASE_URL"),
     javelin_api_key=os.getenv("JAVELIN_API_KEY"),
     llm_api_key=os.getenv("OPENAI_API_KEY"),
 )

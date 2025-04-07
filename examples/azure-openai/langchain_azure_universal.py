@@ -13,9 +13,7 @@ print("Initializing environment variables...")
 load_dotenv()
 azure_openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
 javelin_api_key = os.getenv("JAVELIN_API_KEY")
-base_url = os.getenv(
-    "JAVELIN_BASE_URL", "https://api.javelin.live"
-)  # Default to generic base URL
+base_url = os.getenv("JAVELIN_BASE_URL")
 
 # The name of your Azure deployment (e.g., "gpt-4")
 # or whatever you’ve set in Azure. Must also match x-javelin-model if

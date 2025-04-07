@@ -98,6 +98,7 @@ class SecretService:
             "api_key",
             "api_key_secret_key_javelin",
             "provider_name",
+            "api_key_secret_key"
         ]
 
         ## Get the current secret
