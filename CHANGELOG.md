@@ -2,6 +2,28 @@
 ## [Unreleased]
 
 
+<a name="v0.2.33"></a>
+## [v0.2.33] - 2025-04-07
+### Bug Fixes
+- remove duplicate event register. ([#178](https://github.com/getjavelin/javelin-python/issues/178))
+
+
+<a name="v0.2.32"></a>
+## [v0.2.32] - 2025-04-04
+### Bug Fixes
+- Update README formatting for provider and agent examples
+- pip install instructions and update author/homepage in pyproject.toml
+- update base url to use environment variables
+
+### DevOps
+- Update CHANGELOG for v0.2.31
+
+### Pull Requests
+- Merge pull request [#174](https://github.com/getjavelin/javelin-python/issues/174) from getjavelin/update_baseurl
+- Merge pull request [#175](https://github.com/getjavelin/javelin-python/issues/175) from getjavelin/fix-install-readme-and-metadata
+- Merge pull request [#166](https://github.com/getjavelin/javelin-python/issues/166) from getjavelin/cicd-changelog
+
+
 <a name="v0.2.31"></a>
 ## [v0.2.31] - 2025-04-03
 ### Bug Fixes
@@ -475,7 +497,9 @@
 <a name="v0.1.5"></a>
 ## v0.1.5 - 2023-09-04
 
-[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.31...HEAD
+[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.33...HEAD
+[v0.2.33]: https://github.com/getjavelin/javelin-python/compare/v0.2.32...v0.2.33
+[v0.2.32]: https://github.com/getjavelin/javelin-python/compare/v0.2.31...v0.2.32
 [v0.2.31]: https://github.com/getjavelin/javelin-python/compare/v0.2.30...v0.2.31
 [v0.2.30]: https://github.com/getjavelin/javelin-python/compare/v0.2.29...v0.2.30
 [v0.2.29]: https://github.com/getjavelin/javelin-python/compare/v0.2.28...v0.2.29
