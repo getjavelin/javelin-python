@@ -883,10 +883,6 @@ class JavelinClient:
             # self.bedrock_runtime_client.meta.events.register(event_name_before_call, debug_before_call)
             # self.bedrock_runtime_client.meta.events.register(event_name_after_call, debug_after_call)
 
-        for op in self.BEDROCK_RUNTIME_OPERATIONS:
-            event_name = f"before-send.bedrock-runtime.{op}"
-            self.bedrock_runtime_client.meta.events.register(event_name, add_custom_headers)
-            self.bedrock_runtime_client.meta.events.register(event_name, override_endpoint_url)
 
     def _prepare_request(self, request: Request) -> tuple:
         url = self._construct_url(
