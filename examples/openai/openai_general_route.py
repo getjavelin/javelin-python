@@ -19,6 +19,7 @@ def init_sync_openai_client():
         javelin_api_key = os.getenv("JAVELIN_API_KEY")
         javelin_headers = {"x-api-key": javelin_api_key}
         print(f"[DEBUG] Synchronous OpenAI client key: {openai_api_key}")
+        # This client is configured for chat completions.
         return OpenAI(
             api_key=openai_api_key,
             base_url=f"{os.getenv('JAVELIN_BASE_URL')}/v1/query/openai",
@@ -70,26 +71,24 @@ def sync_openai_chat_completions(openai_client):
     except Exception as e:
         raise e
 
-def sync_openai_completions(openai_client):
-    """Call OpenAI's Completions endpoint (synchronously)."""
+def sync_openai_embeddings(_):
+    """Call OpenAI's Embeddings endpoint (synchronously) using a dedicated embeddings client.
+    
+    This function creates a new OpenAI client instance pointing to the embeddings endpoint.
+    """
     try:
-        response = openai_client.completions.create(
-            model="gpt-3.5-turbo-instruct",
-            prompt="What is machine learning?",
-            max_tokens=7,
-            temperature=0
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+        javelin_api_key = os.getenv("JAVELIN_API_KEY")
+        javelin_headers = {"x-api-key": javelin_api_key}
+        # Create a new client instance for embeddings.
+        embeddings_client = OpenAI(
+            api_key=openai_api_key,
+            base_url="https://api-dev.javelin.live/v1/query/openai_embeddings",
+            default_headers=javelin_headers
         )
-        return response.model_dump_json(indent=2)
-    except Exception as e:
-        raise e
-
-def sync_openai_embeddings(openai_client):
-    """Call OpenAI's Embeddings endpoint (synchronously)."""
-    try:
-        response = openai_client.embeddings.create(
-            model="text-embedding-ada-002",
+        response = embeddings_client.embeddings.create(
+            model="text-embedding-3-small",
             input="The food was delicious and the waiter...",
-            encoding_format="float"
         )
         return response.model_dump_json(indent=2)
     except Exception as e:
@@ -172,15 +171,6 @@ def main():
     except Exception as e:
         print(f"[DEBUG] Error in chat completions: {e}")
 
-    print("\n--- Completions ---")
-    try:
-        completions_response = sync_openai_completions(openai_client)
-        if not completions_response.strip():
-            print("[DEBUG] Error: Empty completions response")
-        else:
-            print(completions_response)
-    except Exception as e:
-        print(f"[DEBUG] Error in completions: {e}")
 
     print("\n--- Embeddings ---")
     try:
