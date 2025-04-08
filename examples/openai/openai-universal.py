@@ -39,7 +39,6 @@ def init_javelin_client_sync(openai_client):
         )  # define your javelin api key here
         config = JavelinConfig(
             javelin_api_key=javelin_api_key,
-            base_url=os.getenv("JAVELIN_BASE_URL"),
         )
         client = JavelinClient(config)
         rout_name = "openai_univ"  # define your universal route name here

@@ -23,8 +23,7 @@ def init_bedrock():
 
     # Initialize Javelin Client (if you want the route registered)
     config = JavelinConfig(
-        javelin_api_key=os.getenv("JAVELIN_API_KEY"), # Replace with your Javelin API key
-        base_url=os.getenv("JAVELIN_BASE_URL")
+        javelin_api_key=os.getenv("JAVELIN_API_KEY") # Replace with your Javelin API key
     )
     javelin_client = JavelinClient(config)
 
