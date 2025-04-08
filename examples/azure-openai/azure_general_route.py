@@ -113,7 +113,7 @@ async def init_async_azure_client():
         # Include the API version in the base URL for the async client.
         client = AsyncOpenAI(
             api_key=llm_api_key,
-            base_url=f"{os.getenv('JAVELIN_BASE_URL')}/v1/query/azure-openai",,
+            base_url=f"{os.getenv('JAVELIN_BASE_URL')}/v1/query/azure-openai",
             default_headers=javelin_headers,
         )
         return client
