@@ -708,7 +708,7 @@ class JavelinClient:
                 updated_url = original_url._replace(
                     scheme=parsed_base.scheme,
                     netloc=parsed_base.netloc,
-                    path=f"/v1{original_url.path}",
+                    path=f"{original_url.path}",
                 )
                 request.url = urlunparse(updated_url)
 
