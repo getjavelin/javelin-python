@@ -141,6 +141,83 @@ def bedrock_converse_stream_example(bedrock_runtime_client):
     except Exception as e:
         print("Error streaming converse response:", e)
     return "".join(tokens)
+def test_claude_v2_invoke(bedrock_runtime_client):
+    print("\n--- Test: anthropic.claude-v2 / invoke ---")
+    try:
+        response = bedrock_runtime_client.invoke_model(
+            modelId="anthropic.claude-v2",
+            body=json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 100,
+                "messages": [{"role": "user", "content": "Explain quantum computing"}]
+            }),
+            contentType="application/json"
+        )
+        result = json.loads(response["body"].read())
+        print(json.dumps(result, indent=2))
+    except Exception as e:
+        print("❌ Error:", e)
+
+def test_claude_v2_stream(bedrock_runtime_client):
+    print("\n--- Test: anthropic.claude-v2 / invoke-with-response-stream ---")
+    try:
+        response = bedrock_runtime_client.invoke_model_with_response_stream(
+            modelId="anthropic.claude-v2",
+            body=json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 100,
+                "messages": [{"role": "user", "content": "Tell me about LLMs"}]
+            }),
+            contentType="application/json"
+        )
+        output = ""
+        for part in response["body"]:
+            chunk = json.loads(part["chunk"]["bytes"].decode())
+            delta = chunk.get("delta", {}).get("text", "")
+            output += delta
+            print(delta, end="", flush=True)
+        print("\nStreamed Output Complete.")
+    except Exception as e:
+        print("❌ Error:", e)
+
+def test_haiku_v3_invoke(bedrock_runtime_client):
+    print("\n--- Test: anthropic.claude-3-haiku-20240307-v1:0 / invoke ---")
+    try:
+        response = bedrock_runtime_client.invoke_model(
+            modelId="anthropic.claude-3-haiku-20240307-v1:0",
+            body=json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 100,
+                "messages": [{"role": "user", "content": "What is generative AI?"}]
+            }),
+            contentType="application/json"
+        )
+        result = json.loads(response["body"].read())
+        print(json.dumps(result, indent=2))
+    except Exception as e:
+        print("❌ Error:", e)
+
+def test_haiku_v3_stream(bedrock_runtime_client):
+    print("\n--- Test: anthropic.claude-3-haiku-20240307-v1:0 / invoke-with-response-stream ---")
+    try:
+        response = bedrock_runtime_client.invoke_model_with_response_stream(
+            modelId="anthropic.claude-3-haiku-20240307-v1:0",
+            body=json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 100,
+                "messages": [{"role": "user", "content": "What are AI guardrails?"}]
+            }),
+            contentType="application/json"
+        )
+        output = ""
+        for part in response["body"]:
+            chunk = json.loads(part["chunk"]["bytes"].decode())
+            delta = chunk.get("delta", {}).get("text", "")
+            output += delta
+            print(delta, end="", flush=True)
+        print("\nStreamed Output Complete.")
+    except Exception as e:
+        print("❌ Error:", e)
 
 
 def main():
@@ -194,7 +271,82 @@ def main():
     except Exception as e:
         print("Error in bedrock_converse_stream_example:", e)
 
+    # 5) Test anthropic.claude-v2 / invoke
+    print("\n--- Test: anthropic.claude-v2 / invoke ---")
+    try:
+        response = bedrock_runtime_client.invoke_model(
+            modelId="anthropic.claude-v2",
+            body=json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 100,
+                "messages": [{"role": "user", "content": "Explain quantum computing"}]
+            }),
+            contentType="application/json"
+        )
+        result = json.loads(response["body"].read())
+        print(json.dumps(result, indent=2))
+    except Exception as e:
+        print("Error in claude-v2 invoke:", e)
+
+    # 6) Test anthropic.claude-v2 / invoke-with-response-stream
+    print("\n--- Test: anthropic.claude-v2 / invoke-with-response-stream ---")
+    try:
+        response = bedrock_runtime_client.invoke_model_with_response_stream(
+            modelId="anthropic.claude-v2",
+            body=json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 100,
+                "messages": [{"role": "user", "content": "Tell me about LLMs"}]
+            }),
+            contentType="application/json"
+        )
+        for part in response["body"]:
+            chunk = json.loads(part["chunk"]["bytes"].decode())
+            delta = chunk.get("delta", {}).get("text", "")
+            print(delta, end="", flush=True)
+        print("\nStreamed Output Complete.")
+    except Exception as e:
+        print("Error in claude-v2 stream:", e)
+
+    # 7) Test anthropic.claude-3-haiku-20240307-v1:0 / invoke
+    print("\n--- Test: anthropic.claude-3-haiku-20240307-v1:0 / invoke ---")
+    try:
+        response = bedrock_runtime_client.invoke_model(
+            modelId="anthropic.claude-3-haiku-20240307-v1:0",
+            body=json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 100,
+                "messages": [{"role": "user", "content": "What is generative AI?"}]
+            }),
+            contentType="application/json"
+        )
+        result = json.loads(response["body"].read())
+        print(json.dumps(result, indent=2))
+    except Exception as e:
+        print("Error in haiku invoke:", e)
+
+    # 8) Test anthropic.claude-3-haiku-20240307-v1:0 / invoke-with-response-stream
+    print("\n--- Test: anthropic.claude-3-haiku-20240307-v1:0 / invoke-with-response-stream ---")
+    try:
+        response = bedrock_runtime_client.invoke_model_with_response_stream(
+            modelId="anthropic.claude-3-haiku-20240307-v1:0",
+            body=json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 100,
+                "messages": [{"role": "user", "content": "What are AI guardrails?"}]
+            }),
+            contentType="application/json"
+        )
+        for part in response["body"]:
+            chunk = json.loads(part["chunk"]["bytes"].decode())
+            delta = chunk.get("delta", {}).get("text", "")
+            print(delta, end="", flush=True)
+        print("\nStreamed Output Complete.")
+    except Exception as e:
+        print("Error in haiku stream:", e)
+
     print("\nScript complete.")
+
 
 
 if __name__ == "__main__":
