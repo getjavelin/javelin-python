@@ -4,7 +4,9 @@ import os
 from typing import Any, Dict
 
 from javelin_sdk import JavelinClient, JavelinConfig
+from dotenv import load_dotenv
 
+load_dotenv()
 
 # Helper function to pretty print responses
 def print_response(provider: str, response: Dict[str, Any]) -> None:
