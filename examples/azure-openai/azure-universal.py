@@ -54,7 +54,7 @@ def get_chat_completion_sync(azure_client, messages):
     """
 
     response = azure_client.chat.completions.create(
-        model="gpt-4", messages=messages  # Adjust to your Azure deployment name
+        model="gpt35", messages=messages  # Adjust to your Azure deployment name
     )
     return response.to_json()
 
@@ -65,7 +65,7 @@ def get_chat_completion_stream(azure_client, messages):
     Returns the concatenated text from the streamed chunks.
     """
     response = azure_client.chat.completions.create(
-        model="gpt-4",  # Adjust to your Azure deployment name
+        model="gpt35",  # Adjust to your Azure deployment name
         messages=messages,
         stream=True,
     )
