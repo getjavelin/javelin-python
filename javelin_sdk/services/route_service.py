@@ -61,14 +61,19 @@ class RouteService:
         elif response.status_code != 200:
             raise InternalServerError(response=response)
 
-    def create_route(self, route: Route) -> str:
+    def create_route(self, route) -> str:
+        # Accepts dict or Route instance
+        if not isinstance(route, Route):
+            route = Route.model_validate(route)
         self._validate_route_name(route.name)
         response = self.client._send_request_sync(
             Request(method=HttpMethod.POST, route=route.name, data=route.dict())
         )
         return self._process_route_response_ok(response)
 
-    async def acreate_route(self, route: Route) -> str:
+    async def acreate_route(self, route) -> str:
+        if not isinstance(route, Route):
+            route = Route.model_validate(route)
         self._validate_route_name(route.name)
         response = await self.client._send_request_async(
             Request(method=HttpMethod.POST, route=route.name, data=route.dict())
@@ -115,23 +120,23 @@ class RouteService:
         except ValueError:
             return Routes(routes=[])
 
-    def update_route(self, route: Route) -> str:
+    def update_route(self, route) -> str:
+        if not isinstance(route, Route):
+            route = Route.model_validate(route)
         self._validate_route_name(route.name)
         response = self.client._send_request_sync(
             Request(method=HttpMethod.PUT, route=route.name, data=route.dict())
         )
-
-        ## Reload the route
         self.reload_route(route.name)
         return self._process_route_response_ok(response)
 
-    async def aupdate_route(self, route: Route) -> str:
+    async def aupdate_route(self, route) -> str:
+        if not isinstance(route, Route):
+            route = Route.model_validate(route)
         self._validate_route_name(route.name)
         response = await self.client._send_request_async(
             Request(method=HttpMethod.PUT, route=route.name, data=route.dict())
         )
-
-        ## Reload the route
         self.areload_route(route.name)
         return self._process_route_response_ok(response)
 

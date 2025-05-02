@@ -20,6 +20,7 @@ from javelin_sdk.services.route_service import RouteService
 from javelin_sdk.services.secret_service import SecretService
 from javelin_sdk.services.template_service import TemplateService
 from javelin_sdk.services.trace_service import TraceService
+from javelin_sdk.services.guardrails_service import GuardrailsService
 from javelin_sdk.tracing_setup import configure_span_exporter
 import inspect
 from opentelemetry.trace import SpanKind
@@ -98,6 +99,7 @@ class JavelinClient:
         self.template_service = TemplateService(self)
         self.trace_service = TraceService(self)
         self.modelspec_service = ModelSpecService(self)
+        self.guardrails_service = GuardrailsService(self)
 
         self.chat = Chat(self)
         self.completions = Completions(self)
@@ -899,6 +901,8 @@ class JavelinClient:
             is_model_specs=request.is_model_specs,
             is_reload=request.is_reload,
             univ_model=request.univ_model_config,
+            guardrail=request.guardrail,
+            list_guardrails=request.list_guardrails,
         )
         headers = {**self._headers, **(request.headers or {})}
         return url, headers
@@ -939,6 +943,8 @@ class JavelinClient:
         is_model_specs: bool = False,
         is_reload: bool = False,
         univ_model: Optional[Dict[str, Any]] = None,
+        guardrail: Optional[str] = None,
+        list_guardrails: bool = False,
     ) -> str:
         url_parts = [self.base_url]
 
@@ -993,6 +999,13 @@ class JavelinClient:
             url_parts.extend(["admin", "archives"])
             if archive != "###":
                 url_parts.append(archive)
+        elif guardrail:
+            if guardrail == "all":
+                url_parts.extend(["guardrails", "apply"])
+            else:
+                url_parts.extend(["guardrail", guardrail, "apply"])
+        elif list_guardrails:
+            url_parts.extend(["guardrails", "list"])
         else:
             url_parts.extend(["admin", "routes"])
 
@@ -1201,6 +1214,12 @@ class JavelinClient:
         )
     )
 
+    # Guardrails methods
+    apply_trustsafety = lambda self, text, config=None: self.guardrails_service.apply_trustsafety(text, config)
+    apply_promptinjectiondetection = lambda self, text, config=None: self.guardrails_service.apply_promptinjectiondetection(text, config)
+    apply_guardrails = lambda self, text, guardrails: self.guardrails_service.apply_guardrails(text, guardrails)
+    list_guardrails = lambda self: self.guardrails_service.list_guardrails()
+
     ## Traces methods
     get_traces = lambda self: self.trace_service.get_traces()
     aget_traces = lambda self: self.trace_service.aget_traces()
@@ -1286,3 +1305,9 @@ class JavelinClient:
             headers (Dict[str, str]): A dictionary of headers to set or update.
         """
         self._headers.update(headers)
+
+    # Guardrails methods
+    apply_trustsafety = lambda self, text, config=None: self.guardrails_service.apply_trustsafety(text, config)
+    apply_promptinjectiondetection = lambda self, text, config=None: self.guardrails_service.apply_promptinjectiondetection(text, config)
+    apply_guardrails = lambda self, text, guardrails: self.guardrails_service.apply_guardrails(text, guardrails)
+    list_guardrails = lambda self: self.guardrails_service.list_guardrails()
