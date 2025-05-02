@@ -20,8 +20,8 @@ class GuardrailsService:
             raise UnauthorizedError(response=response)
         elif response.status_code == 429:
             raise RateLimitExceededError(response=response)
-        elif response.status_code != 200:
-            raise InternalServerError(response=response)
+        elif 400 <= response.status_code < 500:
+            raise BadRequest(response=response, message=f"Client Error: {response.status_code}")
 
     def apply_trustsafety(self, text: str, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         data = {"text": text}
