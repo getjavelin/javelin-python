@@ -2,6 +2,37 @@
 ## [Unreleased]
 
 
+<a name="v0.2.35"></a>
+## [v0.2.35] - 2025-05-08
+### Bug Fixes
+- upgrade Python version and OpenTelemetry dependencies ([#191](https://github.com/getjavelin/javelin-python/issues/191))
+- updated west region to east-1 for bedrock clint ([#192](https://github.com/getjavelin/javelin-python/issues/192))
+
+### Features
+- img gen support for unified endpoints ([#193](https://github.com/getjavelin/javelin-python/issues/193))
+
+
+<a name="v0.2.34"></a>
+## [v0.2.34] - 2025-05-02
+### Bug Fixes
+- update SDK calls to prevent failures in E2E pipeline ([#179](https://github.com/getjavelin/javelin-python/issues/179))
+
+### DevOps
+- Removing the changelog configs from code repo
+- Update CHANGELOG for v0.2.33
+
+### Features
+- add standalone guardrail methods and enforce strict model validation ([#189](https://github.com/getjavelin/javelin-python/issues/189))
+- add tool/function calling test scripts for all LLM providers except openai via Javelin ([#182](https://github.com/getjavelin/javelin-python/issues/182))
+- added multi-agent coordination example for OpenAI and Gemini via Javelin (research → summary → report) ([#186](https://github.com/getjavelin/javelin-python/issues/186))
+- Added agent example for openai-agents ([#185](https://github.com/getjavelin/javelin-python/issues/185))
+- Added examples for anthropic api call-chat and function calling ([#183](https://github.com/getjavelin/javelin-python/issues/183))
+
+### Pull Requests
+- Merge pull request [#188](https://github.com/getjavelin/javelin-python/issues/188) from getjavelin/cicd-patch
+- Merge pull request [#176](https://github.com/getjavelin/javelin-python/issues/176) from getjavelin/cicd-changelog
+
+
 <a name="v0.2.33"></a>
 ## [v0.2.33] - 2025-04-07
 ### Bug Fixes
@@ -497,7 +528,9 @@
 <a name="v0.1.5"></a>
 ## v0.1.5 - 2023-09-04
 
-[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.33...HEAD
+[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.35...HEAD
+[v0.2.35]: https://github.com/getjavelin/javelin-python/compare/v0.2.34...v0.2.35
+[v0.2.34]: https://github.com/getjavelin/javelin-python/compare/v0.2.33...v0.2.34
 [v0.2.33]: https://github.com/getjavelin/javelin-python/compare/v0.2.32...v0.2.33
 [v0.2.32]: https://github.com/getjavelin/javelin-python/compare/v0.2.31...v0.2.32
 [v0.2.31]: https://github.com/getjavelin/javelin-python/compare/v0.2.30...v0.2.31
