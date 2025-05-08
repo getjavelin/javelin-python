@@ -71,6 +71,9 @@ class JavelinClient:
         "chat.completions.create": "chat",
         "completions.create": "text_completion",
         "embeddings.create": "embeddings",
+        "images.generate": "image_generation",
+        "images.edit": "image_editing",
+        "images.create_variation": "image_variation",
     }
 
     def __init__(self, config: JavelinConfig) -> None:
@@ -205,6 +208,9 @@ class JavelinClient:
                 "chat_completions_create": openai_client.chat.completions.create,
                 "completions_create": openai_client.completions.create,
                 "embeddings_create": openai_client.embeddings.create,
+                "images_generate": openai_client.images.generate,
+                "images_edit": openai_client.images.edit,
+                "images_create_variation": openai_client.images.create_variation,
             }
 
         # Patch methods with tracing and header updates
