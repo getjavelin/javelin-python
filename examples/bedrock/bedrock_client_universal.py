@@ -16,9 +16,9 @@ def init_bedrock():
     3) Return the bedrock_runtime_client for direct 'invoke_model' calls.
     """
     bedrock_runtime_client = boto3.client(
-        service_name="bedrock-runtime", region_name="us-west-2"
+        service_name="bedrock-runtime", region_name="us-east-1"
     )
-    bedrock_client = boto3.client(service_name="bedrock", region_name="us-west-2")
+    bedrock_client = boto3.client(service_name="bedrock", region_name="us-east-1")
 
     config = JavelinConfig(
         javelin_api_key=os.getenv("JAVELIN_API_KEY")  # Replace with your Javelin API key

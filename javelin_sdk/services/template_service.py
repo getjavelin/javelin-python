@@ -41,7 +41,9 @@ class TemplateService:
         elif response.status_code != 200:
             raise InternalServerError(response=response)
 
-    def create_template(self, template: Template) -> str:
+    def create_template(self, template) -> str:
+        if not isinstance(template, Template):
+            template = Template.model_validate(template)
         response = self.client._send_request_sync(
             Request(
                 method=HttpMethod.POST, template=template.name, data=template.dict()
@@ -50,7 +52,9 @@ class TemplateService:
         self.reload_data_protection(template.name)
         return self._process_template_response_ok(response)
 
-    async def acreate_template(self, template: Template) -> str:
+    async def acreate_template(self, template) -> str:
+        if not isinstance(template, Template):
+            template = Template.model_validate(template)
         response = await self.client._send_request_async(
             Request(
                 method=HttpMethod.POST, template=template.name, data=template.dict()
@@ -97,14 +101,18 @@ class TemplateService:
         except ValueError:
             return Templates(templates=[])
 
-    def update_template(self, template: Template) -> str:
+    def update_template(self, template) -> str:
+        if not isinstance(template, Template):
+            template = Template.model_validate(template)
         response = self.client._send_request_sync(
             Request(method=HttpMethod.PUT, template=template.name, data=template.dict())
         )
         self.reload_data_protection(template.name)
         return self._process_template_response_ok(response)
 
-    async def aupdate_template(self, template: Template) -> str:
+    async def aupdate_template(self, template) -> str:
+        if not isinstance(template, Template):
+            template = Template.model_validate(template)
         response = await self.client._send_request_async(
             Request(method=HttpMethod.PUT, template=template.name, data=template.dict())
         )

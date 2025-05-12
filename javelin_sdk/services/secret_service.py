@@ -41,13 +41,17 @@ class SecretService:
         elif response.status_code != 200:
             raise InternalServerError(response=response)
 
-    def create_secret(self, secret: Secret) -> str:
+    def create_secret(self, secret) -> str:
+        if not isinstance(secret, Secret):
+            secret = Secret.model_validate(secret)
         response = self.client._send_request_sync(
             Request(method=HttpMethod.POST, secret=secret.api_key, data=secret.dict(), provider=secret.provider_name)
         )
         return self._process_secret_response_ok(response)
 
-    async def acreate_secret(self, secret: Secret) -> str:
+    async def acreate_secret(self, secret) -> str:
+        if not isinstance(secret, Secret):
+            secret = Secret.model_validate(secret)
         response = await self.client._send_request_async(
             Request(method=HttpMethod.POST, secret=secret.api_key, data=secret.dict(), provider=secret.provider_name)
         )
@@ -92,7 +96,9 @@ class SecretService:
         except ValueError:
             return Secrets(secrets=[])
 
-    def update_secret(self, secret: Secret) -> str:
+    def update_secret(self, secret) -> str:
+        if not isinstance(secret, Secret):
+            secret = Secret.model_validate(secret)
         # Fields that cannot be updated
         restricted_fields = [
             "api_key",
@@ -107,7 +113,6 @@ class SecretService:
         ## Compare the restricted fields of current secret with the new secret
         for field in restricted_fields:
             try:
-                # if current_secret[field] != secret[field]:
                 if getattr(current_secret, field) != getattr(secret, field):
                     raise ValueError(f"Cannot update restricted field: {field}")
             except KeyError:
@@ -128,7 +133,9 @@ class SecretService:
         self.reload_secret(secret.api_key)
         return self._process_secret_response_ok(response)
 
-    async def aupdate_secret(self, secret: Secret) -> str:
+    async def aupdate_secret(self, secret) -> str:
+        if not isinstance(secret, Secret):
+            secret = Secret.model_validate(secret)
         # Fields that cannot be updated
         restricted_fields = [
             "api_key",
@@ -143,7 +150,6 @@ class SecretService:
         ## Compare the restricted fields of current secret with the new secret
         for field in restricted_fields:
             try:
-                # if current_secret[field] != secret[field]:
                 if getattr(current_secret, field) != getattr(secret, field):
                     raise ValueError(f"Cannot update restricted field: {field}")
             except KeyError:

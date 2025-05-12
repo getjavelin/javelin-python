@@ -142,7 +142,6 @@ class RouteConfig(BaseModel):
     response_chain: Optional[Dict[str, Any]] = Field(
         None, description="Response chain configuration"
     )
-    budget: Optional[Budget] = Field(default=None, description="Budget configuration")
     dlp: Optional[Dlp] = Field(default=None, description="DLP configuration")
     content_filter: Optional[ContentFilter] = Field(
         default=None, description="Content Filter Description"
@@ -481,6 +480,8 @@ class Request:
         is_model_specs: bool = False,
         is_reload: bool = False,
         univ_model_config: Optional[Dict[str, Any]] = None,
+        guardrail: Optional[str] = None,
+        list_guardrails: bool = False,
     ):
         self.method = method
         self.gateway = gateway
@@ -498,6 +499,8 @@ class Request:
         self.is_model_specs = is_model_specs
         self.is_reload = is_reload
         self.univ_model_config = univ_model_config
+        self.guardrail = guardrail
+        self.list_guardrails = list_guardrails
 
 
 class Message(BaseModel):
