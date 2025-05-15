@@ -350,6 +350,9 @@ class Template(BaseModel):
 class Templates(BaseModel):
     templates: List[Template] = Field(default=[], description="List of templates")
 
+class SecretType(str, Enum):
+    AWS = "aws"
+    KUBERNETES = "kubernetes"
 
 class Secret(BaseModel):
     api_key: str = Field(default=None, description="Key of the Secret")
@@ -367,6 +370,8 @@ class Secret(BaseModel):
     enabled: Optional[bool] = Field(
         default=True, description="Whether the secret is enabled"
     )
+    secret_name: str = Field(default=None, description="Secret Name of the Secret")
+    secrets_provider: SecretType = Field(default=SecretType.KUBERNETES, description="Type of the secret: aws or kubernetes")
 
     def masked(self):
         """

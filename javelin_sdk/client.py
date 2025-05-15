@@ -198,8 +198,8 @@ class JavelinClient:
             "/"
         )  # Remove trailing slash if present
 
-        # Update Javelin headers into the client's _custom_headers
-        openai_client._custom_headers["x-javelin-provider"] = base_url_str
+        # default route name to provider name if not provided
+        route_name = route_name or provider_name
         openai_client._custom_headers["x-javelin-route"] = route_name
 
         # Store the original methods only if not already stored
@@ -521,12 +521,12 @@ class JavelinClient:
 
         return openai_client
 
-    def register_openai(self, openai_client: Any, route_name: str = None) -> Any:
+    def register_openai(self, openai_client: Any, route_name: str = "") -> Any:
         return self.register_provider(
             openai_client, provider_name="openai", route_name=route_name
         )
 
-    def register_azureopenai(self, openai_client: Any, route_name: str = None) -> Any:
+    def register_azureopenai(self, openai_client: Any, route_name: str = "") -> Any:
         return self.register_provider(
             openai_client, provider_name="azureopenai", route_name=route_name
         )
@@ -546,7 +546,7 @@ class JavelinClient:
         bedrock_runtime_client: Any,
         bedrock_client: Any = None,
         bedrock_session: Any = None,
-        route_name: str = None,
+        route_name: str = "",
     ) -> None:
         """
         Register an AWS Bedrock Runtime client
@@ -581,6 +581,9 @@ class JavelinClient:
         self.bedrock_client = bedrock_client
         self.bedrock_session = bedrock_session
         self.bedrock_runtime_client = bedrock_runtime_client
+
+        if not route_name:
+            route_name = "amazon"
 
         # Store the default bedrock route
         if route_name is not None:
