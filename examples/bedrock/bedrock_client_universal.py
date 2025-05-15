@@ -26,8 +26,7 @@ def init_bedrock():
     javelin_client = JavelinClient(config)
     javelin_client.register_bedrock(
         bedrock_runtime_client=bedrock_runtime_client,
-        bedrock_client=bedrock_client,
-        route_name="amazon_univ",
+        bedrock_client=bedrock_client
     )
     return bedrock_runtime_client
 
