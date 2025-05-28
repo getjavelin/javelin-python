@@ -31,17 +31,13 @@ def initialize_client():
 
     # Create the Azure client
     azure_client = AzureOpenAI(
-        # Typically "2023-07-01-preview" or a more recent version
-        api_version="2023-07-01-preview",
-        azure_endpoint="https://javelinpreview.openai.azure.com",
-        api_key=azure_openai_api_key,
+        api_version="2023-09-15-preview"
     )
 
     # Initialize the Javelin client and register the Azure client
     config = JavelinConfig(javelin_api_key=javelin_api_key)
     javelin_client = JavelinClient(config)
-    rout_name = "azureopenai_univ"  # Define the unversal route name
-    javelin_client.register_azureopenai(azure_client, route_name=rout_name)
+    javelin_client.register_azureopenai(azure_client)
 
     return azure_client
 

@@ -34,15 +34,12 @@ def init_javelin_client_sync(openai_client):
     """Initialize JavelinClient for synchronous usage and register the OpenAI route."""
     try:
         # Set (and print) the Javelin key
-        javelin_api_key = os.getenv(
-            "JAVELIN_API_KEY"
-        )  # define your javelin api key here
+        javelin_api_key = os.getenv("JAVELIN_API_KEY")
         config = JavelinConfig(
             javelin_api_key=javelin_api_key,
         )
         client = JavelinClient(config)
-        rout_name = "openai_univ"  # define your universal route name here
-        client.register_openai(openai_client, route_name=rout_name)
+        client.register_openai(openai_client)
         return client
     except Exception as e:
         raise e
