@@ -33,28 +33,19 @@ jobs:
     secrets:
       DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
 
-  javelin-validate:
+  reusable-workflow-validate:
+    needs:
+      - reusable-vars
     permissions:
       contents: 'read'
       id-token: 'write'
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Validate Release
-        env:
-          RELEASE_NAME: ${{ github.event.release.name }}
-          REGEX_PATTERN: "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
-        shell: bash
-        run: |-
-          if [[ "${{ env.RELEASE_NAME }}" =~ ${{ env.REGEX_PATTERN }} ]]; then
-            echo "Valid version format: ${{ env.RELEASE_NAME }}"
-          else
-            echo "Invalid version format: ${{ env.RELEASE_NAME }}"
-            exit 1
-          fi
+    uses: getjavelin/javelin-workflow/.github/workflows/workflow-release-validate.yml@main
+    with:
+      RELEASE_BRANCH: "main"
 
   javelin-package:
     needs:
-      - javelin-validate
+      - reusable-workflow-validate
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -105,13 +96,14 @@ jobs:
 
   reusable-workflow-notify:
     needs:
+      - reusable-vars
       - reusable-workflow-env
+      - reusable-workflow-validate
       - javelin-package
     permissions:
       contents: 'read'
       id-token: 'write'
-    if: |
-      always() && (needs.javelin-package.result != 'success') 
+    if: failure()
     uses: getjavelin/javelin-workflow/.github/workflows/workflow-package-notify.yml@main
     with:
       SVC_NAME: ${{ needs.reusable-workflow-env.outputs.lc_repository }}
@@ -126,6 +118,7 @@ jobs:
 
   reusable-workflow-changelog:
     needs:
+      - reusable-workflow-validate
       - javelin-package
     permissions:
       contents: 'read'
