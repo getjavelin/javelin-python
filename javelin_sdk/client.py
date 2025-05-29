@@ -582,6 +582,9 @@ class JavelinClient:
         self.bedrock_session = bedrock_session
         self.bedrock_runtime_client = bedrock_runtime_client
 
+        if not route_name:
+            route_name = "awsbedrock"
+
         # Store the default bedrock route
         if route_name is not None:
             self.use_default_bedrock_route = True
