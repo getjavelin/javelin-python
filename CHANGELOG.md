@@ -2,6 +2,32 @@
 ## [Unreleased]
 
 
+<a name="v0.2.37"></a>
+## [v0.2.37] - 2025-05-30
+### Bug Fixes
+- update route models ([#198](https://github.com/getjavelin/javelin-python/issues/198))
+
+### DevOps
+- Patching the cicd and release pipeline
+
+### Pull Requests
+- Merge pull request [#197](https://github.com/getjavelin/javelin-python/issues/197) from getjavelin/cicd-patch
+
+
+<a name="v0.2.36"></a>
+## [v0.2.36] - 2025-05-28
+### DevOps
+- disabling the edited option in the PR checks
+- Update CHANGELOG for v0.2.35
+
+### Features
+- update universal endpoint scripts ([#195](https://github.com/getjavelin/javelin-python/issues/195))
+
+### Pull Requests
+- Merge pull request [#190](https://github.com/getjavelin/javelin-python/issues/190) from getjavelin/cicd-changelog
+- Merge pull request [#194](https://github.com/getjavelin/javelin-python/issues/194) from getjavelin/cicd-patch
+
+
 <a name="v0.2.35"></a>
 ## [v0.2.35] - 2025-05-08
 ### Bug Fixes
@@ -528,7 +554,9 @@
 <a name="v0.1.5"></a>
 ## v0.1.5 - 2023-09-04
 
-[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.35...HEAD
+[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.37...HEAD
+[v0.2.37]: https://github.com/getjavelin/javelin-python/compare/v0.2.36...v0.2.37
+[v0.2.36]: https://github.com/getjavelin/javelin-python/compare/v0.2.35...v0.2.36
 [v0.2.35]: https://github.com/getjavelin/javelin-python/compare/v0.2.34...v0.2.35
 [v0.2.34]: https://github.com/getjavelin/javelin-python/compare/v0.2.33...v0.2.34
 [v0.2.33]: https://github.com/getjavelin/javelin-python/compare/v0.2.32...v0.2.33
