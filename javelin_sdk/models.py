@@ -129,7 +129,6 @@ class Policy(BaseModel):
 
 
 class RouteConfig(BaseModel):
-    budget: Optional[Budget] = Field(default=None, description="Budget configuration")
     policy: Optional[Policy] = Field(default=None, description="Policy configuration")
     retries: Optional[int] = Field(default=None, description="Number of retries for the route")
     rate_limit: Optional[int] = Field(default=None, description="Rate limit for the route")
