@@ -1,0 +1,20 @@
+name: Cron Weekly Changelog - Javelin Python
+
+on:
+  schedule:
+    - cron: '30 8 * * 1'  # Every Monday at 8:30 AM UTC = 2:00 PM IST
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reusable-workflow:
+    permissions:
+      contents: 'write'
+      id-token: 'write'
+      pull-requests: 'write'
+    uses: getjavelin/javelin-workflow/.github/workflows/workflow-cron-weekly-changelog.yml@main
+    secrets:
+      DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+      DEVOPS_PR_TOKEN: ${{ secrets.DEVOPS_PR_TOKEN }}
