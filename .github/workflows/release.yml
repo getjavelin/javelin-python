@@ -127,4 +127,5 @@ jobs:
     uses: getjavelin/javelin-workflow/.github/workflows/workflow-release-changelog.yml@main
     secrets:
       DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+      DEVOPS_PR_TOKEN: ${{ secrets.DEVOPS_PR_TOKEN }}
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
