@@ -1,3 +1,5 @@
+[![Ask DeepWiki](https://deepwiki.com/badge.svg "DeepWiki Documentation")](https://deepwiki.com/getjavelin/javelin-python)
+
 ## Javelin: an Enterprise-Scale, Fast LLM Gateway/Edge
 
 This is the Python client package for Javelin.
