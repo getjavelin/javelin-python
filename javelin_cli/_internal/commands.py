@@ -1,16 +1,10 @@
 import json
-import os
 from pathlib import Path
 
 from javelin_sdk.client import JavelinClient
 from javelin_sdk.exceptions import (
     BadRequest,
-    GatewayNotFoundError,
     NetworkError,
-    ProviderNotFoundError,
-    RouteNotFoundError,
-    SecretNotFoundError,
-    TemplateNotFoundError,
     UnauthorizedError,
 )
 from javelin_sdk.models import (
@@ -25,7 +19,6 @@ from javelin_sdk.models import (
     Secret,
     Secrets,
     Template,
-    Templates,
 )
 from pydantic import ValidationError
 
@@ -191,7 +184,7 @@ def update_gateway(args):
             name=args.name, type=args.type, enabled=args.enabled, config=config
         )
 
-        client.update_gateway(args.name, gateway_data)
+        client.update_gateway(gateway)
         print(f"Gateway '{args.name}' updated successfully.")
 
     except UnauthorizedError as e:
@@ -305,7 +298,7 @@ def update_provider(args):
             config=config,
         )
 
-        result = client.update_provider(provider)
+        client.update_provider(provider)
         print(f"Provider '{args.name}' updated successfully.")
 
     except json.JSONDecodeError as e:
@@ -423,7 +416,7 @@ def update_route(args):
             config=config,
         )
 
-        result = client.update_route(route)
+        client.update_route(route)
         print(f"Route '{args.name}' updated successfully.")
 
     except json.JSONDecodeError as e:
@@ -451,7 +444,6 @@ def delete_route(args):
         print(f"Unexpected error: {e}")
 
 
-from collections import namedtuple
 
 
 def create_secret(args):
@@ -561,7 +553,7 @@ def update_secret(args):
             enabled=args.enabled if args.enabled is not None else None,
         )
 
-        result = client.update_secret(secret)
+        client.update_secret(secret)
         print(f"Secret '{args.api_key}' updated successfully.")
 
     except UnauthorizedError as e:
@@ -611,7 +603,7 @@ def create_template(args):
             config=config,
         )
 
-        result = client.create_template(template)
+        client.create_template(template)
         print(f"Template '{args.name}' created successfully.")
 
     except json.JSONDecodeError as e:
@@ -678,7 +670,7 @@ def update_template(args):
             config=config,
         )
 
-        result = client.update_template(template)
+        client.update_template(template)
         print(f"Template '{args.name}' updated successfully.")
 
     except json.JSONDecodeError as e:

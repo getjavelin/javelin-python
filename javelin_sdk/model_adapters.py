@@ -3,14 +3,15 @@ from typing import Any, Dict, List, Optional
 
 import jmespath
 
-from .models import ArrayHandling, EndpointType, ModelSpec, TransformRule, TypeHint
+from .models import ArrayHandling, ModelSpec, TransformRule, TypeHint
 
 logger = logging.getLogger(__name__)
 
 
 class TransformationRuleManager:
     def __init__(self, client):
-        """Initialize the transformation rule manager with both local and remote capabilities"""
+        """Initialize the transformation rule manager with both 
+        local and remote capabilities"""
         self.client = client
         self.cache = {}
         self.cache_ttl = 3600
@@ -112,7 +113,11 @@ class ModelTransformer:
 
                 # Handle array operations
                 if rule.array_handling and isinstance(value, (list, tuple)):
-                    value = self._handle_array(value, rule.array_handling)
+                    if isinstance(value, list):
+                        value = self._handle_array(value, rule.array_handling)
+                    else:
+                        # Convert tuple to list for processing
+                        value = self._handle_array(list(value), rule.array_handling)
 
                 # Apply type conversion
                 if rule.type_hint and value is not None:
@@ -124,7 +129,8 @@ class ModelTransformer:
 
             except Exception as e:
                 logger.error(
-                    f"Error processing rule {rule.source_path} -> {rule.target_path}: {str(e)}"
+                    f"Error processing rule {rule.source_path} -> "
+                    f"{rule.target_path}: {str(e)}"
                 )
                 continue
 

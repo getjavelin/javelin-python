@@ -1,5 +1,3 @@
-from typing import List
-
 import httpx
 from javelin_sdk.exceptions import (
     BadRequest,
@@ -45,7 +43,12 @@ class SecretService:
         if not isinstance(secret, Secret):
             secret = Secret.model_validate(secret)
         response = self.client._send_request_sync(
-            Request(method=HttpMethod.POST, secret=secret.api_key, data=secret.dict(), provider=secret.provider_name)
+            Request(
+                method=HttpMethod.POST,
+                secret=secret.api_key,
+                data=secret.dict(),
+                provider=secret.provider_name,
+            )
         )
         return self._process_secret_response_ok(response)
 
@@ -53,7 +56,12 @@ class SecretService:
         if not isinstance(secret, Secret):
             secret = Secret.model_validate(secret)
         response = await self.client._send_request_async(
-            Request(method=HttpMethod.POST, secret=secret.api_key, data=secret.dict(), provider=secret.provider_name)
+            Request(
+                method=HttpMethod.POST,
+                secret=secret.api_key,
+                data=secret.dict(),
+                provider=secret.provider_name,
+            )
         )
         return self._process_secret_response_ok(response)
 
@@ -69,7 +77,7 @@ class SecretService:
         )
         return self._process_secret_response(response)
 
-    def list_secrets(self) -> List[Secret]:
+    def list_secrets(self) -> Secrets:
         response = self.client._send_request_sync(
             Request(method=HttpMethod.GET, secret="###")
         )
@@ -82,7 +90,7 @@ class SecretService:
         except ValueError:
             return Secrets(secrets=[])
 
-    async def alist_secrets(self) -> List[Secret]:
+    async def alist_secrets(self) -> Secrets:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.GET, secret="###")
         )
@@ -104,11 +112,12 @@ class SecretService:
             "api_key",
             "api_key_secret_key_javelin",
             "provider_name",
-            "api_key_secret_key"
+            "api_key_secret_key",
         ]
 
         ## Get the current secret
-        current_secret = self.get_secret(secret.api_key, secret.provider_name)
+        if secret.api_key and secret.provider_name:
+            current_secret = self.get_secret(secret.api_key, secret.provider_name)
 
         ## Compare the restricted fields of current secret with the new secret
         for field in restricted_fields:
@@ -130,7 +139,8 @@ class SecretService:
         )
 
         ## Reload the secret
-        self.reload_secret(secret.api_key)
+        if secret.api_key:
+            self.reload_secret(secret.api_key)
         return self._process_secret_response_ok(response)
 
     async def aupdate_secret(self, secret) -> str:
@@ -145,7 +155,8 @@ class SecretService:
         ]
 
         ## Get the current secret
-        current_secret = self.get_secret(secret.api_key, secret.provider_name)
+        if secret.api_key and secret.provider_name:
+            current_secret = self.get_secret(secret.api_key, secret.provider_name)
 
         ## Compare the restricted fields of current secret with the new secret
         for field in restricted_fields:
@@ -167,7 +178,8 @@ class SecretService:
         )
 
         ## Reload the secret
-        self.areload_secret(secret.api_key)
+        if secret.api_key:
+            await self.areload_secret(secret.api_key)
         return self._process_secret_response_ok(response)
 
     def delete_secret(self, secret_name: str, provider_name: str) -> str:
@@ -189,7 +201,7 @@ class SecretService:
         )
 
         ## Reload the secret
-        self.areload_secret(secret_name=secret_name)
+        await self.areload_secret(secret_name=secret_name)
         return self._process_secret_response_ok(response)
 
     def reload_secret(self, secret_name: str) -> str:
@@ -200,7 +212,7 @@ class SecretService:
             Request(
                 method=HttpMethod.POST,
                 secret=f"{secret_name}/reload",
-                data="",
+                data={},
                 is_reload=True,
             )
         )
@@ -214,7 +226,7 @@ class SecretService:
             Request(
                 method=HttpMethod.POST,
                 secret=f"{secret_name}/reload",
-                data="",
+                data={},
                 is_reload=True,
             )
         )

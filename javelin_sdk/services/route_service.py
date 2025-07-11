@@ -1,5 +1,5 @@
 import json
-from typing import Any, AsyncGenerator, Dict, Generator, List, Optional, Union
+from typing import Any, AsyncGenerator, Dict, Generator, Optional, Union
 
 import httpx
 from javelin_sdk.exceptions import (
@@ -11,7 +11,7 @@ from javelin_sdk.exceptions import (
     UnauthorizedError,
 )
 from javelin_sdk.models import HttpMethod, Request, Route, Routes, UnivModelConfig
-from jsonpath_ng import parse
+from jsonpath_ng import parse  # type: ignore
 
 
 class RouteService:
@@ -65,7 +65,8 @@ class RouteService:
         # Accepts dict or Route instance
         if not isinstance(route, Route):
             route = Route.model_validate(route)
-        self._validate_route_name(route.name)
+        if route.name:
+            self._validate_route_name(route.name)
         response = self.client._send_request_sync(
             Request(method=HttpMethod.POST, route=route.name, data=route.dict())
         )
@@ -74,7 +75,8 @@ class RouteService:
     async def acreate_route(self, route) -> str:
         if not isinstance(route, Route):
             route = Route.model_validate(route)
-        self._validate_route_name(route.name)
+        if route.name:
+            self._validate_route_name(route.name)
         response = await self.client._send_request_async(
             Request(method=HttpMethod.POST, route=route.name, data=route.dict())
         )
@@ -94,7 +96,7 @@ class RouteService:
         )
         return self._process_route_response(response)
 
-    def list_routes(self) -> List[Route]:
+    def list_routes(self) -> Routes:
         response = self.client._send_request_sync(
             Request(method=HttpMethod.GET, route="###")
         )
@@ -107,7 +109,7 @@ class RouteService:
         except ValueError:
             return Routes(routes=[])
 
-    async def alist_routes(self) -> List[Route]:
+    async def alist_routes(self) -> Routes:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.GET, route="###")
         )
@@ -123,21 +125,25 @@ class RouteService:
     def update_route(self, route) -> str:
         if not isinstance(route, Route):
             route = Route.model_validate(route)
-        self._validate_route_name(route.name)
+        if route.name:
+            self._validate_route_name(route.name)
         response = self.client._send_request_sync(
             Request(method=HttpMethod.PUT, route=route.name, data=route.dict())
         )
-        self.reload_route(route.name)
+        if route.name:
+            self.reload_route(route.name)
         return self._process_route_response_ok(response)
 
     async def aupdate_route(self, route) -> str:
         if not isinstance(route, Route):
             route = Route.model_validate(route)
-        self._validate_route_name(route.name)
+        if route.name:
+            self._validate_route_name(route.name)
         response = await self.client._send_request_async(
             Request(method=HttpMethod.PUT, route=route.name, data=route.dict())
         )
-        self.areload_route(route.name)
+        if route.name:
+            await self.areload_route(route.name)
         return self._process_route_response_ok(response)
 
     def delete_route(self, route_name: str) -> str:
@@ -156,13 +162,14 @@ class RouteService:
         )
 
         ## Reload the route
-        self.areload_route(route_name=route_name)
+        await self.areload_route(route_name=route_name)
         return self._process_route_response_ok(response)
 
     def _process_stream_line(
         self, line_str: str, jsonpath_expr, is_bedrock: bool = False
     ) -> Optional[str]:
-        """Process a single line from the stream response and extract text if available."""
+        """Process a single line from the stream response and 
+        extract text if available."""
         try:
             if "message-type" in line_str:
                 if "bytes" in line_str:
@@ -293,7 +300,7 @@ class RouteService:
             Request(
                 method=HttpMethod.POST,
                 route=f"{route_name}/reload",
-                data="",
+                data={},
                 is_reload=True,
             )
         )
@@ -307,7 +314,7 @@ class RouteService:
             Request(
                 method=HttpMethod.POST,
                 route=f"{route_name}/reload",
-                data="",
+                data={},
                 is_reload=True,
             )
         )

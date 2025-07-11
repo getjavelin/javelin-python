@@ -1,13 +1,11 @@
 from javelin_sdk.client import JavelinClient
 from javelin_sdk.exceptions import (
     BadRequest,
-    GatewayAlreadyExistsError,
     GatewayNotFoundError,
     InternalServerError,
     MethodNotAllowedError,
     NetworkError,
     ProviderAlreadyExistsError,
-    ProviderNotFoundError,
     RateLimitExceededError,
     RouteAlreadyExistsError,
     RouteNotFoundError,

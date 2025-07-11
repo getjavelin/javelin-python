@@ -1,30 +1,10 @@
 import logging
 from typing import Any, Dict, Generator, List, Optional, Union
-from enum import Enum
 
 from javelin_sdk.model_adapters import ModelTransformer, TransformationRuleManager
 from javelin_sdk.models import EndpointType
 
 logger = logging.getLogger(__name__)
-
-
-class EndpointType(Enum):
-    """Valid endpoint types for API calls"""
-
-    # Bedrock endpoints
-    INVOKE = "invoke"
-    INVOKE_STREAM = "invoke_stream"
-    CONVERSE = "converse"
-    CONVERSE_STREAM = "converse_stream"
-
-    # Standard endpoints
-    CHAT = "chat"
-    COMPLETION = "completion"
-    EMBEDDINGS = "embeddings"
-
-    # Anthropic endpoints
-    MESSAGES = "messages"
-    COMPLETE = "complete"
 
 
 class BaseCompletions:
@@ -158,7 +138,7 @@ class BaseCompletions:
                     else EndpointType.INVOKE.value
                 )
             elif provider_name == "anthropic":
-                endpoint_type = EndpointType.MESSAGES.value
+                endpoint_type = "messages"  # Use string instead of enum value
             else:
                 endpoint_type = EndpointType.CHAT.value
         request_data = self._build_request_data(
@@ -169,18 +149,24 @@ class BaseCompletions:
             # Ensure provider_api_base doesn't end with slash and endpoint_type is valid
             base_url = provider_api_base.rstrip("/")
             # Construct the path: <base_url>/model/<model_name>/<endpoint_type>
-            rules_url = f"{base_url}/model/{model}/{endpoint_type}"
-            model_rules = self.rule_manager.get_rules(rules_url, model)
-            transformed_request = self.transformer.transform(
-                request_data, model_rules.input_rules
-            )
+            if model:
+                rules_url = f"{base_url}/model/{model}/{endpoint_type}"
+                model_rules = self.rule_manager.get_rules(rules_url, model)
+                transformed_request = self.transformer.transform(
+                    request_data, model_rules.input_rules
+                )
+            else:
+                transformed_request = request_data
         elif provider_name == "anthropic":
             base_url = provider_api_base.rstrip("/")
-            model_rules = self.rule_manager.get_rules(base_url, model)
-            print("model_rules", model_rules)
-            transformed_request = self.transformer.transform(
-                request_data, model_rules.input_rules
-            )
+            if model:
+                model_rules = self.rule_manager.get_rules(base_url, model)
+                print("model_rules", model_rules)
+                transformed_request = self.transformer.transform(
+                    request_data, model_rules.input_rules
+                )
+            else:
+                transformed_request = request_data
         else:
             transformed_request = request_data
         deployment = deployment_name if deployment_name else model
@@ -259,7 +245,7 @@ class ChatCompletions(BaseCompletions):
         deployment_name: Optional[str] = None,
         endpoint_type: Optional[str] = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> Union[Dict[str, Any], Generator[str, None, None]]:
         """Create a chat completion request
 
         Args:
@@ -276,7 +262,8 @@ class ChatCompletions(BaseCompletions):
                 - "invoke_stream": Streaming invocation
                 - "converse": Standard synchronous conversation
                 - "converse_stream": Streaming conversation
-                If not specified, defaults to "invoke"/"invoke_stream" based on stream parameter.
+                If not specified, defaults to "invoke"/"invoke_stream" 
+                based on stream parameter.
                 For non-Bedrock providers, this parameter is ignored.
             **kwargs: Additional keyword arguments
 
@@ -314,7 +301,7 @@ class Completions(BaseCompletions):
         deployment_name: Optional[str] = None,
         api_version: Optional[str] = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> Union[Dict[str, Any], Generator[str, None, None]]:
         """Create a text completion request"""
         return self._create_request(
             prompt,
@@ -346,7 +333,7 @@ class Embeddings(BaseCompletions):
         model: Optional[str] = None,
         encoding_format: Optional[str] = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> Union[Dict[str, Any], Generator[str, None, None]]:
         """Create a chat completion request"""
         return self._create_request(
             route,

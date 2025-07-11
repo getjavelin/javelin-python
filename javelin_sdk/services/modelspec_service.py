@@ -25,7 +25,9 @@ class ModelSpecService:
         elif response.status_code != 200:
             raise InternalServerError(response=response)
 
-    def get_model_specs(self, provider_url: str, model_name: str) -> Dict[str, Any]:
+    def get_model_specs(
+        self, provider_url: str, model_name: str
+    ) -> Optional[Dict[str, Any]]:
         """Get model specifications from the provider configuration"""
         try:
             response = self.client._send_request_sync(
@@ -46,7 +48,7 @@ class ModelSpecService:
 
     async def aget_model_specs(
         self, provider_url: str, model_name: str
-    ) -> Dict[str, Any]:
+    ) -> Optional[Dict[str, Any]]:
         """Get model specifications from the provider configuration asynchronously"""
         try:
             response = await self.client._send_request_async(

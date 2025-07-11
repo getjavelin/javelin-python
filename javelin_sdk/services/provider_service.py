@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, Optional
 
 import httpx
 from javelin_sdk.exceptions import (
@@ -61,7 +61,8 @@ class ProviderService:
     def create_provider(self, provider) -> str:
         if not isinstance(provider, Provider):
             provider = Provider.model_validate(provider)
-        self._validate_provider_name(provider.name)
+        if provider.name:
+            self._validate_provider_name(provider.name)
         response = self.client._send_request_sync(
             Request(
                 method=HttpMethod.POST, provider=provider.name, data=provider.dict()
@@ -73,7 +74,8 @@ class ProviderService:
         # Accepts dict or Provider instance
         if not isinstance(provider, Provider):
             provider = Provider.model_validate(provider)
-        self._validate_provider_name(provider.name)
+        if provider.name:
+            self._validate_provider_name(provider.name)
         response = await self.client._send_request_async(
             Request(
                 method=HttpMethod.POST, provider=provider.name, data=provider.dict()
@@ -93,7 +95,7 @@ class ProviderService:
         )
         return self._process_provider_response(response)
 
-    def list_providers(self) -> List[Provider]:
+    def list_providers(self) -> Providers:
         response = self.client._send_request_sync(
             Request(method=HttpMethod.GET, provider="###")
         )
@@ -106,7 +108,7 @@ class ProviderService:
         except ValueError:
             return Providers(providers=[])
 
-    async def alist_providers(self) -> List[Provider]:
+    async def alist_providers(self) -> Providers:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.GET, provider="###")
         )
@@ -127,7 +129,8 @@ class ProviderService:
         response = self.client._send_request_sync(
             Request(method=HttpMethod.PUT, provider=provider.name, data=provider.dict())
         )
-        self.reload_provider(provider.name)
+        if provider.name:
+            self.reload_provider(provider.name)
         return self._process_provider_response_ok(response)
 
     async def aupdate_provider(self, provider) -> str:
@@ -137,7 +140,8 @@ class ProviderService:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.PUT, provider=provider.name, data=provider.dict())
         )
-        self.areload_provider(provider.name)
+        if provider.name:
+            await self.areload_provider(provider.name)
         return self._process_provider_response_ok(response)
 
     def delete_provider(self, provider_name: str) -> str:
@@ -157,11 +161,11 @@ class ProviderService:
         )
 
         ## reload the provider
-        self.areload_provider(provider_name=provider_name)
+        await self.areload_provider(provider_name=provider_name)
         return self._process_provider_response_ok(response)
 
     async def alist_provider_secrets(self, provider_name: str) -> Secrets:
-        response = await self._send_request_async(
+        response = await self.client._send_request_async(
             Request(
                 method=HttpMethod.GET,
                 gateway="",
@@ -185,7 +189,7 @@ class ProviderService:
         provider_name: str,
         model_name: str,
         endpoint: EndpointType = EndpointType.UNKNOWN,
-    ) -> Dict[str, Any]:
+    ) -> Optional[Dict[str, Any]]:
         """Get transformation rules from the provider configuration"""
         try:
             response = self.client._send_request_sync(
@@ -210,7 +214,7 @@ class ProviderService:
         provider_name: str,
         model_name: str,
         endpoint: EndpointType = EndpointType.UNKNOWN,
-    ) -> Dict[str, Any]:
+    ) -> Optional[Dict[str, Any]]:
         """Get transformation rules from the provider configuration asynchronously"""
         try:
             response = await self.client._send_request_async(
@@ -238,7 +242,7 @@ class ProviderService:
             Request(
                 method=HttpMethod.POST,
                 provider=f"{provider_name}/reload",
-                data="",
+                data={},
                 is_reload=True,
             )
         )
@@ -252,7 +256,7 @@ class ProviderService:
             Request(
                 method=HttpMethod.POST,
                 provider=f"{provider_name}/reload",
-                data="",
+                data={},
                 is_reload=True,
             )
         )

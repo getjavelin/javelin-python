@@ -2,7 +2,6 @@ import argparse
 import http.server
 import importlib.metadata
 import json
-import os
 import random
 import socketserver
 import sys
