@@ -69,8 +69,9 @@ report_agent = LlmAgent(
 # Coordinator agent
 root_agent = SequentialAgent(
     name="GeminiMultiAgentCoordinator",
-    sub_agents=[research_agent, summary_agent, report_agent]
+    sub_agents=[research_agent, summary_agent, report_agent],
 )
+
 
 async def main():
     session_service = InMemorySessionService()
@@ -92,6 +93,7 @@ async def main():
             break
 
     print("\n--- Final Report ---\n", final_answer)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

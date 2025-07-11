@@ -5,6 +5,7 @@ from langchain.chat_models import init_chat_model
 
 dotenv.load_dotenv()
 
+
 def init_mistral_model():
     return init_chat_model(
         model_name="mistral-large-latest",
@@ -13,9 +14,10 @@ def init_mistral_model():
         extra_headers={
             "x-javelin-route": "mistral_univ",
             "x-api-key": os.environ.get("OPENAI_API_KEY"),
-            "Authorization": f"Bearer {os.environ.get('MISTRAL_API_KEY')}"
-        }
+            "Authorization": f"Bearer {os.environ.get('MISTRAL_API_KEY')}",
+        },
     )
+
 
 def run_basic_prompt(model):
     print("\n==== Mistral Prompt Test ====")
@@ -24,6 +26,7 @@ def run_basic_prompt(model):
         print("Response:\n", response)
     except Exception as e:
         print("Prompt failed:", e)
+
 
 def run_function_calling(model):
     print("\n==== Mistral Function Calling Test ====")
@@ -37,16 +40,19 @@ def run_function_calling(model):
                     "type": "object",
                     "properties": {
                         "location": {"type": "string", "description": "City name"},
-                        "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+                        "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
                     },
-                    "required": ["location"]
-                }
+                    "required": ["location"],
+                },
             }
         ]
-        response = model.predict_messages(messages=messages, functions=functions, function_call="auto")
+        response = model.predict_messages(
+            messages=messages, functions=functions, function_call="auto"
+        )
         print("Function Response:\n", response)
     except Exception as e:
         print("Function calling failed:", e)
+
 
 def run_tool_calling(model):
     print("\n==== Mistral Tool Calling Test ====")
@@ -61,17 +67,23 @@ def run_tool_calling(model):
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "category": {"type": "string", "description": "e.g. life, success"}
+                            "category": {
+                                "type": "string",
+                                "description": "e.g. life, success",
+                            }
                         },
-                        "required": []
-                    }
-                }
+                        "required": [],
+                    },
+                },
             }
         ]
-        response = model.predict_messages(messages=messages, tools=tools, tool_choice="auto")
+        response = model.predict_messages(
+            messages=messages, tools=tools, tool_choice="auto"
+        )
         print("Tool Response:\n", response)
     except Exception as e:
         print("Tool calling failed:", e)
+
 
 def main():
     try:
@@ -83,6 +95,7 @@ def main():
     run_basic_prompt(model)
     run_function_calling(model)
     run_tool_calling(model)
+
 
 if __name__ == "__main__":
     main()

@@ -27,17 +27,19 @@ javelin_api_key = os.getenv("JAVELIN_API_KEY", "")
 javelin_base_url = os.getenv("JAVELIN_BASE_URL", "")
 
 if not (openai_api_key and javelin_api_key and javelin_base_url):
-    raise ValueError("Missing OPENAI_API_KEY, JAVELIN_API_KEY, or JAVELIN_BASE_URL in .env")
+    raise ValueError(
+        "Missing OPENAI_API_KEY, JAVELIN_API_KEY, or JAVELIN_BASE_URL in .env"
+    )
 
 # Create async OpenAI client
 async_openai_client = AsyncOpenAI(api_key=openai_api_key)
 
 # Register with Javelin
-javelin_client = JavelinClient(JavelinConfig(
-    javelin_api_key=javelin_api_key,
-    base_url=javelin_base_url
-))
-javelin_client.register_openai(async_openai_client, route_name="openai_univ")  # Adjust route name if needed
+javelin_client = JavelinClient(
+    JavelinConfig(javelin_api_key=javelin_api_key, base_url=javelin_base_url)
+)
+# Adjust route name if needed
+javelin_client.register_openai(async_openai_client, route_name="openai_univ")
 
 # Let the Agents SDK use this Javelin-patched client globally
 set_default_openai_client(async_openai_client)
@@ -59,7 +61,7 @@ faux_search_agent = Agent(
 ##############################################################################
 translator_agent = Agent(
     name="TranslatorAgent",
-    instructions="Translate any English text into Spanish. Keep it concise."
+    instructions="Translate any English text into Spanish. Keep it concise.",
 )
 
 ##############################################################################
@@ -78,11 +80,11 @@ orchestrator_agent = Agent(
     tools=[
         faux_search_agent.as_tool(
             tool_name="summarize_topic",
-            tool_description="Produce a concise internal summary of the user’s topic."
+            tool_description="Produce a concise internal summary of the user’s topic.",
         ),
         translator_agent.as_tool(
             tool_name="translate_to_spanish",
-            tool_description="Translate text into Spanish."
+            tool_description="Translate text into Spanish.",
         ),
     ],
 )
@@ -90,6 +92,8 @@ orchestrator_agent = Agent(
 ##############################################################################
 # 5) Demo Usage
 ##############################################################################
+
+
 async def main():
     user_query = "Why is pollution increasing ?"
     print(f"\n=== User Query: {user_query} ===\n")
@@ -97,6 +101,7 @@ async def main():
     final_result = await Runner.run(orchestrator_agent, user_query)
     print("=== Final Output ===\n")
     print(final_result.final_output)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

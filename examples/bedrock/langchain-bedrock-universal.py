@@ -1,3 +1,4 @@
+from langchain_community.llms.bedrock import Bedrock as BedrockLLM
 import os
 
 import boto3
@@ -9,8 +10,8 @@ load_dotenv()
 
 # This import is from the "langchain_community" extension package
 # Make sure to install it:
-#   pip install git+https://github.com/hwchase17/langchain.git@<some_version>#subdirectory=plugins/langchain-community
-from langchain_community.llms.bedrock import Bedrock as BedrockLLM
+#   pip install git+https://github.com/hwchase17/langchain.git@<some_version> \
+#       #subdirectory=plugins/langchain-community
 
 
 def init_bedrock():
@@ -154,6 +155,14 @@ def main():
         print("Error initializing Bedrock + Javelin:", e)
         return
 
+    run_non_stream_example(bedrock_runtime_client)
+    run_stream_example(bedrock_runtime_client)
+    run_converse_example(bedrock_runtime_client)
+    run_converse_stream_example(bedrock_runtime_client)
+    print("\nScript Complete.")
+
+
+def run_non_stream_example(bedrock_runtime_client):
     print("\n--- LangChain Non-Streaming Example ---")
     try:
         resp_non_stream = bedrock_langchain_non_stream(bedrock_runtime_client)
@@ -164,6 +173,8 @@ def main():
     except Exception as e:
         print("Error in non-stream example:", e)
 
+
+def run_stream_example(bedrock_runtime_client):
     print("\n--- LangChain Streaming Example (Single-Prompt) ---")
     try:
         resp_stream = bedrock_langchain_stream(bedrock_runtime_client)
@@ -174,6 +185,8 @@ def main():
     except Exception as e:
         print("Error in streaming example:", e)
 
+
+def run_converse_example(bedrock_runtime_client):
     print("\n--- LangChain Converse Example (Non-Streaming) ---")
     try:
         resp_converse = bedrock_langchain_converse(bedrock_runtime_client)
@@ -184,6 +197,8 @@ def main():
     except Exception as e:
         print("Error in converse example:", e)
 
+
+def run_converse_stream_example(bedrock_runtime_client):
     print("\n--- LangChain Converse Example (Streaming) ---")
     try:
         resp_converse_stream = bedrock_langchain_converse_stream(bedrock_runtime_client)
@@ -193,8 +208,6 @@ def main():
             print("\nFinal Combined Streamed Converse Text:\n", resp_converse_stream)
     except Exception as e:
         print("Error in streaming converse example:", e)
-
-    print("\nScript Complete.")
 
 
 if __name__ == "__main__":

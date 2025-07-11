@@ -8,24 +8,32 @@ from openai import AzureOpenAI, AsyncOpenAI
 # Synchronous Testing Functions
 # -------------------------------
 
+
 def init_azure_client_sync():
-    """Initialize a synchronous AzureOpenAI client for chat, completions, and streaming."""
+    """
+    Initialize a synchronous AzureOpenAI client for chat, completions,
+    and streaming.
+    """
     try:
         llm_api_key = os.getenv("AZURE_OPENAI_API_KEY")
         javelin_api_key = os.getenv("JAVELIN_API_KEY")
         if not llm_api_key or not javelin_api_key:
-            raise Exception("AZURE_OPENAI_API_KEY and JAVELIN_API_KEY must be set in your .env file.")
+            raise Exception(
+                "AZURE_OPENAI_API_KEY and JAVELIN_API_KEY must be set in "
+                "your .env file."
+            )
         javelin_headers = {"x-api-key": javelin_api_key}
         client = AzureOpenAI(
             api_key=llm_api_key,
             base_url=f"{os.getenv('JAVELIN_BASE_URL')}/v1/query/azure-openai",
             default_headers=javelin_headers,
-            api_version="2024-02-15-preview"
+            api_version="2024-02-15-preview",
         )
         print(f"Synchronous AzureOpenAI client key: {llm_api_key}")
         return client
     except Exception as e:
         raise Exception(f"Error in init_azure_client_sync: {e}")
+
 
 def init_azure_embeddings_client_sync():
     """Initialize a synchronous AzureOpenAI client for embeddings."""
@@ -33,18 +41,24 @@ def init_azure_embeddings_client_sync():
         llm_api_key = os.getenv("AZURE_OPENAI_API_KEY")
         javelin_api_key = os.getenv("JAVELIN_API_KEY")
         if not llm_api_key or not javelin_api_key:
-            raise Exception("AZURE_OPENAI_API_KEY and JAVELIN_API_KEY must be set in your .env file.")
+            raise Exception(
+                "AZURE_OPENAI_API_KEY and JAVELIN_API_KEY must be set in "
+                "your .env file."
+            )
         javelin_headers = {"x-api-key": javelin_api_key}
         client = AzureOpenAI(
             api_key=llm_api_key,
-            base_url="https://api-dev.javelin.live/v1/query/azure_ada_embeddings",
+            base_url=(
+                "https://api-dev.javelin.live/v1/query/azure_ada_embeddings"
+            ),
             default_headers=javelin_headers,
-            api_version="2023-09-15-preview"
+            api_version="2023-09-15-preview",
         )
         print("Synchronous AzureOpenAI Embeddings client initialized.")
         return client
     except Exception as e:
         raise Exception(f"Error in init_azure_embeddings_client_sync: {e}")
+
 
 def sync_chat_completions(client):
     """Call the chat completions endpoint synchronously."""
@@ -52,13 +66,20 @@ def sync_chat_completions(client):
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Hello, you are a helpful scientific assistant."},
-                {"role": "user", "content": "What is the chemical composition of sugar?"}
-            ]
+                {
+                    "role": "system",
+                    "content": "Hello, you are a helpful scientific assistant.",
+                },
+                {
+                    "role": "user",
+                    "content": "What is the chemical composition of sugar?",
+                },
+            ],
         )
         return response.model_dump_json(indent=2)
     except Exception as e:
         raise Exception(f"Chat completions error: {e}")
+
 
 def sync_embeddings(embeddings_client):
     """Call the embeddings endpoint synchronously."""
@@ -66,25 +87,32 @@ def sync_embeddings(embeddings_client):
         response = embeddings_client.embeddings.create(
             model="text-embedding-ada-002",
             input="The quick brown fox jumps over the lazy dog.",
-            encoding_format="float"
+            encoding_format="float",
         )
         return response.model_dump_json(indent=2)
     except Exception as e:
         raise Exception(f"Embeddings endpoint error: {e}")
+
 
 def sync_stream(client):
     """Call the chat completions endpoint in streaming mode synchronously."""
     try:
         stream = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": "Generate a short poem about nature."}],
-            stream=True
+            messages=[
+                {"role": "user", "content": "Generate a short poem about nature."}
+            ],
+            stream=True,
         )
         collected_chunks = []
         for chunk in stream:
             try:
                 # Only access choices if present and nonempty
-                if hasattr(chunk, "choices") and chunk.choices and len(chunk.choices) > 0:
+                if (
+                    hasattr(chunk, "choices")
+                    and chunk.choices
+                    and len(chunk.choices) > 0
+                ):
                     try:
                         text_chunk = chunk.choices[0].delta.content or ""
                     except (IndexError, AttributeError):
@@ -98,9 +126,11 @@ def sync_stream(client):
     except Exception as e:
         raise Exception(f"Streaming endpoint error: {e}")
 
+
 # -------------------------------
 # Asynchronous Testing Functions
 # -------------------------------
+
 
 async def init_async_azure_client():
     """Initialize an asynchronous AzureOpenAI client for chat completions."""
@@ -108,7 +138,10 @@ async def init_async_azure_client():
         llm_api_key = os.getenv("AZURE_OPENAI_API_KEY")
         javelin_api_key = os.getenv("JAVELIN_API_KEY")
         if not llm_api_key or not javelin_api_key:
-            raise Exception("AZURE_OPENAI_API_KEY and JAVELIN_API_KEY must be set in your .env file.")
+            raise Exception(
+                "AZURE_OPENAI_API_KEY and JAVELIN_API_KEY must be set in "
+                "your .env file."
+            )
         javelin_headers = {"x-api-key": javelin_api_key}
         # Include the API version in the base URL for the async client.
         client = AsyncOpenAI(
@@ -120,23 +153,32 @@ async def init_async_azure_client():
     except Exception as e:
         raise Exception(f"Error in init_async_azure_client: {e}")
 
+
 async def async_chat_completions(client):
     """Call the chat completions endpoint asynchronously."""
     try:
         response = await client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Hello, you are a helpful scientific assistant."},
-                {"role": "user", "content": "What is the chemical composition of sugar?"}
-            ]
+                {
+                    "role": "system",
+                    "content": "Hello, you are a helpful scientific assistant.",
+                },
+                {
+                    "role": "user",
+                    "content": "What is the chemical composition of sugar?",
+                },
+            ],
         )
         return response.model_dump_json(indent=2)
     except Exception as e:
         raise Exception(f"Async chat completions error: {e}")
 
+
 # -------------------------------
 # Main Function
 # -------------------------------
+
 
 def main():
     load_dotenv()  # Load environment variables from .env file
@@ -148,7 +190,13 @@ def main():
         print(f"Error initializing synchronous AzureOpenAI client: {e}")
         return
 
-    # 1) Chat Completions
+    run_sync_chat_completions(client)
+    run_sync_embeddings()
+    run_sync_stream(client)
+    run_async_chat_completions()
+
+
+def run_sync_chat_completions(client):
     print("\n--- AzureOpenAI: Chat Completions ---")
     try:
         chat_response = sync_chat_completions(client)
@@ -159,7 +207,8 @@ def main():
     except Exception as e:
         print(e)
 
-    # 2) Embeddings (using dedicated embeddings client)
+
+def run_sync_embeddings():
     print("\n--- AzureOpenAI: Embeddings ---")
     try:
         embeddings_client = init_azure_embeddings_client_sync()
@@ -171,7 +220,8 @@ def main():
     except Exception as e:
         print(e)
 
-    # 3) Streaming
+
+def run_sync_stream(client):
     print("\n--- AzureOpenAI: Streaming ---")
     try:
         stream_response = sync_stream(client)
@@ -182,7 +232,8 @@ def main():
     except Exception as e:
         print(e)
 
-    # 4) Asynchronous Chat Completions
+
+def run_async_chat_completions():
     print("\n=== Asynchronous AzureOpenAI Testing ===")
     try:
         async_client = asyncio.run(init_async_azure_client())
@@ -199,6 +250,7 @@ def main():
             print(async_response)
     except Exception as e:
         print(e)
+
 
 if __name__ == "__main__":
     main()

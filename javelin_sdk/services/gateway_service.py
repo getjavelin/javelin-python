@@ -1,5 +1,3 @@
-from typing import List
-
 import httpx
 from javelin_sdk.exceptions import (
     BadRequest,
@@ -52,14 +50,16 @@ class GatewayService:
             raise InternalServerError(response=response)
 
     def create_gateway(self, gateway: Gateway) -> str:
-        self._validate_gateway_name(gateway.name)
+        if gateway.name:
+            self._validate_gateway_name(gateway.name)
         response = self.client._send_request_sync(
             Request(method=HttpMethod.POST, gateway=gateway.name, data=gateway.dict())
         )
         return self._process_gateway_response_ok(response)
 
     async def acreate_gateway(self, gateway: Gateway) -> str:
-        self._validate_gateway_name(gateway.name)
+        if gateway.name:
+            self._validate_gateway_name(gateway.name)
         response = await self.client._send_request_async(
             Request(method=HttpMethod.POST, gateway=gateway.name, data=gateway.dict())
         )
@@ -77,7 +77,7 @@ class GatewayService:
         )
         return self._process_gateway_response(response)
 
-    def list_gateways(self) -> List[Gateway]:
+    def list_gateways(self) -> Gateways:
         response = self.client._send_request_sync(
             Request(method=HttpMethod.GET, gateway="###")
         )
@@ -91,7 +91,7 @@ class GatewayService:
         except ValueError:
             return Gateways(gateways=[])
 
-    async def alist_gateways(self) -> List[Gateway]:
+    async def alist_gateways(self) -> Gateways:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.GET, gateway="###")
         )

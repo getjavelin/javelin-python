@@ -8,44 +8,58 @@ from pydantic import BaseModel, Field, field_validator
 class GatewayConfig(BaseModel):
     buid: Optional[str] = Field(
         default=None,
-        description="Business Unit ID (BUID) uniquely identifies the business unit associated with this gateway configuration",
+        description=(
+            "Business Unit ID (BUID) uniquely identifies the business unit "
+            "associated with this gateway configuration"
+        ),
     )
     base_url: Optional[str] = Field(
         default=None,
-        description="The foundational URL where all API requests are directed. It acts as the root from which endpoint paths are extended",
+        description=(
+            "The foundational URL where all API requests are directed. "
+            "It acts as the root from which endpoint paths are extended"
+        ),
     )
     api_key: Optional[str] = Field(
         default=None,
-        description="The API key used for authenticating requests to the API endpoints specified by the base_url",
+        description=(
+            "The API key used for authenticating requests to the API endpoints "
+            "specified by the base_url"
+        ),
     )
     organization_id: Optional[str] = Field(
         default=None, description="Unique identifier of the organization"
     )
     system_namespace: Optional[str] = Field(
         default=None,
-        description="A unique namespace within the system to prevent naming conflicts and to organize resources logically",
+        description=(
+            "A unique namespace within the system to prevent naming conflicts "
+            "and to organize resources logically"
+        ),
     )
 
 
 class Gateway(BaseModel):
-    gateway_id: str = Field(
+    gateway_id: Optional[str] = Field(
         default=None, description="Unique identifier for the gateway"
     )
-    name: str = Field(default=None, description="Name of the gateway")
-    type: str = Field(
+    name: Optional[str] = Field(default=None, description="Name of the gateway")
+    type: Optional[str] = Field(
         default=None,
         description="The type of this gateway (e.g., development, staging, production)",
     )
     enabled: Optional[bool] = Field(
         default=True, description="Whether the gateway is enabled"
     )
-    config: GatewayConfig = Field(
+    config: Optional[GatewayConfig] = Field(
         default=None, description="Configuration for the gateway"
     )
 
 
 class Gateways(BaseModel):
-    gateways: List[Gateway] = Field(default=[], description="List of gateways")
+    gateways: List[Gateway] = Field(
+        default_factory=list, description="List of gateways"
+    )
 
 
 class Budget(BaseModel):
@@ -115,24 +129,42 @@ class ContentFilter(BaseModel):
 
 
 class ArchivePolicy(BaseModel):
-    enabled: Optional[bool] = Field(default=None, description="Whether archiving is enabled")
+    enabled: Optional[bool] = Field(
+        default=None, description="Whether archiving is enabled"
+    )
     retention: Optional[int] = Field(default=None, description="Data retention period")
 
 
 class Policy(BaseModel):
     dlp: Optional[Dlp] = Field(default=None, description="DLP configuration")
-    archive: Optional[ArchivePolicy] = Field(default=None, description="Archive policy configuration")
-    enabled: Optional[bool] = Field(default=None, description="Whether the policy is enabled")
-    prompt_safety: Optional[PromptSafety] = Field(default=None, description="Prompt Safety Description")
-    content_filter: Optional[ContentFilter] = Field(default=None, description="Content Filter Description")
-    security_filters: Optional[SecurityFilters] = Field(default=None, description="Security Filters Description")
+    archive: Optional[ArchivePolicy] = Field(
+        default=None, description="Archive policy configuration"
+    )
+    enabled: Optional[bool] = Field(
+        default=None, description="Whether the policy is enabled"
+    )
+    prompt_safety: Optional[PromptSafety] = Field(
+        default=None, description="Prompt Safety Description"
+    )
+    content_filter: Optional[ContentFilter] = Field(
+        default=None, description="Content Filter Description"
+    )
+    security_filters: Optional[SecurityFilters] = Field(
+        default=None, description="Security Filters Description"
+    )
 
 
 class RouteConfig(BaseModel):
     policy: Optional[Policy] = Field(default=None, description="Policy configuration")
-    retries: Optional[int] = Field(default=None, description="Number of retries for the route")
-    rate_limit: Optional[int] = Field(default=None, description="Rate limit for the route")
-    unified_endpoint: Optional[bool] = Field(default=None, description="Whether unified endpoint is enabled")
+    retries: Optional[int] = Field(
+        default=None, description="Number of retries for the route"
+    )
+    rate_limit: Optional[int] = Field(
+        default=None, description="Rate limit for the route"
+    )
+    unified_endpoint: Optional[bool] = Field(
+        default=None, description="Whether unified endpoint is enabled"
+    )
     request_chain: Optional[Dict[str, Any]] = Field(
         None, description="Request chain configuration"
     )
@@ -142,9 +174,9 @@ class RouteConfig(BaseModel):
 
 
 class Model(BaseModel):
-    name: str = Field(default=None, description="Name of the model")
-    provider: str = Field(default=None, description="Provider of the model")
-    suffix: str = Field(default=None, description="Suffix for the model")
+    name: Optional[str] = Field(default=None, description="Name of the model")
+    provider: Optional[str] = Field(default=None, description="Provider of the model")
+    suffix: Optional[str] = Field(default=None, description="Suffix for the model")
     weight: Optional[int] = Field(default=None, description="Weight of the model")
     virtual_secret_name: Optional[str] = Field(None, description="Virtual secret name")
     fallback_enabled: Optional[bool] = Field(
@@ -154,19 +186,23 @@ class Model(BaseModel):
 
 
 class Route(BaseModel):
-    name: str = Field(default=None, description="Name of the route")
-    type: str = Field(
+    name: Optional[str] = Field(default=None, description="Name of the route")
+    type: Optional[str] = Field(
         default=None, description="Type of the route chat, completion, etc"
     )
     enabled: Optional[bool] = Field(
         default=True, description="Whether the route is enabled"
     )
-    models: List[Model] = Field(default=[], description="List of models for the route")
-    config: RouteConfig = Field(default=None, description="Configuration for the route")
+    models: List[Model] = Field(
+        default_factory=list, description="List of models for the route"
+    )
+    config: Optional[RouteConfig] = Field(
+        default=None, description="Configuration for the route"
+    )
 
 
 class Routes(BaseModel):
-    routes: List[Route] = Field(default=[], description="List of routes")
+    routes: List[Route] = Field(default_factory=list, description="List of routes")
 
 
 class ArrayHandling(str, Enum):
@@ -199,10 +235,10 @@ class TransformRule(BaseModel):
 
 class ModelSpec(BaseModel):
     input_rules: List[TransformRule] = Field(
-        default=[], description="Rules for input transformation"
+        default_factory=list, description="Rules for input transformation"
     )
     output_rules: List[TransformRule] = Field(
-        default=[], description="Rules for output transformation"
+        default_factory=list, description="Rules for output transformation"
     )
     response_body_path: str = Field(
         default="delta.text", description="Path to extract text from streaming response"
@@ -220,7 +256,7 @@ class ModelSpec(BaseModel):
         default={}, description="Output schema for validation"
     )
     supported_features: List[str] = Field(
-        default=[], description="List of supported features"
+        default_factory=list, description="List of supported features"
     )
     max_tokens: Optional[int] = Field(
         default=None, description="Maximum tokens supported"
@@ -234,7 +270,7 @@ class ModelSpec(BaseModel):
 
 
 class ProviderConfig(BaseModel):
-    api_base: str = Field(default=None, description="Base URL of the API")
+    api_base: Optional[str] = Field(default=None, description="Base URL of the API")
     api_type: Optional[str] = Field(default=None, description="Type of the API")
     api_version: Optional[str] = Field(default=None, description="Version of the API")
     deployment_name: Optional[str] = Field(
@@ -252,15 +288,15 @@ class ProviderConfig(BaseModel):
 
 
 class Provider(BaseModel):
-    name: str = Field(default=None, description="Name of the Provider")
-    type: str = Field(default=None, description="Type of the Provider")
+    name: Optional[str] = Field(default=None, description="Name of the Provider")
+    type: Optional[str] = Field(default=None, description="Type of the Provider")
     enabled: Optional[bool] = Field(
         default=True, description="Whether the provider is enabled"
     )
     vault_enabled: Optional[bool] = Field(
         default=True, description="Whether the secrets vault is enabled"
     )
-    config: ProviderConfig = Field(
+    config: Optional[ProviderConfig] = Field(
         default=None, description="Configuration for the provider"
     )
 
@@ -270,11 +306,13 @@ class Provider(BaseModel):
 
 
 class Providers(BaseModel):
-    providers: List[Provider] = Field(default=[], description="List of providers")
+    providers: List[Provider] = Field(
+        default_factory=list, description="List of providers"
+    )
 
 
 class InfoType(BaseModel):
-    name: str = Field(default=None, description="Name of the infoType")
+    name: Optional[str] = Field(default=None, description="Name of the infoType")
     description: Optional[str] = Field(
         default=None, description="Description of the InfoType"
     )
@@ -286,15 +324,15 @@ class InfoType(BaseModel):
 
 
 class Transformation(BaseModel):
-    method: str = Field(
+    method: Optional[str] = Field(
         default=None,
         description="Method of the transformation Mask, Redact, Replace, etc",
     )
 
 
 class TemplateConfig(BaseModel):
-    infoTypes: Optional[List[InfoType]] = Field(
-        default=[], description="List of InfoTypes"
+    infoTypes: List[InfoType] = Field(
+        default_factory=list, description="List of InfoTypes"
     )
     transformation: Optional[Transformation] = Field(
         default=None, description="Transformation to be used"
@@ -314,28 +352,33 @@ class TemplateConfig(BaseModel):
 
 
 class TemplateModel(BaseModel):
-    name: str = Field(default=None, description="Name of the model")
-    provider: str = Field(default=None, description="Provider of the model")
-    suffix: str = Field(default=None, description="Suffix for the model")
+    name: Optional[str] = Field(default=None, description="Name of the model")
+    provider: Optional[str] = Field(default=None, description="Provider of the model")
+    suffix: Optional[str] = Field(default=None, description="Suffix for the model")
 
 
 class Template(BaseModel):
-    name: str = Field(default=None, description="Name of the Template")
-    description: str = Field(default=None, description="Description of the Template")
-    type: str = Field(default=None, description="Type of the Template")
+    name: Optional[str] = Field(default=None, description="Name of the Template")
+    description: Optional[str] = Field(
+        default=None, description="Description of the Template"
+    )
+    type: Optional[str] = Field(default=None, description="Type of the Template")
     enabled: Optional[bool] = Field(
         default=True, description="Whether the template is enabled"
     )
     models: List[TemplateModel] = Field(
-        default=[], description="List of models for the template"
+        default_factory=list, description="List of models for the template"
     )
-    config: TemplateConfig = Field(
+    config: Optional[TemplateConfig] = Field(
         default=None, description="Configuration for the template"
     )
 
 
 class Templates(BaseModel):
-    templates: List[Template] = Field(default=[], description="List of templates")
+    templates: List[Template] = Field(
+        default_factory=list, description="List of templates"
+    )
+
 
 class SecretType(str, Enum):
     AWS = "aws"
@@ -343,18 +386,26 @@ class SecretType(str, Enum):
 
 
 class Secret(BaseModel):
-    api_key: str = Field(default=None, description="Key of the Secret")
-    api_key_secret_name: str = Field(default=None, description="Name of the Secret")
-    api_key_secret_key: str = Field(default=None, description="API Key of the Secret")
-    api_key_secret_key_javelin: str = Field(
+    api_key: Optional[str] = Field(default=None, description="Key of the Secret")
+    api_key_secret_name: Optional[str] = Field(
+        default=None, description="Name of the Secret"
+    )
+    api_key_secret_key: Optional[str] = Field(
+        default=None, description="API Key of the Secret"
+    )
+    api_key_secret_key_javelin: Optional[str] = Field(
         default=None, description="Virtual API Key of the Secret"
     )
-    provider_name: str = Field(default=None, description="Provider Name of the Secret")
-    query_param_key: str = Field(
+    provider_name: Optional[str] = Field(
+        default=None, description="Provider Name of the Secret"
+    )
+    query_param_key: Optional[str] = Field(
         default=None, description="Query Param Key of the Secret"
     )
-    header_key: str = Field(default=None, description="Header Key of the Secret")
-    group: str = Field(default=None, description="Group of the Secret")
+    header_key: Optional[str] = Field(
+        default=None, description="Header Key of the Secret"
+    )
+    group: Optional[str] = Field(default=None, description="Group of the Secret")
     enabled: Optional[bool] = Field(
         default=True, description="Whether the secret is enabled"
     )
@@ -379,7 +430,7 @@ class Secret(BaseModel):
 
 
 class Secrets(BaseModel):
-    secrets: List[Secret] = Field(default=[], description="List of secrets")
+    secrets: List[Secret] = Field(default_factory=list, description="List of secrets")
 
 
 class Message(BaseModel):
@@ -428,6 +479,9 @@ class JavelinConfig(BaseModel):
     api_version: Optional[str] = Field(default=None, description="API version")
     default_headers: Optional[Dict[str, str]] = Field(
         default=None, description="Default headers"
+    )
+    timeout: Optional[float] = Field(
+        default=None, description="Request timeout in seconds"
     )
 
     @field_validator("javelin_api_key")
@@ -494,11 +548,6 @@ class Request:
         self.list_guardrails = list_guardrails
 
 
-class Message(BaseModel):
-    role: str
-    content: str
-
-
 class ChatCompletion(BaseModel):
     id: str
     object: str = "chat.completion"
@@ -528,15 +577,6 @@ class ModelConfig(BaseModel):
     fallback_codes: Optional[List[int]] = Field(
         default=None, description="Fallback codes"
     )
-
-
-class JavelinConfig(BaseModel):
-    base_url: str = Field(default="https://api-dev.javelin.live")
-    javelin_api_key: str
-    javelin_virtualapikey: Optional[str] = None
-    llm_api_key: Optional[str] = None
-    api_version: Optional[str] = None
-    timeout: Optional[float] = None
 
 
 class RemoteModelSpec(BaseModel):

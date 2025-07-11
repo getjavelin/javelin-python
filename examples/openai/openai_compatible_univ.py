@@ -1,7 +1,10 @@
-# This example demonstrates how Javelin uses OpenAI's schema as a standardized interface for different LLM providers.
-# By adopting OpenAI's widely-used request/response format, Javelin enables seamless integration with various LLM providers
-# (like Anthropic, Bedrock, Mistral, etc.) while maintaining a consistent API structure. This allows developers to use the
-# same code pattern regardless of the underlying model provider, with Javelin handling the necessary translations and adaptations behind the scenes.
+# This example demonstrates how Javelin uses OpenAI's schema as a standardized
+# interface for different LLM providers. By adopting OpenAI's widely-used
+# request/response format, Javelin enables seamless integration with various
+# LLM providers (like Anthropic, Bedrock, Mistral, etc.) while maintaining
+# a consistent API structure. This allows developers to use the same code
+# pattern regardless of the underlying model provider, with Javelin handling
+# the necessary translations and adaptations behind the scenes.
 
 from javelin_sdk import JavelinClient, JavelinConfig
 import os
@@ -29,7 +32,8 @@ custom_headers = {
     "x-javelin-route": "openai_univ",
     "x-javelin-provider": "https://api.openai.com/v1",
     "x-api-key": os.getenv("JAVELIN_API_KEY"),  # Use environment variable for security
-    "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",  # Use environment variable for security
+    # Use environment variable for security
+    "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
 }
 client.set_headers(custom_headers)
 

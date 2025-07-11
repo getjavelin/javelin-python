@@ -6,6 +6,7 @@ from javelin_sdk import JavelinClient, JavelinConfig
 
 # Load environment variables
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # Javelin Setup
@@ -25,7 +26,10 @@ headers = {
 
 # Messages and dummy tool call (check if tool support throws any error)
 messages = [
-    {"role": "user", "content": "Please call the tool to fetch today's weather in Paris."}
+    {
+        "role": "user",
+        "content": "Please call the tool to fetch today's weather in Paris.",
+    }
 ]
 
 tools = [
@@ -37,10 +41,11 @@ tools = [
             "properties": {
                 "city": {"type": "string", "description": "Name of the city"},
             },
-            "required": ["city"]
-        }
+            "required": ["city"],
+        },
     }
 ]
+
 
 async def run_anthropic_test():
     print("\n==== Testing Anthropic Function Calling Support via Javelin ====")
@@ -63,6 +68,7 @@ async def run_anthropic_test():
         print(json.dumps(result, indent=2))
     except Exception as e:
         print(f"Function/tool call failed for Anthropic: {str(e)}")
+
 
 if __name__ == "__main__":
     asyncio.run(run_anthropic_test())

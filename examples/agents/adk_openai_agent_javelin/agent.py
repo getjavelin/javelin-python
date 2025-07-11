@@ -69,7 +69,7 @@ report_agent = LlmAgent(
 # Coordinator agent running all three sequentially
 coordinator = SequentialAgent(
     name="OpenAI_MultiAgentCoordinator",
-    sub_agents=[research_agent, summary_agent, report_agent]
+    sub_agents=[research_agent, summary_agent, report_agent],
 )
 root_agent = coordinator
 
@@ -95,6 +95,7 @@ async def main():
             break
 
     print("\n--- Final Report ---\n", final_answer)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

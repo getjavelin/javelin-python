@@ -33,7 +33,8 @@ custom_headers = {
     "x-javelin-model": "gemini-1.5-flash",
     "x-javelin-provider": "https://generativelanguage.googleapis.com/v1beta/openai",
     "x-api-key": os.getenv("JAVELIN_API_KEY"),  # Use environment variable for security
-    "Authorization": f"Bearer {os.getenv('GEMINI_API_KEY')}",  # Use environment variable for security
+    # Use environment variable for security
+    "Authorization": f"Bearer {os.getenv('GEMINI_API_KEY')}",
 }
 
 

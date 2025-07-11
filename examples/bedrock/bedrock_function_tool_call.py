@@ -8,9 +8,12 @@ from javelin_sdk import JavelinClient, JavelinConfig
 
 # Load ENV
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # Print response utility
+
+
 def print_response(provider: str, response: Dict[str, Any]) -> None:
     print(f"\n=== Response from {provider} ===")
     print(json.dumps(response, indent=2))
@@ -35,7 +38,9 @@ async def test_function_call():
     print("\n==== Bedrock Function Calling Test ====")
     try:
         query_body = {
-            "messages": [{"role": "user", "content": "Get weather for Paris in Celsius"}],
+            "messages": [
+                {"role": "user", "content": "Get weather for Paris in Celsius"}
+            ],
             "functions": [
                 {
                     "name": "get_weather",
@@ -44,10 +49,13 @@ async def test_function_call():
                         "type": "object",
                         "properties": {
                             "city": {"type": "string"},
-                            "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+                            "unit": {
+                                "type": "string",
+                                "enum": ["celsius", "fahrenheit"],
+                            },
                         },
-                        "required": ["city"]
-                    }
+                        "required": ["city"],
+                    },
                 }
             ],
             "function_call": "auto",
@@ -81,11 +89,14 @@ async def test_tool_call():
                         "parameters": {
                             "type": "object",
                             "properties": {
-                                "category": {"type": "string", "description": "e.g. success, life"}
+                                "category": {
+                                    "type": "string",
+                                    "description": "e.g. success, life",
+                                }
                             },
-                            "required": []
-                        }
-                    }
+                            "required": [],
+                        },
+                    },
                 }
             ],
             "tool_choice": "auto",

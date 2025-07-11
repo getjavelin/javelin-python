@@ -50,7 +50,7 @@ img = client.images.generate(
     model="gpt-image-1",
     prompt="A friendly dog playing in a park.",
     n=1,
-    size="1024x1024"
+    size="1024x1024",
 )
 
 image_bytes = base64.b64decode(img.data[0].b64_json)

@@ -1,4 +1,3 @@
-import json
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -6,6 +5,7 @@ from pydantic import BaseModel
 from javelin_sdk import JavelinClient, JavelinConfig
 
 load_dotenv()
+
 
 def init_gemini_client():
     gemini_api_key = os.getenv("GEMINI_API_KEY")
@@ -24,6 +24,7 @@ def init_gemini_client():
 
     return openai_client
 
+
 def gemini_chat_completions(client):
     response = client.chat.completions.create(
         model="gemini-1.5-flash",
@@ -35,52 +36,64 @@ def gemini_chat_completions(client):
     )
     return response
 
+
 def gemini_function_calling(client):
-    tools = [{
-        "type": "function",
-        "function": {
-            "name": "get_weather",
-            "description": "Get the weather in a given location",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "City and state, e.g. Chicago, IL"
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_weather",
+                "description": "Get the weather in a given location",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "location": {
+                            "type": "string",
+                            "description": "City and state, e.g. Chicago, IL",
+                        },
+                        "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
                     },
-                    "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+                    "required": ["location"],
                 },
-                "required": ["location"]
-            }
+            },
         }
-    }]
-    messages = [{"role": "user", "content": "What's the weather like in Chicago today?"}]
+    ]
+    messages = [
+        {"role": "user", "content": "What's the weather like in Chicago today?"}
+    ]
     response = client.chat.completions.create(
         model="gemini-1.5-flash", messages=messages, tools=tools, tool_choice="auto"
     )
     return response.model_dump_json(indent=2)
+
 
 class CalendarEvent(BaseModel):
     name: str
     date: str
     participants: list[str]
 
+
 def gemini_structured_output(client):
     completion = client.beta.chat.completions.parse(
         model="gemini-1.5-flash",
         messages=[
             {"role": "system", "content": "Extract the event information."},
-            {"role": "user", "content": "John and Susan are going to an AI conference on Friday."},
+            {
+                "role": "user",
+                "content": "John and Susan are going to an AI conference on Friday.",
+            },
         ],
         response_format=CalendarEvent,
     )
     return completion.model_dump_json(indent=2)
+
 
 def gemini_embeddings(client):
     response = client.embeddings.create(
         input="Your text string goes here", model="text-embedding-004"
     )
     return response.model_dump_json(indent=2)
+
 
 def main():
     print("=== Gemini Example ===")
@@ -90,7 +103,14 @@ def main():
         print(f"Error initializing Gemini client: {e}")
         return
 
-    # 1. Chat Completion
+    run_gemini_chat_completions(gemini_client)
+    run_gemini_function_calling(gemini_client)
+    run_gemini_structured_output(gemini_client)
+    run_gemini_embeddings(gemini_client)
+    print("\nScript Complete")
+
+
+def run_gemini_chat_completions(gemini_client):
     print("\n--- Gemini: Chat Completions ---")
     try:
         response = gemini_chat_completions(gemini_client)
@@ -103,7 +123,8 @@ def main():
     except Exception as e:
         print(f"❌ failed - Error in chat completions: {e}")
 
-    # 2. Function Calling
+
+def run_gemini_function_calling(gemini_client):
     print("\n--- Gemini: Function Calling ---")
     try:
         func_response = gemini_function_calling(gemini_client)
@@ -111,7 +132,8 @@ def main():
     except Exception as e:
         print(f"❌ failed - Error in function calling: {e}")
 
-    # 3. Structured Output
+
+def run_gemini_structured_output(gemini_client):
     print("\n--- Gemini: Structured Output ---")
     try:
         structured_response = gemini_structured_output(gemini_client)
@@ -119,7 +141,8 @@ def main():
     except Exception as e:
         print(f"❌ failed - Error in structured output: {e}")
 
-    # 4. Embeddings
+
+def run_gemini_embeddings(gemini_client):
     print("\n--- Gemini: Embeddings ---")
     try:
         embeddings_response = gemini_embeddings(gemini_client)
@@ -127,7 +150,6 @@ def main():
     except Exception as e:
         print(f"❌ failed - Error in embeddings: {e}")
 
-    print("\nScript Complete")
 
 if __name__ == "__main__":
     main()

@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Helper function to pretty print responses
+
+
 def print_response(provider: str, response: Dict[str, Any]) -> None:
     print(f"=== Response from {provider} ===")
     print(json.dumps(response, indent=2))

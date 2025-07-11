@@ -1,5 +1,3 @@
-from typing import List
-
 import httpx
 from javelin_sdk.exceptions import (
     BadRequest,
@@ -49,7 +47,8 @@ class TemplateService:
                 method=HttpMethod.POST, template=template.name, data=template.dict()
             )
         )
-        self.reload_data_protection(template.name)
+        if template.name:
+            self.reload_data_protection(template.name)
         return self._process_template_response_ok(response)
 
     async def acreate_template(self, template) -> str:
@@ -60,7 +59,8 @@ class TemplateService:
                 method=HttpMethod.POST, template=template.name, data=template.dict()
             )
         )
-        await self.areload_data_protection(template.name)
+        if template.name:
+            await self.areload_data_protection(template.name)
         return self._process_template_response_ok(response)
 
     def get_template(self, template_name: str) -> Template:
@@ -75,7 +75,7 @@ class TemplateService:
         )
         return self._process_template_response(response)
 
-    def list_templates(self) -> List[Template]:
+    def list_templates(self) -> Templates:
         response = self.client._send_request_sync(
             Request(method=HttpMethod.GET, template="###")
         )
@@ -88,7 +88,7 @@ class TemplateService:
         except ValueError:
             return Templates(templates=[])
 
-    async def alist_templates(self) -> List[Template]:
+    async def alist_templates(self) -> Templates:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.GET, template="###")
         )
@@ -107,7 +107,8 @@ class TemplateService:
         response = self.client._send_request_sync(
             Request(method=HttpMethod.PUT, template=template.name, data=template.dict())
         )
-        self.reload_data_protection(template.name)
+        if template.name:
+            self.reload_data_protection(template.name)
         return self._process_template_response_ok(response)
 
     async def aupdate_template(self, template) -> str:
@@ -116,7 +117,8 @@ class TemplateService:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.PUT, template=template.name, data=template.dict())
         )
-        await self.areload_data_protection(template.name)
+        if template.name:
+            await self.areload_data_protection(template.name)
         return self._process_template_response_ok(response)
 
     def delete_template(self, template_name: str) -> str:
@@ -140,7 +142,7 @@ class TemplateService:
             Request(
                 method=HttpMethod.POST,
                 template=f"{strategy_name}/reload",
-                data="",
+                data={},
                 is_reload=True,
             )
         )
@@ -151,7 +153,7 @@ class TemplateService:
             Request(
                 method=HttpMethod.POST,
                 template=f"{strategy_name}/reload",
-                data="",
+                data={},
                 is_reload=True,
             )
         )

@@ -179,8 +179,14 @@ def conversation_demo() -> None:
 # -----------------------------------------------------------------------------
 def main():
     print("=== LangChain + OpenAI Javelin Examples (No Text Completion) ===")
+    run_chat_completion_sync()
+    run_chat_completion_stream()
+    run_embeddings_example()
+    run_conversation_demo()
+    print("\n=== Script Complete ===")
 
-    # 1) Chat Completion (Synchronous)
+
+def run_chat_completion_sync():
     print("\n--- Chat Completion: Synchronous ---")
     try:
         question = "What is machine learning?"
@@ -192,7 +198,8 @@ def main():
     except Exception as e:
         print(f"Error in synchronous chat completion: {e}")
 
-    # 2) Chat Completion (Streaming)
+
+def run_chat_completion_stream():
     print("\n--- Chat Completion: Streaming ---")
     try:
         question2 = "Tell me a short joke."
@@ -204,7 +211,8 @@ def main():
     except Exception as e:
         print(f"Error in streaming chat completion: {e}")
 
-    # 3) Embeddings Example
+
+def run_embeddings_example():
     print("\n--- Embeddings Example ---")
     try:
         sample_text = "The quick brown fox jumps over the lazy dog."
@@ -216,14 +224,13 @@ def main():
     except Exception as e:
         print(f"Error in embeddings: {e}")
 
-    # 4) Conversation Demo (Manual, Non-Streaming)
+
+def run_conversation_demo():
     print("\n--- Conversation Demo (Manual, Non-Streaming) ---")
     try:
         conversation_demo()
     except Exception as e:
         print(f"Error in conversation demo: {e}")
-
-    print("\n=== Script Complete ===")
 
 
 if __name__ == "__main__":

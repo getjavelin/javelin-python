@@ -7,9 +7,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Helper for pretty print
+
+
 def print_response(provider: str, response: Dict[str, Any]) -> None:
     print(f"=== Response from {provider} ===")
     print(json.dumps(response, indent=2))
+
 
 # Javelin client config
 config = JavelinConfig(
@@ -40,7 +43,7 @@ query_body = {
     "messages": [
         {
             "role": "user",
-            "content": [{"type": "text", "text": "What are the three primary colors?"}]
+            "content": [{"type": "text", "text": "What are the three primary colors?"}],
         }
     ],
 }

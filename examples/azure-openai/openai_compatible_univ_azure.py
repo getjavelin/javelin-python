@@ -1,7 +1,10 @@
-# This example demonstrates how Javelin uses OpenAI's schema as a standardized interface for different LLM providers.
-# By adopting OpenAI's widely-used request/response format, Javelin enables seamless integration with various LLM providers
-# (like Anthropic, Bedrock, Mistral, etc.) while maintaining a consistent API structure. This allows developers to use the
-# same code pattern regardless of the underlying model provider, with Javelin handling the necessary translations and adaptations behind the scenes.
+# This example demonstrates how Javelin uses OpenAI's schema as a standardized
+# interface for different LLM providers. By adopting OpenAI's widely-used
+# request/response format, Javelin enables seamless integration with various LLM
+# providers (like Anthropic, Bedrock, Mistral, etc.) while maintaining a
+# consistent API structure. This allows developers to use the same code pattern
+# regardless of the underlying model provider, with Javelin handling the
+# necessary translations and adaptations behind the scenes.
 
 from javelin_sdk import JavelinClient, JavelinConfig
 import os
