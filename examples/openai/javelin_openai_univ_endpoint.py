@@ -33,7 +33,8 @@ custom_headers = {
     "x-javelin-model": "gpt-4",
     "x-javelin-provider": "https://api.openai.com/v1",
     "x-api-key": os.getenv("JAVELIN_API_KEY"),  # Use environment variable for security
-    "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",  # Use environment variable for security
+    # Use environment variable for security
+    "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
 }
 
 

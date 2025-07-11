@@ -150,7 +150,7 @@ class ProviderService:
             Request(method=HttpMethod.DELETE, provider=provider_name)
         )
 
-        ## reload the provider
+        # reload the provider
         self.reload_provider(provider_name=provider_name)
         return self._process_provider_response_ok(response)
 
@@ -160,7 +160,7 @@ class ProviderService:
             Request(method=HttpMethod.DELETE, provider=provider_name)
         )
 
-        ## reload the provider
+        # reload the provider
         await self.areload_provider(provider_name=provider_name)
         return self._process_provider_response_ok(response)
 

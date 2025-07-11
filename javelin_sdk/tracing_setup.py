@@ -13,8 +13,10 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 # --- OpenTelemetry Setup ---
-# TRACES_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "https://api-dev.javelin.live/v1/admin/traces")
-# TRACES_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "https://logfire-api.pydantic.dev/v1/traces")
+# TRACES_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+#                              "https://api-dev.javelin.live/v1/admin/traces")
+# TRACES_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+#                              "https://logfire-api.pydantic.dev/v1/traces")
 
 TRACES_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
 TRACES_HEADERS = os.getenv("OTEL_EXPORTER_OTLP_HEADERS")

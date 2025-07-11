@@ -19,6 +19,7 @@ from javelin_sdk.models import (
     Secret,
     Secrets,
     Template,
+    TemplateConfig,
 )
 from pydantic import ValidationError
 
@@ -232,7 +233,8 @@ def create_provider(args):
             config=config,
         )
 
-        # Assuming client.create_provider accepts a Pydantic model and handles it internally
+        # Assuming client.create_provider accepts a Pydantic model and handles it
+        # internally
         client.create_provider(provider)
         print(f"Provider '{args.name}' created successfully.")
 
@@ -349,7 +351,8 @@ def create_route(args):
             config=config,
         )
 
-        # Assuming client.create_route accepts a Pydantic model and handles it internally
+        # Assuming client.create_route accepts a Pydantic model and handles it
+        # internally
         client.create_route(route)
         print(f"Route '{args.name}' created successfully.")
 
@@ -442,8 +445,6 @@ def delete_route(args):
         print(f"An error occurred: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
-
-
 
 
 def create_secret(args):

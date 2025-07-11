@@ -76,7 +76,10 @@ def main():
     parser = argparse.ArgumentParser(
         description="The CLI for Javelin.",
         formatter_class=argparse.RawTextHelpFormatter,
-        epilog="See https://docs.getjavelin.io/docs/javelin-python/cli for more detailed documentation.",
+        epilog=(
+            "See https://docs.getjavelin.io/docs/javelin-python/cli for more "
+            "detailed documentation."
+        ),
     )
     parser.add_argument(
         "--version", action="version", version=f"Javelin CLI v{package_version}"
@@ -95,7 +98,10 @@ def main():
     # Gateway CRUD
     gateway_parser = subparsers.add_parser(
         "gateway",
-        help="Manage gateways: create, list, update, and delete gateways for routing requests.",
+        help=(
+            "Manage gateways: create, list, update, and delete gateways for "
+            "routing requests."
+        ),
     )
     gateway_subparsers = gateway_parser.add_subparsers()
 
@@ -147,7 +153,10 @@ def main():
     # Provider CRUD
     provider_parser = subparsers.add_parser(
         "provider",
-        help="Manage model providers: configure and manage large language model providers.",
+        help=(
+            "Manage model providers: configure and manage large language model "
+            "providers."
+        ),
     )
     provider_subparsers = provider_parser.add_subparsers()
 
@@ -205,7 +214,10 @@ def main():
     # Route CRUD
     route_parser = subparsers.add_parser(
         "route",
-        help="Manage routing rules: define and control the routing logic for handling requests.",
+        help=(
+            "Manage routing rules: define and control the routing logic for "
+            "handling requests."
+        ),
     )
     route_subparsers = route_parser.add_subparsers()
 
@@ -263,7 +275,10 @@ def main():
     # Secret CRUD
     secret_parser = subparsers.add_parser(
         "secret",
-        help="Manage API secrets: securely handle and manage API keys and credentials for access control.",
+        help=(
+            "Manage API secrets: securely handle and manage API keys and "
+            "credentials for access control."
+        ),
     )
     secret_subparsers = secret_parser.add_subparsers()
 
@@ -317,7 +332,10 @@ def main():
     # Template CRUD
     template_parser = subparsers.add_parser(
         "template",
-        help="Manage templates: configure and manage templates for sensitive data protection.",
+        help=(
+            "Manage templates: configure and manage templates for sensitive "
+            "data protection."
+        ),
     )
     template_subparsers = template_parser.add_subparsers()
 

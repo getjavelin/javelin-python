@@ -115,11 +115,11 @@ class SecretService:
             "api_key_secret_key",
         ]
 
-        ## Get the current secret
+        # Get the current secret
         if secret.api_key and secret.provider_name:
             current_secret = self.get_secret(secret.api_key, secret.provider_name)
 
-        ## Compare the restricted fields of current secret with the new secret
+        # Compare the restricted fields of current secret with the new secret
         for field in restricted_fields:
             try:
                 if getattr(current_secret, field) != getattr(secret, field):
@@ -138,7 +138,7 @@ class SecretService:
             )
         )
 
-        ## Reload the secret
+        # Reload the secret
         if secret.api_key:
             self.reload_secret(secret.api_key)
         return self._process_secret_response_ok(response)
@@ -154,11 +154,11 @@ class SecretService:
             "provider_config",
         ]
 
-        ## Get the current secret
+        # Get the current secret
         if secret.api_key and secret.provider_name:
             current_secret = self.get_secret(secret.api_key, secret.provider_name)
 
-        ## Compare the restricted fields of current secret with the new secret
+        # Compare the restricted fields of current secret with the new secret
         for field in restricted_fields:
             try:
                 if getattr(current_secret, field) != getattr(secret, field):
@@ -177,7 +177,7 @@ class SecretService:
             )
         )
 
-        ## Reload the secret
+        # Reload the secret
         if secret.api_key:
             await self.areload_secret(secret.api_key)
         return self._process_secret_response_ok(response)
@@ -189,7 +189,7 @@ class SecretService:
             )
         )
 
-        ## Reload the secret
+        # Reload the secret
         self.reload_secret(secret_name=secret_name)
         return self._process_secret_response_ok(response)
 
@@ -200,7 +200,7 @@ class SecretService:
             )
         )
 
-        ## Reload the secret
+        # Reload the secret
         await self.areload_secret(secret_name=secret_name)
         return self._process_secret_response_ok(response)
 

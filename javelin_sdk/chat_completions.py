@@ -111,64 +111,20 @@ class BaseCompletions:
         provider_api_base = custom_headers.get("x-javelin-provider", "")
 
         if not provider_api_base:
-            route = custom_headers.get("x-javelin-route", "")
-            route_info = self.client.route_service.get_route(route)
-            primary_model = route_info.models[0]
-            provider_name = primary_model.provider
-            provider_object = self.client.provider_service.get_provider(provider_name)
-            provider_api_base = provider_object.config.api_base
-            self.client.set_headers({"x-javelin-provider": provider_api_base})
+            provider_api_base = self._get_provider_api_base_from_route(custom_headers)
 
         provider_name = self._determine_provider_name(provider_api_base)
-
-        # First validate if endpoint_type is provided
-        if endpoint_type:
-            if endpoint_type not in [e.value for e in EndpointType]:
-                valid_types = ", ".join([e.value for e in EndpointType])
-                raise ValueError(
-                    f"Invalid endpoint_type: {endpoint_type}. "
-                    f"Valid types are: {valid_types}"
-                )
-        # Only set defaults if no endpoint_type provided
-        else:
-            if provider_name == "bedrock":
-                endpoint_type = (
-                    EndpointType.INVOKE_STREAM.value
-                    if stream
-                    else EndpointType.INVOKE.value
-                )
-            elif provider_name == "anthropic":
-                endpoint_type = "messages"  # Use string instead of enum value
-            else:
-                endpoint_type = EndpointType.CHAT.value
+        endpoint_type = self._validate_and_set_endpoint_type(
+            endpoint_type, provider_name, stream
+        )
         request_data = self._build_request_data(
             "chat", messages_or_prompt, temperature, max_tokens, kwargs
         )
 
-        if provider_name == "bedrock":
-            # Ensure provider_api_base doesn't end with slash and endpoint_type is valid
-            base_url = provider_api_base.rstrip("/")
-            # Construct the path: <base_url>/model/<model_name>/<endpoint_type>
-            if model:
-                rules_url = f"{base_url}/model/{model}/{endpoint_type}"
-                model_rules = self.rule_manager.get_rules(rules_url, model)
-                transformed_request = self.transformer.transform(
-                    request_data, model_rules.input_rules
-                )
-            else:
-                transformed_request = request_data
-        elif provider_name == "anthropic":
-            base_url = provider_api_base.rstrip("/")
-            if model:
-                model_rules = self.rule_manager.get_rules(base_url, model)
-                print("model_rules", model_rules)
-                transformed_request = self.transformer.transform(
-                    request_data, model_rules.input_rules
-                )
-            else:
-                transformed_request = request_data
-        else:
-            transformed_request = request_data
+        transformed_request, model_rules = self._transform_request_for_provider(
+            provider_name, provider_api_base, model, endpoint_type, request_data
+        )
+
         deployment = deployment_name if deployment_name else model
         if api_version:
             kwargs["query_params"] = {"api-version": api_version}
@@ -181,11 +137,106 @@ class BaseCompletions:
             query_params=kwargs.get("query_params"),
             deployment=deployment,
             model_id=model,
-            stream_response_path=model_rules.stream_response_path,
+            stream_response_path=(
+                model_rules.stream_response_path if model_rules else None
+            ),
         )
         if stream or provider_name != "bedrock":
             return model_response
-        return self.transformer.transform(model_response, model_rules.output_rules)
+        if model_rules:
+            return self.transformer.transform(model_response, model_rules.output_rules)
+        return model_response
+
+    def _get_provider_api_base_from_route(self, custom_headers: Dict[str, Any]) -> str:
+        """Get provider API base from route information"""
+        route = custom_headers.get("x-javelin-route", "")
+        route_info = self.client.route_service.get_route(route)
+        primary_model = route_info.models[0]
+        provider_name = primary_model.provider
+        provider_object = self.client.provider_service.get_provider(provider_name)
+        provider_api_base = provider_object.config.api_base
+        self.client.set_headers({"x-javelin-provider": provider_api_base})
+        return provider_api_base
+
+    def _validate_and_set_endpoint_type(
+        self, endpoint_type: Optional[str], provider_name: str, stream: bool
+    ) -> str:
+        """Validate and set the endpoint type"""
+        if endpoint_type:
+            if endpoint_type not in [e.value for e in EndpointType]:
+                valid_types = ", ".join([e.value for e in EndpointType])
+                raise ValueError(
+                    f"Invalid endpoint_type: {endpoint_type}. "
+                    f"Valid types are: {valid_types}"
+                )
+            return endpoint_type
+
+        # Set defaults if no endpoint_type provided
+        if provider_name == "bedrock":
+            return (
+                EndpointType.INVOKE_STREAM.value
+                if stream
+                else EndpointType.INVOKE.value
+            )
+        elif provider_name == "anthropic":
+            return "messages"  # Use string instead of enum value
+        else:
+            return EndpointType.CHAT.value
+
+    def _transform_request_for_provider(
+        self,
+        provider_name: str,
+        provider_api_base: str,
+        model: Optional[str],
+        endpoint_type: str,
+        request_data: Dict[str, Any],
+    ) -> tuple[Dict[str, Any], Optional[Any]]:
+        """Transform request based on provider type"""
+        if provider_name == "bedrock":
+            return self._transform_bedrock_request(
+                provider_api_base, model, endpoint_type, request_data
+            )
+        elif provider_name == "anthropic":
+            return self._transform_anthropic_request(
+                provider_api_base, model, request_data
+            )
+        else:
+            return request_data, None
+
+    def _transform_bedrock_request(
+        self,
+        provider_api_base: str,
+        model: Optional[str],
+        endpoint_type: str,
+        request_data: Dict[str, Any],
+    ) -> tuple[Dict[str, Any], Optional[Any]]:
+        """Transform request for Bedrock provider"""
+        base_url = provider_api_base.rstrip("/")
+        if model:
+            rules_url = f"{base_url}/model/{model}/{endpoint_type}"
+            model_rules = self.rule_manager.get_rules(rules_url, model)
+            transformed_request = self.transformer.transform(
+                request_data, model_rules.input_rules
+            )
+            return transformed_request, model_rules
+        return request_data, None
+
+    def _transform_anthropic_request(
+        self,
+        provider_api_base: str,
+        model: Optional[str],
+        request_data: Dict[str, Any],
+    ) -> tuple[Dict[str, Any], Optional[Any]]:
+        """Transform request for Anthropic provider"""
+        base_url = provider_api_base.rstrip("/")
+        if model:
+            model_rules = self.rule_manager.get_rules(base_url, model)
+            print("model_rules", model_rules)
+            transformed_request = self.transformer.transform(
+                request_data, model_rules.input_rules
+            )
+            return transformed_request, model_rules
+        return request_data, None
 
     def _determine_provider_name(self, provider_api_base: str) -> str:
         """Determine the provider name based on the API base"""
@@ -262,7 +313,7 @@ class ChatCompletions(BaseCompletions):
                 - "invoke_stream": Streaming invocation
                 - "converse": Standard synchronous conversation
                 - "converse_stream": Streaming conversation
-                If not specified, defaults to "invoke"/"invoke_stream" 
+                If not specified, defaults to "invoke"/"invoke_stream"
                 based on stream parameter.
                 For non-Bedrock providers, this parameter is ignored.
             **kwargs: Additional keyword arguments
