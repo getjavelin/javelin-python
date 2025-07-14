@@ -795,7 +795,7 @@ class JavelinClient:
             print("DEBUG: debug_after_call invoked!")
             print("  args =", args)
             print("  kwargs =", kwargs)
-    
+
         '''
         def bedrock_after_call(**kwargs):
             """Ends the OTel span after the Bedrock request completes."""
@@ -816,9 +816,9 @@ class JavelinClient:
             else:
                 operation_name = "UnknownOperation"
 
-            # (3) If you need a reference to the request object to retrieve attached spans,
-            #     you'll notice it's NOT in kwargs by default for Bedrock. 
-            #     Instead, you can do your OTel instrumentation purely via context:
+            # (3) If you need a reference request object to get attached spans,
+            #     you'll notice it's NOT in kwargs by default for Bedrock.
+            #     Instead, you can do your OTel instrumentation via context:
             wrapper = context.get("javelin_request_wrapper")
             if not wrapper:
                 print("DEBUG: No wrapped request object found in context.")
@@ -899,28 +899,47 @@ class JavelinClient:
             http_response = kwargs.get("http_response")
             if http_response is not None and hasattr(http_response, "status_code"):
                 if http_response.status_code >= 400:
-                    span.set_status(Status(StatusCode.ERROR, "HTTP %d" % http_response.status_code))
+                    span.set_status(
+                        Status(
+                            StatusCode.ERROR,
+                            "HTTP %d" % http_response.status_code,
+                        )
+                    )
                 else:
-                    span.set_status(Status(StatusCode.OK, "HTTP %d" % http_response.status_code))
+                    span.set_status(
+                        Status(StatusCode.OK, "HTTP %d" % http_response.status_code)
+                    )
 
             # End the span
             print(f"DEBUG: Ending span: {span.name}")
             span.end()
-
 
         # Register header modification & URL override for specific operations
         for op in self.BEDROCK_RUNTIME_OPERATIONS:
             event_name_before_send = f"before-send.bedrock-runtime.{op}"
             event_name_before_call = f"before-call.bedrock-runtime.{op}"
             event_name_after_call = f"after-call.bedrock-runtime.{op}"
+            events_client = self.bedrock_runtime_client.meta.events
 
             # Add headers + override endpoint just like your existing code
-            self.bedrock_runtime_client.meta.events.register(event_name_before_send, add_custom_headers)
-            self.bedrock_runtime_client.meta.events.register(event_name_before_send, override_endpoint_url)
+            events_client.register(
+                event_name_before_send,
+                add_custom_headers,
+            )
+            events_client.register(
+                event_name_before_send,
+                override_endpoint_url,
+            )
 
             # Add OTel instrumentation
-            self.bedrock_runtime_client.meta.events.register(event_name_before_call, bedrock_before_call)
-            self.bedrock_runtime_client.meta.events.register(event_name_after_call, bedrock_after_call)
+            events_client.register(
+                event_name_before_call,
+                bedrock_before_call,
+            )
+            events_client.register(
+                event_name_after_call,
+                bedrock_after_call,
+            )
 
     def _prepare_request(self, request: Request) -> tuple:
         url = self._construct_url(
@@ -1058,110 +1077,130 @@ class JavelinClient:
         return url
 
     # Gateway methods
-    create_gateway = lambda self, gateway: self.gateway_service.create_gateway(gateway)
-    acreate_gateway = lambda self, gateway: self.gateway_service.acreate_gateway(
-        gateway
-    )
-    get_gateway = lambda self, gateway_name: self.gateway_service.get_gateway(
-        gateway_name
-    )
-    aget_gateway = lambda self, gateway_name: self.gateway_service.aget_gateway(
-        gateway_name
-    )
-    list_gateways = lambda self: self.gateway_service.list_gateways()
-    alist_gateways = lambda self: self.gateway_service.alist_gateways()
-    update_gateway = lambda self, gateway: self.gateway_service.update_gateway(gateway)
-    aupdate_gateway = lambda self, gateway: self.gateway_service.aupdate_gateway(
-        gateway
-    )
-    delete_gateway = lambda self, gateway_name: self.gateway_service.delete_gateway(
-        gateway_name
-    )
-    adelete_gateway = lambda self, gateway_name: self.gateway_service.adelete_gateway(
-        gateway_name
-    )
+    def create_gateway(self, gateway):
+        return self.gateway_service.create_gateway(gateway)
+
+    def acreate_gateway(self, gateway):
+        return self.gateway_service.acreate_gateway(gateway)
+
+    def get_gateway(self, gateway_name):
+        return self.gateway_service.get_gateway(gateway_name)
+
+    def aget_gateway(self, gateway_name):
+        return self.gateway_service.aget_gateway(gateway_name)
+
+    def list_gateways(self):
+        return self.gateway_service.list_gateways()
+
+    def alist_gateways(self):
+        return self.gateway_service.alist_gateways()
+
+    def update_gateway(self, gateway):
+        return self.gateway_service.update_gateway(gateway)
+
+    def aupdate_gateway(self, gateway):
+        return self.gateway_service.aupdate_gateway(gateway)
+
+    def delete_gateway(self, gateway_name):
+        return self.gateway_service.delete_gateway(gateway_name)
+
+    def adelete_gateway(self, gateway_name):
+        return self.gateway_service.adelete_gateway(gateway_name)
 
     # Provider methods
-    create_provider = lambda self, provider: self.provider_service.create_provider(
-        provider
-    )
-    acreate_provider = lambda self, provider: self.provider_service.acreate_provider(
-        provider
-    )
-    get_provider = lambda self, provider_name: self.provider_service.get_provider(
-        provider_name
-    )
-    aget_provider = lambda self, provider_name: self.provider_service.aget_provider(
-        provider_name
-    )
-    list_providers = lambda self: self.provider_service.list_providers()
-    alist_providers = lambda self: self.provider_service.alist_providers()
-    update_provider = lambda self, provider: self.provider_service.update_provider(
-        provider
-    )
-    aupdate_provider = lambda self, provider: self.provider_service.aupdate_provider(
-        provider
-    )
-    delete_provider = lambda self, provider_name: self.provider_service.delete_provider(
-        provider_name
-    )
-    adelete_provider = (
-        lambda self, provider_name: self.provider_service.adelete_provider(
-            provider_name
+    def create_provider(self, provider):
+        return self.provider_service.create_provider(provider)
+
+    def acreate_provider(self, provider):
+        return self.provider_service.acreate_provider(provider)
+
+    def get_provider(self, provider_name):
+        return self.provider_service.get_provider(provider_name)
+
+    def aget_provider(self, provider_name):
+        return self.provider_service.aget_provider(provider_name)
+
+    def list_providers(self):
+        return self.provider_service.list_providers()
+
+    def alist_providers(self):
+        return self.provider_service.alist_providers()
+
+    def update_provider(self, provider):
+        return self.provider_service.update_provider(provider)
+
+    def aupdate_provider(self, provider):
+        return self.provider_service.aupdate_provider(provider)
+
+    def delete_provider(self, provider_name):
+        return self.provider_service.delete_provider(provider_name)
+
+    def adelete_provider(self, provider_name):
+        return self.provider_service.adelete_provider(provider_name)
+
+    def alist_provider_secrets(self, provider_name):
+        return self.provider_service.alist_provider_secrets(provider_name)
+
+    def get_transformation_rules(self, provider_name, model_name, endpoint):
+        return self.provider_service.get_transformation_rules(
+            provider_name, model_name, endpoint
         )
-    )
-    alist_provider_secrets = (
-        lambda self, provider_name: self.provider_service.alialist_provider_secrets(
-            provider_name
+
+    def aget_transformation_rules(self, provider_name, model_name, endpoint):
+        return self.provider_service.aget_transformation_rules(
+            provider_name, model_name, endpoint
         )
-    )
-    get_transformation_rules = lambda self, provider_name, model_name, endpoint: self.provider_service.get_transformation_rules(
-        provider_name, model_name, endpoint
-    )
-    aget_transformation_rules = lambda self, provider_name, model_name, endpoint: self.provider_service.aget_transformation_rules(
-        provider_name, model_name, endpoint
-    )
-    get_model_specs = (
-        lambda self, provider_url, model_name: self.modelspec_service.get_model_specs(
-            provider_url, model_name
-        )
-    )
-    aget_model_specs = (
-        lambda self, provider_url, model_name: self.modelspec_service.aget_model_specs(
-            provider_url, model_name
-        )
-    )
+
+    def get_model_specs(self, provider_url, model_name):
+        return self.modelspec_service.get_model_specs(provider_url, model_name)
+
+    def aget_model_specs(self, provider_url, model_name):
+        return self.modelspec_service.aget_model_specs(provider_url, model_name)
 
     # Route methods
-    create_route = lambda self, route: self.route_service.create_route(route)
-    acreate_route = lambda self, route: self.route_service.acreate_route(route)
-    get_route = lambda self, route_name: self.route_service.get_route(route_name)
-    aget_route = lambda self, route_name: self.route_service.aget_route(route_name)
-    list_routes = lambda self: self.route_service.list_routes()
-    alist_routes = lambda self: self.route_service.alist_routes()
-    update_route = lambda self, route: self.route_service.update_route(route)
-    aupdate_route = lambda self, route: self.route_service.aupdate_route(route)
-    delete_route = lambda self, route_name: self.route_service.delete_route(route_name)
-    adelete_route = lambda self, route_name: self.route_service.adelete_route(
-        route_name
-    )
-    query_route = lambda self, route_name, query_body, headers=None, stream=False, stream_response_path=None: self.route_service.query_route(
+    def create_route(self, route):
+        return self.route_service.create_route(route)
+
+    def acreate_route(self, route):
+        return self.route_service.acreate_route(route)
+
+    def get_route(self, route_name):
+        return self.route_service.get_route(route_name)
+
+    def aget_route(self, route_name):
+        return self.route_service.aget_route(route_name)
+
+    def list_routes(self):
+        return self.route_service.list_routes()
+
+    def alist_routes(self):
+        return self.route_service.alist_routes()
+
+    def update_route(self, route):
+        return self.route_service.update_route(route)
+
+    def delete_route(self, route_name):
+        return self.route_service.delete_route(route_name)
+
+    def adelete_route(self, route_name):
+        return self.route_service.adelete_route(route_name)
+
+    def query_route(self, route_name, query_body, headers=None, stream=False, stream_response_path=None):
+        return self.route_service.query_route(
         route_name=route_name,
         query_body=query_body,
         headers=headers,
         stream=stream,
         stream_response_path=stream_response_path,
     )
-    aquery_route = lambda self, route_name, query_body, headers=None, stream=False, stream_response_path=None: self.route_service.aquery_route(
-        route_name, query_body, headers, stream, stream_response_path
-    )
-    query_llama = lambda self, route_name, query_body: self.route_service.query_llama(
-        route_name, query_body
-    )
-    aquery_llama = lambda self, route_name, query_body: self.route_service.aquery_llama(
-        route_name, query_body
-    )
-    query_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None, stream_response_path=None: self.route_service.query_unified_endpoint(
+
+    def aquery_route(self, route_name, query_body, headers=None, stream=False, stream_response_path=None):
+        return self.route_service.aquery_route(
+            route_name, query_body, headers, stream, stream_response_path
+        )
+
+    def query_unified_endpoint(self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None, stream_response_path=None):
+        return self.route_service.query_unified_endpoint(
         provider_name,
         endpoint_type,
         query_body,
@@ -1171,7 +1210,9 @@ class JavelinClient:
         model_id,
         stream_response_path,
     )
-    aquery_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None, stream_response_path=None: self.route_service.aquery_unified_endpoint(
+
+    def aquery_unified_endpoint(self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None, stream_response_path=None):
+        return self.route_service.aquery_unified_endpoint(
         provider_name,
         endpoint_type,
         query_body,
@@ -1183,82 +1224,89 @@ class JavelinClient:
     )
 
     # Secret methods
-    create_secret = lambda self, secret: self.secret_service.create_secret(secret)
-    acreate_secret = lambda self, secret: self.secret_service.acreate_secret(secret)
-    get_secret = (
-        lambda self, secret_name, provider_name: self.secret_service.get_secret(
-            secret_name, provider_name
-        )
-    )
-    aget_secret = (
-        lambda self, secret_name, provider_name: self.secret_service.aget_secret(
-            secret_name, provider_name
-        )
-    )
-    list_secrets = lambda self: self.secret_service.list_secrets()
-    alist_secrets = lambda self: self.secret_service.alist_secrets()
-    update_secret = lambda self, secret: self.secret_service.update_secret(secret)
-    aupdate_secret = lambda self, secret: self.secret_service.aupdate_secret(secret)
-    delete_secret = (
-        lambda self, secret_name, provider_name: self.secret_service.delete_secret(
-            secret_name, provider_name
-        )
-    )
-    adelete_secret = (
-        lambda self, secret_name, provider_name: self.secret_service.adelete_secret(
-            secret_name, provider_name
-        )
-    )
+    def create_secret(self, secret):
+        return self.secret_service.create_secret(secret)
+
+    def acreate_secret(self, secret):
+        return self.secret_service.acreate_secret(secret)
+
+    def get_secret(self, secret_name, provider_name):
+        return self.secret_service.get_secret(secret_name, provider_name)
+
+    def aget_secret(self, secret_name, provider_name):
+        return self.secret_service.aget_secret(secret_name, provider_name)
+
+    def list_secrets(self):
+        return self.secret_service.list_secrets()
+
+    def alist_secrets(self):
+        return self.secret_service.alist_secrets()
+
+    def update_secret(self, secret):
+        return self.secret_service.update_secret(secret)
+
+    def aupdate_secret(self, secret):
+        return self.secret_service.aupdate_secret(secret)
+
+    def delete_secret(self, secret_name, provider_name):
+        return self.secret_service.delete_secret(secret_name, provider_name)
+
+    def adelete_secret(self, secret_name, provider_name):
+        return self.secret_service.adelete_secret(secret_name, provider_name)
 
     # Template methods
-    create_template = lambda self, template: self.template_service.create_template(
-        template
-    )
-    acreate_template = lambda self, template: self.template_service.acreate_template(
-        template
-    )
-    get_template = lambda self, template_name: self.template_service.get_template(
-        template_name
-    )
-    aget_template = lambda self, template_name: self.template_service.aget_template(
-        template_name
-    )
-    list_templates = lambda self: self.template_service.list_templates()
-    alist_templates = lambda self: self.template_service.alist_templates()
-    update_template = lambda self, template: self.template_service.update_template(
-        template
-    )
-    aupdate_template = lambda self, template: self.template_service.aupdate_template(
-        template
-    )
-    delete_template = lambda self, template_name: self.template_service.delete_template(
-        template_name
-    )
-    adelete_template = (
-        lambda self, template_name: self.template_service.adelete_template(
-            template_name
-        )
-    )
-    reload_data_protection = (
-        lambda self, strategy_name: self.template_service.reload_data_protection(
-            strategy_name
-        )
-    )
-    areload_data_protection = (
-        lambda self, strategy_name: self.template_service.areload_data_protection(
-            strategy_name
-        )
-    )
+    def create_template(self, template):
+        return self.template_service.create_template(template)
+
+    def acreate_template(self, template):
+        return self.template_service.acreate_template(template)
+
+    def get_template(self, template_name):
+        return self.template_service.get_template(template_name)
+
+    def aget_template(self, template_name):
+        return self.template_service.aget_template(template_name)
+
+    def list_templates(self):
+        return self.template_service.list_templates()
+
+    def alist_templates(self):
+        return self.template_service.alist_templates()
+
+    def update_template(self, template):
+        return self.template_service.update_template(template)
+
+    def aupdate_template(self, template):
+        return self.template_service.aupdate_template(template)
+
+    def delete_template(self, template_name):
+        return self.template_service.delete_template(template_name)
+
+    def adelete_template(self, template_name):
+        return self.template_service.adelete_template(template_name)
+
+    def reload_data_protection(self, strategy_name):
+        return self.template_service.reload_data_protection(strategy_name)
+
+    def areload_data_protection(self, strategy_name):
+        return self.template_service.areload_data_protection(strategy_name)
 
     # Guardrails methods
-    apply_trustsafety = lambda self, text, config=None: self.guardrails_service.apply_trustsafety(text, config)
-    apply_promptinjectiondetection = lambda self, text, config=None: self.guardrails_service.apply_promptinjectiondetection(text, config)
-    apply_guardrails = lambda self, text, guardrails: self.guardrails_service.apply_guardrails(text, guardrails)
-    list_guardrails = lambda self: self.guardrails_service.list_guardrails()
+    def apply_trustsafety(self, text, config=None):
+        return self.guardrails_service.apply_trustsafety(text, config)
+
+    def apply_promptinjectiondetection(self, text, config=None):
+        return self.guardrails_service.apply_promptinjectiondetection(text, config)
+
+    def apply_guardrails(self, text, guardrails):
+        return self.guardrails_service.apply_guardrails(text, guardrails)
+
+    def list_guardrails(self):
+        return self.guardrails_service.list_guardrails()
 
     ## Traces methods
-    get_traces = lambda self: self.trace_service.get_traces()
-    aget_traces = lambda self: self.trace_service.aget_traces()
+    def get_traces(self):
+        return self.trace_service.get_traces()
 
     # Archive methods
     def get_last_n_chronicle_records(self, archive_name: str, n: int) -> Dict[str, Any]:
@@ -1343,7 +1391,14 @@ class JavelinClient:
         self._headers.update(headers)
 
     # Guardrails methods
-    apply_trustsafety = lambda self, text, config=None: self.guardrails_service.apply_trustsafety(text, config)
-    apply_promptinjectiondetection = lambda self, text, config=None: self.guardrails_service.apply_promptinjectiondetection(text, config)
-    apply_guardrails = lambda self, text, guardrails: self.guardrails_service.apply_guardrails(text, guardrails)
-    list_guardrails = lambda self: self.guardrails_service.list_guardrails()
+    def apply_trustsafety(self, text, config=None):
+        return self.guardrails_service.apply_trustsafety(text, config)
+
+    def apply_promptinjectiondetection(self, text, config=None):
+        return self.guardrails_service.apply_promptinjectiondetection(text, config)
+
+    def apply_guardrails(self, text, guardrails):
+        return self.guardrails_service.apply_guardrails(text, guardrails)
+
+    def list_guardrails(self):
+        return self.guardrails_service.list_guardrails()
