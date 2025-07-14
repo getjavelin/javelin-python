@@ -1,11 +1,7 @@
-import asyncio
 import base64
-import json
 import os
 
-import requests
-from openai import AsyncOpenAI, AzureOpenAI, OpenAI
-from pydantic import BaseModel
+from openai import OpenAI
 
 from javelin_sdk import JavelinClient, JavelinConfig
 
@@ -25,8 +21,7 @@ client = JavelinClient(config)
 def initialize_javelin_client():
     javelin_api_key = os.getenv("JAVELIN_API_KEY")
     config = JavelinConfig(
-        javelin_api_key=javelin_api_key,
-        base_url=os.getenv("JAVELIN_BASE_URL")
+        javelin_api_key=javelin_api_key, base_url=os.getenv("JAVELIN_BASE_URL")
     )
     return JavelinClient(config)
 
@@ -47,7 +42,8 @@ def register_gemini(client, openai_client):
 
 # Gemini Chat Completions
 def gemini_chat_completions(openai_client):
-    # Read the PDF file in binary mode (Download from https://github.com/run-llama/llama_index/blob/main/docs/docs/examples/data/10k/lyft_2021.pdf)
+    # Read the PDF file in binary mode (Download from
+    # https://github.com/run-llama/llama_index/blob/main/docs/docs/examples/data/10k/lyft_2021.pdf)
     with open("lyft_2021.pdf", "rb") as pdf_file:
         file_data = base64.b64encode(pdf_file.read()).decode("utf-8")
 

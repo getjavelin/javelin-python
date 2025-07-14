@@ -30,9 +30,7 @@ def initialize_client():
         print("AZURE_OPENAI_API_KEY found.")
 
     # Create the Azure client
-    azure_client = AzureOpenAI(
-        api_version="2023-09-15-preview"
-    )
+    azure_client = AzureOpenAI(api_version="2023-09-15-preview")
 
     # Initialize the Javelin client and register the Azure client
     config = JavelinConfig(javelin_api_key=javelin_api_key)
@@ -113,10 +111,14 @@ def main():
         print("Client initialization failed.")
         return
 
-    # Example chat messages
-    messages = [{"role": "user", "content": "say hello"}]
+    run_chat_completion_sync(azure_client)
+    run_chat_completion_stream(azure_client)
+    run_embeddings(azure_client)
+    print("\nScript complete.")
 
-    # 1) Chat Completion (Synchronous)
+
+def run_chat_completion_sync(azure_client):
+    messages = [{"role": "user", "content": "say hello"}]
     try:
         print("\n--- Chat Completion (Non-Streaming) ---")
         response_chat_sync = get_chat_completion_sync(azure_client, messages)
@@ -127,7 +129,9 @@ def main():
     except Exception as e:
         print("Error in chat completion (sync):", e)
 
-    # 2) Chat Completion (Streaming)
+
+def run_chat_completion_stream(azure_client):
+    messages = [{"role": "user", "content": "say hello"}]
     try:
         print("\n--- Chat Completion (Streaming) ---")
         response_streamed = get_chat_completion_stream(azure_client, messages)
@@ -138,7 +142,8 @@ def main():
     except Exception as e:
         print("Error in chat completion (streaming):", e)
 
-    # 3) Embeddings
+
+def run_embeddings(azure_client):
     try:
         print("\n--- Embeddings ---")
         embed_text = "Sample text to embed."
@@ -149,8 +154,6 @@ def main():
             print("Response:\n", embed_resp)
     except Exception as e:
         print("Error in embeddings:", e)
-
-    print("\nScript complete.")
 
 
 if __name__ == "__main__":

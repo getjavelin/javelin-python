@@ -1,6 +1,7 @@
 # javelin_sdk/tracing_setup.py
 # from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
 import os
+from typing import Optional
 
 from opentelemetry import trace
 
@@ -12,8 +13,10 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 # --- OpenTelemetry Setup ---
-# TRACES_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "https://api-dev.javelin.live/v1/admin/traces")
-# TRACES_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "https://logfire-api.pydantic.dev/v1/traces")
+# TRACES_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+#                              "https://api-dev.javelin.live/v1/admin/traces")
+# TRACES_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+#                              "https://logfire-api.pydantic.dev/v1/traces")
 
 TRACES_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
 TRACES_HEADERS = os.getenv("OTEL_EXPORTER_OTLP_HEADERS")
@@ -24,9 +27,10 @@ trace.set_tracer_provider(TracerProvider(resource=resource))
 tracer = trace.get_tracer("javelin")  # Name of the tracer
 
 
-def parse_headers(header_str: str) -> dict:
+def parse_headers(header_str: Optional[str]) -> dict:
     """
-    Parses a string like 'Authorization=Bearer xyz,Custom-Header=value' into a dictionary.
+    Parses a string like 'Authorization=Bearer xyz,Custom-Header=value' into a
+    dictionary.
     """
     headers = {}
     if header_str:
@@ -37,12 +41,12 @@ def parse_headers(header_str: str) -> dict:
     return headers
 
 
-def configure_span_exporter(api_key: str = None):
-    """Configure OTLP Span Exporter with dynamic headers from environment and API key."""
-
+def configure_span_exporter(api_key: Optional[str] = None):
+    """
+    Configure OTLP Span Exporter with dynamic headers from environment and API key.
+    """
     # Disable tracing if TRACES_ENDPOINT is not set
     if not TRACES_ENDPOINT:
-        # print("Tracing is disabled because OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is not set.")
         return None
 
     # Parse headers from environment variable
@@ -56,6 +60,7 @@ def configure_span_exporter(api_key: str = None):
     span_exporter = OTLPSpanExporter(endpoint=TRACES_ENDPOINT, headers=otlp_headers)
 
     span_processor = BatchSpanProcessor(span_exporter)
-    trace.get_tracer_provider().add_span_processor(span_processor)
+    provider = trace.get_tracer_provider()
+    provider.add_span_processor(span_processor)  # type: ignore
 
     return tracer

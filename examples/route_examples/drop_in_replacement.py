@@ -26,21 +26,70 @@ def pretty_print(obj):
     print(json.dumps(obj, indent=4))
 
 
-def route_example(client):
-    # Clean up pre-existing route
-    print("1. Start clean (by deleting pre-existing routes): ", "test_route_1")
+def delete_route_if_exists(client, route_name):
+    print("1. Start clean (by deleting pre-existing routes): ", route_name)
     try:
-        client.delete_route("test_route_1")
-    except UnauthorizedError as e:
+        client.delete_route(route_name)
+    except UnauthorizedError:
         print("Failed to delete route: Unauthorized")
-    except NetworkError as e:
+    except NetworkError:
         print("Failed to delete route: Network Error")
-    except RouteNotFoundError as e:
+    except RouteNotFoundError:
         print("Failed to delete route: Route Not Found")
 
-    # Create a route
+
+def create_route(client, route):
+    print("2. Creating route: ", route.name)
+    try:
+        client.create_route(route)
+    except UnauthorizedError:
+        print("Failed to create route: Unauthorized")
+    except NetworkError:
+        print("Failed to create route: Network Error")
+
+
+def query_route(client, route_name):
+    print("3. Querying route: ", route_name)
+    try:
+        query_data = {
+            "model": "gpt-3.5-turbo",
+            "messages": [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": "Hello!"},
+            ],
+            "temperature": 0.7,
+        }
+        response = client.chat.completions.create(
+            route=route_name,
+            messages=query_data["messages"],
+            temperature=query_data.get("temperature", 0.7),
+        )
+        pretty_print(response)
+    except UnauthorizedError:
+        print("Failed to query route: Unauthorized")
+    except NetworkError:
+        print("Failed to query route: Network Error")
+    except RouteNotFoundError:
+        print("Failed to query route: Route Not Found")
+
+
+def delete_route(client, route_name):
+    print("4. Deleting Route: ", route_name)
+    try:
+        client.delete_route(route_name)
+    except UnauthorizedError:
+        print("Failed to delete route: Unauthorized")
+    except NetworkError:
+        print("Failed to delete route: Network Error")
+    except RouteNotFoundError:
+        print("Failed to delete route: Route Not Found")
+
+
+def route_example(client):
+    route_name = "test_route_1"
+    delete_route_if_exists(client, route_name)
     route_data = {
-        "name": "test_route_1",
+        "name": route_name,
         "type": "chat",
         "enabled": True,
         "models": [
@@ -65,49 +114,9 @@ def route_example(client):
         },
     }
     route = Route.parse_obj(route_data)
-    print("2. Creating route: ", route.name)
-    try:
-        client.create_route(route)
-    except UnauthorizedError as e:
-        print("Failed to create route: Unauthorized")
-    except NetworkError as e:
-        print("Failed to create route: Network Error")
-
-    # Query the route
-    print("3. Querying route: ", route.name)
-    try:
-        query_data = {
-            "model": "gpt-3.5-turbo",
-            "messages": [
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": "Hello!"},
-            ],
-            "temperature": 0.7,
-        }
-
-        response = client.chat.completions.create(
-            route="test_route_1",
-            messages=query_data["messages"],
-            temperature=query_data.get("temperature", 0.7),
-        )
-        pretty_print(response)
-    except UnauthorizedError as e:
-        print("Failed to query route: Unauthorized")
-    except NetworkError as e:
-        print("Failed to query route: Network Error")
-    except RouteNotFoundError as e:
-        print("Failed to query route: Route Not Found")
-
-    # Clean up: Delete the route
-    print("4. Deleting Route: ", route.name)
-    try:
-        client.delete_route(route.name)
-    except UnauthorizedError as e:
-        print("Failed to delete route: Unauthorized")
-    except NetworkError as e:
-        print("Failed to delete route: Network Error")
-    except RouteNotFoundError as e:
-        print("Failed to delete route: Route Not Found")
+    create_route(client, route)
+    query_route(client, route_name)
+    delete_route(client, route_name)
 
 
 def main():
@@ -121,7 +130,7 @@ def main():
             llm_api_key=llm_api_key,
         )
         client = JavelinClient(config)
-    except NetworkError as e:
+    except NetworkError:
         print("Failed to create client: Network Error")
         return
 

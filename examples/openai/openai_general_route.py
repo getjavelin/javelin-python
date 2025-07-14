@@ -1,16 +1,15 @@
-import json
+from openai import OpenAI, AsyncOpenAI
 import os
-import sys
 import asyncio
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from openai import OpenAI, AsyncOpenAI
 
 # -------------------------------
 # Client Initialization
 # -------------------------------
+
 
 def init_sync_openai_client():
     """Initialize and return a synchronous OpenAI client with Javelin headers."""
@@ -23,10 +22,11 @@ def init_sync_openai_client():
         return OpenAI(
             api_key=openai_api_key,
             base_url=f"{os.getenv('JAVELIN_BASE_URL')}/v1/query/openai",
-            default_headers=javelin_headers
+            default_headers=javelin_headers,
         )
     except Exception as e:
         raise e
+
 
 def init_async_openai_client():
     """Initialize and return an asynchronous OpenAI client with Javelin headers."""
@@ -37,28 +37,43 @@ def init_async_openai_client():
         return AsyncOpenAI(
             api_key=openai_api_key,
             base_url="https://api-dev.javelin.live/v1/query/openai",
-            default_headers=javelin_headers
+            default_headers=javelin_headers,
         )
     except Exception as e:
         raise e
+
 
 # -------------------------------
 # Synchronous Helper Functions
 # -------------------------------
 
+
 def sync_openai_regular_non_stream(openai_client):
-    """Call the chat completions endpoint using a regular (non-streaming) request."""
+    """Call the chat completions endpoint (synchronously) using a regular
+    (non-streaming) request."""
     try:
         response = openai_client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that translates English to French."},
-                {"role": "user", "content": "AI has the power to transform humanity and make the world a better place"},
-            ]
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a helpful assistant that translates English to French."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        "AI has the power to transform humanity and make the world "
+                        "a better place"
+                    ),
+                },
+            ],
         )
         return response.model_dump_json(indent=2)
     except Exception as e:
         raise e
+
 
 def sync_openai_chat_completions(openai_client):
     """Call OpenAI's Chat Completions endpoint (synchronously)."""
@@ -71,10 +86,13 @@ def sync_openai_chat_completions(openai_client):
     except Exception as e:
         raise e
 
+
 def sync_openai_embeddings(_):
-    """Call OpenAI's Embeddings endpoint (synchronously) using a dedicated embeddings client.
-    
-    This function creates a new OpenAI client instance pointing to the embeddings endpoint.
+    """Call OpenAI's Embeddings endpoint (synchronously) using a dedicated
+    embeddings client.
+
+    This function creates a new OpenAI client instance pointing to the
+    embeddings endpoint.
     """
     try:
         openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -83,8 +101,8 @@ def sync_openai_embeddings(_):
         # Create a new client instance for embeddings.
         embeddings_client = OpenAI(
             api_key=openai_api_key,
-            base_url="https://api-dev.javelin.live/v1/query/openai_embeddings",
-            default_headers=javelin_headers
+            base_url=("https://api-dev.javelin.live/v1/query/openai_embeddings"),
+            default_headers=javelin_headers,
         )
         response = embeddings_client.embeddings.create(
             model="text-embedding-3-small",
@@ -94,8 +112,10 @@ def sync_openai_embeddings(_):
     except Exception as e:
         raise e
 
+
 def sync_openai_stream(openai_client):
-    """Call OpenAI's Chat Completions endpoint with streaming enabled (synchronously)."""
+    """Call OpenAI's Chat Completions endpoint with streaming enabled
+    (synchronously)."""
     try:
         stream = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -110,23 +130,38 @@ def sync_openai_stream(openai_client):
     except Exception as e:
         raise e
 
+
 # -------------------------------
 # Asynchronous Helper Functions
 # -------------------------------
 
+
 async def async_openai_regular_non_stream(openai_async_client):
-    """Call the chat completions endpoint asynchronously using a regular (non-streaming) request."""
+    """Call the chat completions endpoint asynchronously using a regular
+    (non-streaming) request."""
     try:
         response = await openai_async_client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that translates English to French."},
-                {"role": "user", "content": "AI has the power to transform humanity and make the world a better place"},
-            ]
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a helpful assistant that translates English to French."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        "AI has the power to transform humanity and make the world "
+                        "a better place"
+                    ),
+                },
+            ],
         )
         return response.model_dump_json(indent=2)
     except Exception as e:
         raise e
+
 
 async def async_openai_chat_completions(openai_async_client):
     """Call OpenAI's Chat Completions endpoint asynchronously."""
@@ -139,9 +174,11 @@ async def async_openai_chat_completions(openai_async_client):
     except Exception as e:
         raise e
 
+
 # -------------------------------
 # Main Function
 # -------------------------------
+
 
 def main():
     print("=== Synchronous OpenAI Example ===")
@@ -151,6 +188,18 @@ def main():
         print(f"[DEBUG] Error initializing synchronous client: {e}")
         return
 
+    run_sync_tests(openai_client)
+    run_async_tests()
+
+
+def run_sync_tests(openai_client):
+    run_regular_non_stream_test(openai_client)
+    run_chat_completions_test(openai_client)
+    run_embeddings_test(openai_client)
+    run_stream_test(openai_client)
+
+
+def run_regular_non_stream_test(openai_client):
     print("\n--- Regular Non-Streaming Chat Completion ---")
     try:
         regular_response = sync_openai_regular_non_stream(openai_client)
@@ -161,6 +210,8 @@ def main():
     except Exception as e:
         print(f"[DEBUG] Error in regular non-stream chat completion: {e}")
 
+
+def run_chat_completions_test(openai_client):
     print("\n--- Chat Completions ---")
     try:
         chat_response = sync_openai_chat_completions(openai_client)
@@ -172,6 +223,7 @@ def main():
         print(f"[DEBUG] Error in chat completions: {e}")
 
 
+def run_embeddings_test(openai_client):
     print("\n--- Embeddings ---")
     try:
         embeddings_response = sync_openai_embeddings(openai_client)
@@ -182,6 +234,8 @@ def main():
     except Exception as e:
         print(f"[DEBUG] Error in embeddings: {e}")
 
+
+def run_stream_test(openai_client):
     print("\n--- Streaming ---")
     try:
         stream_result = sync_openai_stream(openai_client)
@@ -192,6 +246,8 @@ def main():
     except Exception as e:
         print(f"[DEBUG] Error in streaming: {e}")
 
+
+def run_async_tests():
     print("\n=== Asynchronous OpenAI Example ===")
     try:
         openai_async_client = init_async_openai_client()
@@ -199,9 +255,16 @@ def main():
         print(f"[DEBUG] Error initializing async client: {e}")
         return
 
+    run_async_regular_test(openai_async_client)
+    run_async_chat_test(openai_async_client)
+
+
+def run_async_regular_test(openai_async_client):
     print("\n--- Async Regular Non-Streaming Chat Completion ---")
     try:
-        async_regular_response = asyncio.run(async_openai_regular_non_stream(openai_async_client))
+        async_regular_response = asyncio.run(
+            async_openai_regular_non_stream(openai_async_client)
+        )
         if not async_regular_response.strip():
             print("[DEBUG] Error: Empty async regular response")
         else:
@@ -209,15 +272,20 @@ def main():
     except Exception as e:
         print(f"[DEBUG] Error in async regular non-stream chat completion: {e}")
 
+
+def run_async_chat_test(openai_async_client):
     print("\n--- Async Chat Completions ---")
     try:
-        async_chat_response = asyncio.run(async_openai_chat_completions(openai_async_client))
+        async_chat_response = asyncio.run(
+            async_openai_chat_completions(openai_async_client)
+        )
         if not async_chat_response.strip():
             print("[DEBUG] Error: Empty async chat response")
         else:
             print(async_chat_response)
     except Exception as e:
         print(f"[DEBUG] Error in async chat completions: {e}")
+
 
 if __name__ == "__main__":
     main()

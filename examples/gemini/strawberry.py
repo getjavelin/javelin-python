@@ -1,11 +1,6 @@
-import asyncio
-import base64
-import json
 import os
 
-import requests
-from openai import AsyncOpenAI, AzureOpenAI, OpenAI
-from pydantic import BaseModel
+from openai import OpenAI
 
 from javelin_sdk import JavelinClient, JavelinConfig
 
@@ -36,7 +31,10 @@ def openai_chat_completions():
         messages=[
             {
                 "role": "user",
-                "content": "How many Rs are there in the word 'strawberry', 'retriever', 'mulberry', 'refrigerator'?",
+                "content": (
+                    "How many Rs are there in the word 'strawberry', 'retriever', "
+                    "'mulberry', 'refrigerator'?"
+                ),
             }
         ],
     )
@@ -76,7 +74,10 @@ def gemini_chat_completions(openai_client):
             {"role": "system", "content": "You are a helpful assistant."},
             {
                 "role": "user",
-                "content": "How many Rs are there in the word 'strawberry', 'retriever', 'mulberry', 'refrigerator'?",
+                "content": (
+                    "How many Rs are there in the word 'strawberry', 'retriever', "
+                    "'mulberry', 'refrigerator'?"
+                ),
             },
         ],
     )

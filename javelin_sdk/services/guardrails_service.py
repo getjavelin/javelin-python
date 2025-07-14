@@ -2,7 +2,6 @@ import httpx
 from typing import Any, Dict, Optional
 from javelin_sdk.exceptions import (
     BadRequest,
-    InternalServerError,
     RateLimitExceededError,
     UnauthorizedError,
 )
@@ -21,10 +20,14 @@ class GuardrailsService:
         elif response.status_code == 429:
             raise RateLimitExceededError(response=response)
         elif 400 <= response.status_code < 500:
-            raise BadRequest(response=response, message=f"Client Error: {response.status_code}")
+            raise BadRequest(
+                response=response, message=f"Client Error: {response.status_code}"
+            )
 
-    def apply_trustsafety(self, text: str, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        data = {"text": text}
+    def apply_trustsafety(
+        self, text: str, config: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        data: Dict[str, Any] = {"text": text}
         if config:
             data["config"] = config
         response = self.client._send_request_sync(
@@ -37,8 +40,10 @@ class GuardrailsService:
         self._handle_guardrails_response(response)
         return response.json()
 
-    def apply_promptinjectiondetection(self, text: str, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        data = {"text": text}
+    def apply_promptinjectiondetection(
+        self, text: str, config: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        data: Dict[str, Any] = {"text": text}
         if config:
             data["config"] = config
         response = self.client._send_request_sync(
