@@ -48,9 +48,7 @@ def init_azure_embeddings_client_sync():
         javelin_headers = {"x-api-key": javelin_api_key}
         client = AzureOpenAI(
             api_key=llm_api_key,
-            base_url=(
-                "https://api-dev.javelin.live/v1/query/azure_ada_embeddings"
-            ),
+            base_url=("https://api-dev.javelin.live/v1/query/azure_ada_embeddings"),
             default_headers=javelin_headers,
             api_version="2023-09-15-preview",
         )

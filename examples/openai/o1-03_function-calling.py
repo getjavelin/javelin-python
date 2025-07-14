@@ -247,8 +247,7 @@ def extract_json_from_markdown(text: str) -> str:
 
 def azure_structured_output_call():
     print(
-        "\n==== Running Azure OpenAI Structured Output Function "
-        "Calling Example ===="
+        "\n==== Running Azure OpenAI Structured Output Function " "Calling Example ===="
     )
     azure_client = init_azure_client()
     init_javelin_client_azure(azure_client)
@@ -271,13 +270,9 @@ def azure_structured_output_call():
         },
     ]
 
-    response = azure_client.chat.completions.create(
-        model="gpt-4o", messages=messages
-    )
+    response = azure_client.chat.completions.create(model="gpt-4o", messages=messages)
 
-    print(
-        "Structured Output (JSON) Response:"
-    )
+    print("Structured Output (JSON) Response:")
     print("Structured Output (JSON) Response:")
     print(response.to_json())
 
@@ -344,8 +339,7 @@ def openai_regular_non_stream():
 
 def openai_regular_stream():
     print(
-        "\n==== Running OpenAI Regular Route Streaming Function "
-        "Calling Example ===="
+        "\n==== Running OpenAI Regular Route Streaming Function " "Calling Example ===="
     )
     javelin_api_key = os.getenv("JAVELIN_API_KEY")
     llm_api_key = os.getenv("OPENAI_API_KEY")

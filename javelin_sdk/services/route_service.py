@@ -163,7 +163,7 @@ class RouteService:
         self, line_str: str, jsonpath_expr, is_bedrock: bool = False
     ) -> Optional[str]:
         """Process a single line from the stream response
-            and extract text if available."""
+        and extract text if available."""
         try:
             if "message-type" in line_str:
                 if "bytes" in line_str:

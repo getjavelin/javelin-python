@@ -40,9 +40,7 @@ async def delete_route_if_exists(client, route_name):
     except NetworkError:
         print("Failed to delete route: Network Error")
     except RouteNotFoundError:
-        print(
-            "Failed to delete route: Route Not Found"
-        )
+        print("Failed to delete route: Route Not Found")
 
 
 async def create_route(client, route):
@@ -65,9 +63,7 @@ async def query_route(client, route_name, query_data):
     except NetworkError:
         print("Failed to query route: Network Error")
     except RouteNotFoundError:
-        print(
-            "Failed to query route: Route Not Found"
-        )
+        print("Failed to query route: Route Not Found")
 
 
 async def list_routes(client):
@@ -89,9 +85,7 @@ async def get_route(client, route_name):
     except NetworkError:
         print("Failed to get route: Network Error")
     except RouteNotFoundError:
-        print(
-            "Failed to get route: Route Not Found"
-        )
+        print("Failed to get route: Route Not Found")
 
 
 async def update_route(client, route):
@@ -104,9 +98,7 @@ async def update_route(client, route):
     except NetworkError:
         print("Failed to update route: Network Error")
     except RouteNotFoundError:
-        print(
-            "Failed to update route: Route Not Found"
-        )
+        print("Failed to update route: Route Not Found")
 
 
 async def delete_route(client, route_name):
@@ -118,9 +110,7 @@ async def delete_route(client, route_name):
     except NetworkError:
         print("Failed to delete route: Network Error")
     except RouteNotFoundError:
-        print(
-            "Failed to delete route: Route Not Found"
-        )
+        print("Failed to delete route: Route Not Found")
 
 
 async def route_example(client):

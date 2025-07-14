@@ -92,7 +92,7 @@ def generate_model_code(model_name: str, properties: Dict[str, Any]) -> str:
         if default == "None":
             field_type = f"Optional[{field_type}]"
         model_code += (
-            f'    {prop}: {field_type} = Field(default={default}, '
+            f"    {prop}: {field_type} = Field(default={default}, "
             f'description="{description}")\n'
         )
     return model_code
@@ -124,25 +124,23 @@ def update_models_file(new_models: Dict[str, Dict[str, Any]]):
                 field_lines = []
                 for prop in new_fields:
                     optional = (
-                        'Optional['
-                        if properties[prop].get('required') is not True
-                        else ''
+                        "Optional["
+                        if properties[prop].get("required") is not True
+                        else ""
                     )
                     py_type = get_python_type(
-                        properties[prop].get('type'),
-                        properties[prop].get('items'),
+                        properties[prop].get("type"),
+                        properties[prop].get("items"),
                     )
                     optional_end = (
-                        ']'
-                        if properties[prop].get('required') is not True
-                        else ''
+                        "]" if properties[prop].get("required") is not True else ""
                     )
                     default_val = (
-                        'None'
-                        if properties[prop].get('required') is not True
-                        else '...'
+                        "None"
+                        if properties[prop].get("required") is not True
+                        else "..."
                     )
-                    description = repr(properties[prop].get('description', ''))
+                    description = repr(properties[prop].get("description", ""))
                     field_line = (
                         f"{prop}: {optional}{py_type}{optional_end} = Field(\n"
                         f"    default={default_val},\n"
@@ -208,11 +206,7 @@ def modify_and_convert_swagger(input_file, output_file):
 
     url = "https://converter.swagger.io/api/convert"
     headers = {"Accept": "application/yaml"}
-    response = requests.post(
-        url,
-        json=swagger_data,
-        headers=headers
-    )
+    response = requests.post(url, json=swagger_data, headers=headers)
 
     if response.status_code == 200:
         openapi3_data = yaml.safe_load(response.text)

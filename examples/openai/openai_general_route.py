@@ -101,9 +101,7 @@ def sync_openai_embeddings(_):
         # Create a new client instance for embeddings.
         embeddings_client = OpenAI(
             api_key=openai_api_key,
-            base_url=(
-                "https://api-dev.javelin.live/v1/query/openai_embeddings"
-            ),
+            base_url=("https://api-dev.javelin.live/v1/query/openai_embeddings"),
             default_headers=javelin_headers,
         )
         response = embeddings_client.embeddings.create(

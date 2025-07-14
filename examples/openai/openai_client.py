@@ -288,9 +288,7 @@ def azure_openai_chat_completions(openai_client):
         messages=[
             {
                 "role": "user",
-                "content": (
-                    "How do I output all files in a directory using Python?"
-                ),
+                "content": ("How do I output all files in a directory using Python?"),
             }
         ],
     )
@@ -342,10 +340,7 @@ def deepseek_reasoning_model(openai_client):
     # Round 2
     messages.append({"role": "assistant", "content": content})
     messages.append(
-        {
-            "role": "user",
-            "content": "How many Rs are there in the word 'strawberry'?"
-        }
+        {"role": "user", "content": "How many Rs are there in the word 'strawberry'?"}
     )
     response = openai_client.chat.completions.create(
         model="deepseek-reasoner", messages=messages
@@ -360,8 +355,7 @@ def deepseek_reasoning_model(openai_client):
 def mistral_chat_completions():
     mistral_api_key = os.getenv("MISTRAL_API_KEY")
     openai_client = OpenAI(
-        api_key=mistral_api_key,
-        base_url="https://api.mistral.ai/v1"
+        api_key=mistral_api_key, base_url="https://api.mistral.ai/v1"
     )
 
     chat_response = openai_client.chat.completions.create(

@@ -104,8 +104,7 @@ def call_bedrock_model_invoke(client, route_name, input_text):
         error_message = e.response["Error"]["Message"]
         status_code = e.response["ResponseMetadata"]["HTTPStatusCode"]
         raise Exception(
-            f"ClientError: {error_code} - {error_message} "
-            f"(HTTP {status_code})"
+            f"ClientError: {error_code} - {error_message} " f"(HTTP {status_code})"
         )
     except Exception as e:
         raise Exception(f"Unexpected error in invoke: {str(e)}")
@@ -146,8 +145,7 @@ def call_bedrock_model_converse(client, route_name, user_topic):
         error_message = e.response["Error"]["Message"]
         status_code = e.response["ResponseMetadata"]["HTTPStatusCode"]
         raise Exception(
-            f"ClientError: {error_code} - {error_message} "
-            f"(HTTP {status_code})"
+            f"ClientError: {error_code} - {error_message} " f"(HTTP {status_code})"
         )
     except Exception as e:
         raise Exception(f"Unexpected error in converse: {str(e)}")

@@ -220,9 +220,7 @@ def gemini_image_understanding(openai_client):
                     {"type": "text", "text": "What is in this image?"},
                     {
                         "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{base64_image}"
-                        },
+                        "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
                     },
                 ],
             }
@@ -290,9 +288,7 @@ def azure_openai_chat_completions(openai_client):
         messages=[
             {
                 "role": "user",
-                "content": (
-                    "How do I output all files in a directory using Python?"
-                ),
+                "content": ("How do I output all files in a directory using Python?"),
             }
         ],
     )
@@ -335,8 +331,7 @@ def deepseek_chat_completions(openai_client):
 def deepseek_reasoning_model(openai_client):
     messages = [{"role": "user", "content": "9.11 and 9.8, which is greater?"}]
     response = openai_client.chat.completions.create(
-        model="deepseek-reasoner",
-        messages=messages
+        model="deepseek-reasoner", messages=messages
     )
     print(response.to_json())
 
@@ -345,14 +340,10 @@ def deepseek_reasoning_model(openai_client):
     # Round 2
     messages.append({"role": "assistant", "content": content})
     messages.append(
-        {
-            "role": "user",
-            "content": "How many Rs are there in the word 'strawberry'?"
-        }
+        {"role": "user", "content": "How many Rs are there in the word 'strawberry'?"}
     )
     response = openai_client.chat.completions.create(
-        model="deepseek-reasoner",
-        messages=messages
+        model="deepseek-reasoner", messages=messages
     )
 
     print(response.to_json())
@@ -364,8 +355,7 @@ def deepseek_reasoning_model(openai_client):
 def mistral_chat_completions():
     mistral_api_key = os.getenv("MISTRAL_API_KEY")
     openai_client = OpenAI(
-        api_key=mistral_api_key,
-        base_url="https://api.mistral.ai/v1"
+        api_key=mistral_api_key, base_url="https://api.mistral.ai/v1"
     )
 
     chat_response = openai_client.chat.completions.create(

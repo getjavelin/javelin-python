@@ -174,35 +174,36 @@ class JavelinClient:
         if not hasattr(openai_client, "_custom_headers"):
             openai_client._custom_headers = {}
         else:
-            pass # Removed debug print
-            
+            pass
+
         openai_client._custom_headers.update(self._headers)
 
         base_url_str = str(self.openai_base_url).rstrip("/")
         openai_client._custom_headers["x-javelin-provider"] = base_url_str
         if route_name is not None:
             openai_client._custom_headers["x-javelin-route"] = route_name
-        
+
         # Ensure the client uses the custom headers
-        if hasattr(openai_client, 'default_headers'):
+        if hasattr(openai_client, "default_headers"):
             # Filter out None values and openai.Omit objects
             filtered_headers = {}
             for key, value in openai_client._custom_headers.items():
-                # Check if value is None or is an openai.Omit object
-                if value is not None and not (hasattr(value, '__class__') and value.__class__.__name__ == 'Omit'):
+                if value is not None and not (
+                    hasattr(value, "__class__") and value.__class__.__name__ == "Omit"
+                ):
                     filtered_headers[key] = value
             openai_client.default_headers.update(filtered_headers)
-        elif hasattr(openai_client, '_default_headers'):
+        elif hasattr(openai_client, "_default_headers"):
             # Filter out None values and openai.Omit objects
             filtered_headers = {}
             for key, value in openai_client._custom_headers.items():
-                # Check if value is None or is an openai.Omit object
-                if value is not None and not (hasattr(value, '__class__') and value.__class__.__name__ == 'Omit'):
+                if value is not None and not (
+                    hasattr(value, "__class__") and value.__class__.__name__ == "Omit"
+                ):
                     filtered_headers[key] = value
             openai_client._default_headers.update(filtered_headers)
         else:
-            pass # Removed debug print
-            
+            pass
 
     def _store_original_methods(self, openai_client, provider_name):
         """Store original methods for the provider if not already stored."""
@@ -219,16 +220,20 @@ class JavelinClient:
     def _create_patched_method(self, method_name, original_method, openai_client):
         """Create a patched method with tracing support."""
         if inspect.iscoroutinefunction(original_method):
+
             async def async_patched_method(*args, **kwargs):
                 return await self._execute_with_tracing(
                     original_method, method_name, args, kwargs, openai_client
                 )
+
             return async_patched_method
         else:
+
             def sync_patched_method(*args, **kwargs):
                 return self._execute_with_tracing(
                     original_method, method_name, args, kwargs, openai_client
                 )
+
             return sync_patched_method
 
     def _execute_with_tracing(
@@ -240,7 +245,7 @@ class JavelinClient:
         openai_client,
     ):
         """Execute method with tracing support."""
-        
+
         model = kwargs.get("model")
 
         if model and hasattr(openai_client, "_custom_headers"):
@@ -249,37 +254,40 @@ class JavelinClient:
         # Ensure custom headers are applied to the request
         if hasattr(openai_client, "_custom_headers"):
             # Update the client's default headers with custom headers
-            if hasattr(openai_client, 'default_headers'):
+            if hasattr(openai_client, "default_headers"):
                 # Filter out None values and openai.Omit objects
                 filtered_headers = {}
                 for key, value in openai_client._custom_headers.items():
                     # Check if value is None or is an openai.Omit object
-                    if value is not None and not (hasattr(value, '__class__') and value.__class__.__name__ == 'Omit'):
+                    if value is not None and not (
+                        hasattr(value, "__class__")
+                        and value.__class__.__name__ == "Omit"
+                    ):
                         filtered_headers[key] = value
                 openai_client.default_headers.update(filtered_headers)
-            elif hasattr(openai_client, '_default_headers'):
+            elif hasattr(openai_client, "_default_headers"):
                 # Filter out None values and openai.Omit objects
                 filtered_headers = {}
                 for key, value in openai_client._custom_headers.items():
                     # Check if value is None or is an openai.Omit object
-                    if value is not None and not (hasattr(value, '__class__') and value.__class__.__name__ == 'Omit'):
+                    if value is not None and not (
+                        hasattr(value, "__class__")
+                        and value.__class__.__name__ == "Omit"
+                    ):
                         filtered_headers[key] = value
                 openai_client._default_headers.update(filtered_headers)
             else:
-                pass # Removed debug print
-                
-        else:
-            pass # Removed debug print
+                pass
 
-        operation_name = self.GEN_AI_OPERATION_MAPPING.get(
-            method_name, method_name
-        )
+        else:
+            pass
+
+        operation_name = self.GEN_AI_OPERATION_MAPPING.get(method_name, method_name)
         system_name = self.GEN_AI_SYSTEM_MAPPING.get(
             self.provider_name, self.provider_name
         )
         span_name = f"{operation_name} {model}"
-        
-        
+
         async def _async_execution(span):
             response = await original_method(*args, **kwargs)
             self._capture_response_details(span, response, kwargs, system_name)
@@ -320,24 +328,29 @@ class JavelinClient:
 
         # Request attributes
         self.set_span_attribute_if_not_none(
-            span, gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS,
-            kwargs.get("max_completion_tokens")
+            span,
+            gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS,
+            kwargs.get("max_completion_tokens"),
         )
         self.set_span_attribute_if_not_none(
-            span, gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY,
-            kwargs.get("presence_penalty")
+            span,
+            gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY,
+            kwargs.get("presence_penalty"),
         )
         self.set_span_attribute_if_not_none(
-            span, gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY,
-            kwargs.get("frequency_penalty")
+            span,
+            gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY,
+            kwargs.get("frequency_penalty"),
         )
         self.set_span_attribute_if_not_none(
-            span, gen_ai_attributes.GEN_AI_REQUEST_STOP_SEQUENCES,
-            json.dumps(kwargs.get("stop", [])) if kwargs.get("stop") else None
+            span,
+            gen_ai_attributes.GEN_AI_REQUEST_STOP_SEQUENCES,
+            json.dumps(kwargs.get("stop", [])) if kwargs.get("stop") else None,
         )
         self.set_span_attribute_if_not_none(
-            span, gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE,
-            kwargs.get("temperature")
+            span,
+            gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE,
+            kwargs.get("temperature"),
         )
         self.set_span_attribute_if_not_none(
             span, gen_ai_attributes.GEN_AI_REQUEST_TOP_K, kwargs.get("top_k")
@@ -436,20 +449,20 @@ class JavelinClient:
     def _set_basic_response_attributes(self, span, response_data):
         """Set basic response attributes on span."""
         self.set_span_attribute_if_not_none(
-            span, gen_ai_attributes.GEN_AI_RESPONSE_MODEL,
-            response_data.get("model")
+            span, gen_ai_attributes.GEN_AI_RESPONSE_MODEL, response_data.get("model")
         )
         self.set_span_attribute_if_not_none(
-            span, gen_ai_attributes.GEN_AI_RESPONSE_ID,
-            response_data.get("id")
+            span, gen_ai_attributes.GEN_AI_RESPONSE_ID, response_data.get("id")
         )
         self.set_span_attribute_if_not_none(
-            span, gen_ai_attributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER,
-            response_data.get("service_tier")
+            span,
+            gen_ai_attributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER,
+            response_data.get("service_tier"),
         )
         self.set_span_attribute_if_not_none(
-            span, gen_ai_attributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT,
-            response_data.get("system_fingerprint")
+            span,
+            gen_ai_attributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT,
+            response_data.get("system_fingerprint"),
         )
 
         finish_reasons = [
@@ -458,20 +471,23 @@ class JavelinClient:
             if choice.get("finish_reason")
         ]
         self.set_span_attribute_if_not_none(
-            span, gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS,
-            json.dumps(finish_reasons) if finish_reasons else None
+            span,
+            gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS,
+            json.dumps(finish_reasons) if finish_reasons else None,
         )
 
     def _set_usage_attributes(self, span, response_data):
         """Set usage attributes on span."""
         usage = response_data.get("usage", {})
         self.set_span_attribute_if_not_none(
-            span, gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS,
-            usage.get("prompt_tokens")
+            span,
+            gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS,
+            usage.get("prompt_tokens"),
         )
         self.set_span_attribute_if_not_none(
-            span, gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS,
-            usage.get("completion_tokens")
+            span,
+            gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS,
+            usage.get("completion_tokens"),
         )
 
     def _add_message_events(self, span, kwargs, system_name):
@@ -480,20 +496,21 @@ class JavelinClient:
 
         system_message = next(
             (msg.get("content") for msg in messages if msg.get("role") == "system"),
-            None
+            None,
         )
         self.add_event_with_attributes(
-            span, "gen_ai.system.message",
-            {"gen_ai.system": system_name, "content": system_message}
+            span,
+            "gen_ai.system.message",
+            {"gen_ai.system": system_name, "content": system_message},
         )
 
         user_message = next(
-            (msg.get("content") for msg in messages if msg.get("role") == "user"),
-            None
+            (msg.get("content") for msg in messages if msg.get("role") == "user"), None
         )
         self.add_event_with_attributes(
-            span, "gen_ai.user.message",
-            {"gen_ai.system": system_name, "content": user_message}
+            span,
+            "gen_ai.user.message",
+            {"gen_ai.system": system_name, "content": user_message},
         )
 
     def _add_choice_events(self, span, response_data, system_name):
@@ -513,6 +530,7 @@ class JavelinClient:
 
     def _patch_methods(self, openai_client, provider_name):
         """Patch client methods with tracing support."""
+
         def get_nested_attr(obj, attr_path):
             attrs = attr_path.split(".")
             for attr in attrs:
@@ -770,11 +788,11 @@ class JavelinClient:
                 )
                 request.url = urlunparse(updated_url)
 
-            except Exception as e:
-                pass # Removed debug print
+            except Exception:
+                pass
 
         def debug_before_send(*args, **kwargs):
-            pass # Removed debug print
+            pass
 
         # Helper function to create a new OTel span for each Bedrock invocation
         def bedrock_before_send(http_request, model, context, event_name, **kwargs):
@@ -803,10 +821,10 @@ class JavelinClient:
             )
 
         def debug_before_call(*args, **kwargs):
-            pass # Removed debug print
+            pass
 
         def debug_after_call(*args, **kwargs):
-            pass # Removed debug print
+            pass
 
         '''
         def bedrock_after_call(**kwargs):
