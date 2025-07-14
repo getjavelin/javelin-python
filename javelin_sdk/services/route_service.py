@@ -1,4 +1,5 @@
-from typing import Any, AsyncGenerator, Dict, Generator, Optional, Union
+import json
+from typing import Any, AsyncGenerator, Dict, Generator, List, Optional, Union
 
 import httpx
 from javelin_sdk.exceptions import (
@@ -10,6 +11,7 @@ from javelin_sdk.exceptions import (
     UnauthorizedError,
 )
 from javelin_sdk.models import HttpMethod, Request, Route, Routes, UnivModelConfig
+from jsonpath_ng import parse
 
 
 class RouteService:
@@ -63,8 +65,7 @@ class RouteService:
         # Accepts dict or Route instance
         if not isinstance(route, Route):
             route = Route.model_validate(route)
-        if route.name:
-            self._validate_route_name(route.name)
+        self._validate_route_name(route.name)
         response = self.client._send_request_sync(
             Request(method=HttpMethod.POST, route=route.name, data=route.dict())
         )
@@ -73,8 +74,7 @@ class RouteService:
     async def acreate_route(self, route) -> str:
         if not isinstance(route, Route):
             route = Route.model_validate(route)
-        if route.name:
-            self._validate_route_name(route.name)
+        self._validate_route_name(route.name)
         response = await self.client._send_request_async(
             Request(method=HttpMethod.POST, route=route.name, data=route.dict())
         )
@@ -94,7 +94,7 @@ class RouteService:
         )
         return self._process_route_response(response)
 
-    def list_routes(self) -> Routes:
+    def list_routes(self) -> List[Route]:
         response = self.client._send_request_sync(
             Request(method=HttpMethod.GET, route="###")
         )
@@ -107,7 +107,7 @@ class RouteService:
         except ValueError:
             return Routes(routes=[])
 
-    async def alist_routes(self) -> Routes:
+    async def alist_routes(self) -> List[Route]:
         response = await self.client._send_request_async(
             Request(method=HttpMethod.GET, route="###")
         )
@@ -123,25 +123,21 @@ class RouteService:
     def update_route(self, route) -> str:
         if not isinstance(route, Route):
             route = Route.model_validate(route)
-        if route.name:
-            self._validate_route_name(route.name)
+        self._validate_route_name(route.name)
         response = self.client._send_request_sync(
             Request(method=HttpMethod.PUT, route=route.name, data=route.dict())
         )
-        if route.name:
-            self.reload_route(route.name)
+        self.reload_route(route.name)
         return self._process_route_response_ok(response)
 
     async def aupdate_route(self, route) -> str:
         if not isinstance(route, Route):
             route = Route.model_validate(route)
-        if route.name:
-            self._validate_route_name(route.name)
+        self._validate_route_name(route.name)
         response = await self.client._send_request_async(
             Request(method=HttpMethod.PUT, route=route.name, data=route.dict())
         )
-        if route.name:
-            await self.areload_route(route.name)
+        self.areload_route(route.name)
         return self._process_route_response_ok(response)
 
     def delete_route(self, route_name: str) -> str:
@@ -160,50 +156,61 @@ class RouteService:
         )
 
         # Reload the route
-        await self.areload_route(route_name=route_name)
+        self.areload_route(route_name=route_name)
         return self._process_route_response_ok(response)
 
-    def _process_stream_line(self, line):
-        # Refactored to reduce complexity
-        if self._is_error_line(line):
-            return self._handle_error_line(line)
-        if self._is_data_line(line):
-            return self._handle_data_line(line)
-        if self._is_end_line(line):
-            return self._handle_end_line(line)
-        return self._handle_other_line(line)
+    def _process_stream_line(
+        self, line_str: str, jsonpath_expr, is_bedrock: bool = False
+    ) -> Optional[str]:
+        """Process a single line from the stream response
+            and extract text if available."""
+        try:
+            if "message-type" in line_str:
+                if "bytes" in line_str:
+                    try:
+                        json_start = line_str.find("{")
+                        json_end = line_str.rfind("}") + 1
+                        if json_start != -1 and json_end != -1:
+                            json_str = line_str[json_start:json_end]
+                            data = json.loads(json_str)
 
-    def _is_error_line(self, line):
-        # Logic to check if line is an error
-        return line.startswith('error:')
+                            if "bytes" in data:
+                                import base64
 
-    def _handle_error_line(self, line):
-        # Handle error line
-        # ... existing error handling logic ...
-        pass
+                                bytes_data = base64.b64decode(data["bytes"])
+                                decoded_data = json.loads(bytes_data)
+                                matches = jsonpath_expr.find(decoded_data)
+                                if matches and matches[0].value:
+                                    return matches[0].value
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        json_start = line_str.find("{")
+                        json_end = line_str.rfind("}") + 1
+                        if json_start != -1 and json_end != -1:
+                            json_str = line_str[json_start:json_end]
+                            data = json.loads(json_str)
+                            if "delta" in data and "text" in data["delta"]:
+                                return data["delta"]["text"]
+                    except Exception:
+                        pass
 
-    def _is_data_line(self, line):
-        # Logic to check if line is data
-        return line.startswith('data:')
+            # Handle SSE data format
+            elif line_str.startswith("data: "):
+                try:
+                    if line_str.strip() != "data: [DONE]":
+                        json_str = line_str.replace("data: ", "")
+                        data = json.loads(json_str)
+                        matches = jsonpath_expr.find(data)
+                        if matches and matches[0].value:
+                            return matches[0].value
+                except Exception:
+                    pass
 
-    def _handle_data_line(self, line):
-        # Handle data line
-        # ... existing data handling logic ...
-        pass
-
-    def _is_end_line(self, line):
-        # Logic to check if line is end
-        return line.strip() == '[END]'
-
-    def _handle_end_line(self, line):
-        # Handle end line
-        # ... existing end handling logic ...
-        pass
-
-    def _handle_other_line(self, line):
-        # Handle other types of lines
-        # ... existing other line handling logic ...
-        pass
+        except Exception:
+            pass
+        return None
 
     def query_route(
         self,
@@ -229,11 +236,13 @@ class RouteService:
         if not stream or response.status_code != 200:
             return self._process_route_response_json(response)
 
+        jsonpath_expr = parse(stream_response_path)
+
         def generate_stream():
             for line in response.iter_lines():
                 if line:
                     line_str = line.decode("utf-8") if isinstance(line, bytes) else line
-                    text = self._process_stream_line(line_str)
+                    text = self._process_stream_line(line_str, jsonpath_expr)
                     if text:
                         yield text
 
@@ -263,11 +272,15 @@ class RouteService:
         if not stream or response.status_code != 200:
             return self._process_route_response_json(response)
 
+        jsonpath_expr = parse(stream_response_path)
+
         async def generate_stream():
             async for line in response.aiter_lines():
                 if line:
                     line_str = line.decode("utf-8") if isinstance(line, bytes) else line
-                    text = self._process_stream_line(line_str)
+                    text = self._process_stream_line(
+                        line_str, jsonpath_expr, is_bedrock=True
+                    )
                     if text:
                         yield text
 
@@ -281,7 +294,7 @@ class RouteService:
             Request(
                 method=HttpMethod.POST,
                 route=f"{route_name}/reload",
-                data={},
+                data="",
                 is_reload=True,
             )
         )
@@ -295,7 +308,7 @@ class RouteService:
             Request(
                 method=HttpMethod.POST,
                 route=f"{route_name}/reload",
-                data={},
+                data="",
                 is_reload=True,
             )
         )
@@ -337,12 +350,13 @@ class RouteService:
             return response.json()
 
         # Handle streaming response if stream_response_path is provided
+        jsonpath_expr = parse(stream_response_path)
 
         def generate_stream():
             for line in response.iter_lines():
                 if line:
                     line_str = line.decode("utf-8") if isinstance(line, bytes) else line
-                    text = self._process_stream_line(line_str)
+                    text = self._process_stream_line(line_str, jsonpath_expr)
                     if text:
                         yield text
 
@@ -381,12 +395,15 @@ class RouteService:
             return response.json()
 
         # Handle streaming response if stream_response_path is provided
+        jsonpath_expr = parse(stream_response_path)
 
         async def generate_stream():
             async for line in response.aiter_lines():
                 if line:
                     line_str = line.decode("utf-8") if isinstance(line, bytes) else line
-                    text = self._process_stream_line(line_str)
+                    text = self._process_stream_line(
+                        line_str, jsonpath_expr, is_bedrock=True
+                    )
                     if text:
                         yield text
 
