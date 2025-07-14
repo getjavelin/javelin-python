@@ -1338,7 +1338,7 @@ class JavelinClient:
     def list_guardrails(self):
         return self.guardrails_service.list_guardrails()
 
-    ## Traces methods
+    # Traces methods
     def get_traces(self):
         return self.trace_service.get_traces()
 
@@ -1380,15 +1380,16 @@ class JavelinClient:
             raise ValueError("Provider name is not specified in the request model.")
 
         if provider_name == "azureopenai" and deployment:
+            azure_deployment_url = (
+                f"{base_url}/{provider_name}/deployments/{deployment}"
+            )
             # Handle Azure OpenAI endpoints
             if endpoint_type == "chat":
-                return f"{base_url}/{provider_name}/deployments/{deployment}/chat/completions"
+                return f"{azure_deployment_url}/chat/completions"
             elif endpoint_type == "completion":
-                return (
-                    f"{base_url}/{provider_name}/deployments/{deployment}/completions"
-                )
+                return f"{azure_deployment_url}/completions"
             elif endpoint_type == "embeddings":
-                return f"{base_url}/{provider_name}/deployments/{deployment}/embeddings"
+                return f"{azure_deployment_url}/embeddings"
         elif provider_name == "bedrock" and model_id:
             # Handle Bedrock endpoints
             if endpoint_type == "invoke":
@@ -1423,16 +1424,3 @@ class JavelinClient:
             headers (Dict[str, str]): A dictionary of headers to set or update.
         """
         self._headers.update(headers)
-
-    # Guardrails methods
-    def apply_trustsafety(self, text, config=None):
-        return self.guardrails_service.apply_trustsafety(text, config)
-
-    def apply_promptinjectiondetection(self, text, config=None):
-        return self.guardrails_service.apply_promptinjectiondetection(text, config)
-
-    def apply_guardrails(self, text, guardrails):
-        return self.guardrails_service.apply_guardrails(text, guardrails)
-
-    def list_guardrails(self):
-        return self.guardrails_service.list_guardrails()
