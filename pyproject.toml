@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "javelin-sdk"
-version = "1"
+version = "RELEASE_VERSION"
 description = "Python client for Javelin"
 authors = ["Sharath Rajasekar <sharath@getjavelin.com>"]
 readme = "README.md"
@@ -51,7 +51,6 @@ mkdocstrings = {version = "0.21.2", extras = ["python"]}
 python-dotenv = "^1.0.0"
 mkdocs-material = "^9.6.11"
 isort = "^5.13.2"
-types-jmespath = "^1.0.0"
 
 [build-system]
 requires = ["poetry-core"]
