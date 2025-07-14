@@ -30,6 +30,7 @@ API_TIMEOUT = 10
 
 class JavelinRequestWrapper:
     """A wrapper around Botocore's request object to store additional metadata."""
+
     def __init__(self, original_request, span):
         self.original_request = original_request
         self.span = span
@@ -346,9 +347,8 @@ class JavelinClient:
                 elif isinstance(response, dict):
                     # print("Response is already a dictionary.")
                     response_data = response
-                elif (
-                    hasattr(response, "__iter__")
-                    and not isinstance(response, (str, bytes, dict, list))
+                elif hasattr(response, "__iter__") and not isinstance(
+                    response, (str, bytes, dict, list)
                 ):
                     response_data = {
                         "object": "thread.message.delta",
@@ -382,7 +382,7 @@ class JavelinClient:
                         # Accumulate the streamed text
                         response_data["streamed_text"] += streamed_text
 
-                        '''
+                        """
                         # Fire OpenTelemetry event for each chunk
                         JavelinClient.add_event_with_attributes(
                             span,
@@ -393,7 +393,7 @@ class JavelinClient:
                                 "chunk_index": index,
                             },
                         )
-                        '''
+                        """
 
                     # Store the final streamed text in the span
                     final_text = response_data["streamed_text"]
@@ -440,27 +440,27 @@ class JavelinClient:
 
                 # Finish reasons for choices
                 finish_reasons = [
-                    choice.get('finish_reason')
-                    for choice in response_data.get('choices', [])
-                    if choice.get('finish_reason')
+                    choice.get("finish_reason")
+                    for choice in response_data.get("choices", [])
+                    if choice.get("finish_reason")
                 ]
                 JavelinClient.set_span_attribute_if_not_none(
                     span,
                     gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS,
-                    json.dumps(finish_reasons) if finish_reasons else None
+                    json.dumps(finish_reasons) if finish_reasons else None,
                 )
 
                 # Token usage
-                usage = response_data.get('usage', {})
+                usage = response_data.get("usage", {})
                 JavelinClient.set_span_attribute_if_not_none(
                     span,
                     gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS,
-                    usage.get('prompt_tokens'),
+                    usage.get("prompt_tokens"),
                 )
                 JavelinClient.set_span_attribute_if_not_none(
                     span,
                     gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS,
-                    usage.get('completion_tokens'),
+                    usage.get("completion_tokens"),
                 )
 
                 # System message event
@@ -494,7 +494,7 @@ class JavelinClient:
                 )
 
                 # Choice events
-                choices = response_data.get('choices', [])
+                choices = response_data.get("choices", [])
                 for index, choice in enumerate(choices):
                     choice_attributes = {"gen_ai.system": system_name, "index": index}
                     message = choice.pop("message", {})
@@ -1185,43 +1185,77 @@ class JavelinClient:
     def adelete_route(self, route_name):
         return self.route_service.adelete_route(route_name)
 
-    def query_route(self, route_name, query_body, headers=None, stream=False, stream_response_path=None):
+    def query_route(
+        self,
+        route_name,
+        query_body,
+        headers=None,
+        stream=False,
+        stream_response_path=None,
+    ):
         return self.route_service.query_route(
-        route_name=route_name,
-        query_body=query_body,
-        headers=headers,
-        stream=stream,
-        stream_response_path=stream_response_path,
-    )
+            route_name=route_name,
+            query_body=query_body,
+            headers=headers,
+            stream=stream,
+            stream_response_path=stream_response_path,
+        )
 
-    def aquery_route(self, route_name, query_body, headers=None, stream=False, stream_response_path=None):
+    def aquery_route(
+        self,
+        route_name,
+        query_body,
+        headers=None,
+        stream=False,
+        stream_response_path=None,
+    ):
         return self.route_service.aquery_route(
             route_name, query_body, headers, stream, stream_response_path
         )
 
-    def query_unified_endpoint(self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None, stream_response_path=None):
+    def query_unified_endpoint(
+        self,
+        provider_name,
+        endpoint_type,
+        query_body,
+        headers=None,
+        query_params=None,
+        deployment=None,
+        model_id=None,
+        stream_response_path=None,
+    ):
         return self.route_service.query_unified_endpoint(
-        provider_name,
-        endpoint_type,
-        query_body,
-        headers,
-        query_params,
-        deployment,
-        model_id,
-        stream_response_path,
-    )
+            provider_name,
+            endpoint_type,
+            query_body,
+            headers,
+            query_params,
+            deployment,
+            model_id,
+            stream_response_path,
+        )
 
-    def aquery_unified_endpoint(self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None, stream_response_path=None):
-        return self.route_service.aquery_unified_endpoint(
+    def aquery_unified_endpoint(
+        self,
         provider_name,
         endpoint_type,
         query_body,
-        headers,
-        query_params,
-        deployment,
-        model_id,
-        stream_response_path,
-    )
+        headers=None,
+        query_params=None,
+        deployment=None,
+        model_id=None,
+        stream_response_path=None,
+    ):
+        return self.route_service.aquery_unified_endpoint(
+            provider_name,
+            endpoint_type,
+            query_body,
+            headers,
+            query_params,
+            deployment,
+            model_id,
+            stream_response_path,
+        )
 
     # Secret methods
     def create_secret(self, secret):
