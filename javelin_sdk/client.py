@@ -164,43 +164,48 @@ class JavelinClient:
         if filtered_attributes:  # Add event only if there are valid attributes
             span.add_event(name=event_name, attributes=filtered_attributes)
 
-    def register_provider(
-        self, openai_client: Any, provider_name: str, route_name: str = None
-    ) -> Any:
-        """
-        Generalized function to register OpenAI, Azure OpenAI, and Gemini clients.
+    def _setup_client_headers(self, openai_client, route_name):
+        """Setup client headers and base URL."""
 
-        Additionally sets:
-            - openai_client.base_url to self.base_url
-            - openai_client._custom_headers to include self._headers
-        """
-
-        client_id = id(openai_client)
-        if client_id in self.patched_clients:
-            print(f"Client {client_id} already patched")
-            return openai_client  # Skip if already patched
-
-        self.patched_clients.add(client_id)  # Mark as patched
-
-        # Store the OpenAI base URL
         self.openai_base_url = openai_client.base_url
 
-        # Point the OpenAI client to Javelin's base URL
         openai_client.base_url = f"{self.base_url}"
 
         if not hasattr(openai_client, "_custom_headers"):
             openai_client._custom_headers = {}
+        else:
+            pass # Removed debug print
+            
         openai_client._custom_headers.update(self._headers)
 
-        base_url_str = str(self.openai_base_url).rstrip(
-            "/"
-        )  # Remove trailing slash if present
-
-        # Update Javelin headers into the client's _custom_headers
+        base_url_str = str(self.openai_base_url).rstrip("/")
         openai_client._custom_headers["x-javelin-provider"] = base_url_str
-        openai_client._custom_headers["x-javelin-route"] = route_name
+        if route_name is not None:
+            openai_client._custom_headers["x-javelin-route"] = route_name
+        
+        # Ensure the client uses the custom headers
+        if hasattr(openai_client, 'default_headers'):
+            # Filter out None values and openai.Omit objects
+            filtered_headers = {}
+            for key, value in openai_client._custom_headers.items():
+                # Check if value is None or is an openai.Omit object
+                if value is not None and not (hasattr(value, '__class__') and value.__class__.__name__ == 'Omit'):
+                    filtered_headers[key] = value
+            openai_client.default_headers.update(filtered_headers)
+        elif hasattr(openai_client, '_default_headers'):
+            # Filter out None values and openai.Omit objects
+            filtered_headers = {}
+            for key, value in openai_client._custom_headers.items():
+                # Check if value is None or is an openai.Omit object
+                if value is not None and not (hasattr(value, '__class__') and value.__class__.__name__ == 'Omit'):
+                    filtered_headers[key] = value
+            openai_client._default_headers.update(filtered_headers)
+        else:
+            pass # Removed debug print
+            
 
-        # Store the original methods only if not already stored
+    def _store_original_methods(self, openai_client, provider_name):
+        """Store original methods for the provider if not already stored."""
         if provider_name not in self.original_methods:
             self.original_methods[provider_name] = {
                 "chat_completions_create": openai_client.chat.completions.create,
@@ -211,310 +216,303 @@ class JavelinClient:
                 "images_create_variation": openai_client.images.create_variation,
             }
 
-        # Patch methods with tracing and header updates
-        def create_patched_method(method_name, original_method):
-            # Check if the original method is asynchronous
+    def _create_patched_method(self, method_name, original_method, openai_client):
+        """Create a patched method with tracing support."""
+        if inspect.iscoroutinefunction(original_method):
+            async def async_patched_method(*args, **kwargs):
+                return await self._execute_with_tracing(
+                    original_method, method_name, args, kwargs, openai_client
+                )
+            return async_patched_method
+        else:
+            def sync_patched_method(*args, **kwargs):
+                return self._execute_with_tracing(
+                    original_method, method_name, args, kwargs, openai_client
+                )
+            return sync_patched_method
+
+    def _execute_with_tracing(
+        self,
+        original_method,
+        method_name,
+        args,
+        kwargs,
+        openai_client,
+    ):
+        """Execute method with tracing support."""
+        
+        model = kwargs.get("model")
+
+        if model and hasattr(openai_client, "_custom_headers"):
+            openai_client._custom_headers["x-javelin-model"] = model
+
+        # Ensure custom headers are applied to the request
+        if hasattr(openai_client, "_custom_headers"):
+            # Update the client's default headers with custom headers
+            if hasattr(openai_client, 'default_headers'):
+                # Filter out None values and openai.Omit objects
+                filtered_headers = {}
+                for key, value in openai_client._custom_headers.items():
+                    # Check if value is None or is an openai.Omit object
+                    if value is not None and not (hasattr(value, '__class__') and value.__class__.__name__ == 'Omit'):
+                        filtered_headers[key] = value
+                openai_client.default_headers.update(filtered_headers)
+            elif hasattr(openai_client, '_default_headers'):
+                # Filter out None values and openai.Omit objects
+                filtered_headers = {}
+                for key, value in openai_client._custom_headers.items():
+                    # Check if value is None or is an openai.Omit object
+                    if value is not None and not (hasattr(value, '__class__') and value.__class__.__name__ == 'Omit'):
+                        filtered_headers[key] = value
+                openai_client._default_headers.update(filtered_headers)
+            else:
+                pass # Removed debug print
+                
+        else:
+            pass # Removed debug print
+
+        operation_name = self.GEN_AI_OPERATION_MAPPING.get(
+            method_name, method_name
+        )
+        system_name = self.GEN_AI_SYSTEM_MAPPING.get(
+            self.provider_name, self.provider_name
+        )
+        span_name = f"{operation_name} {model}"
+        
+        
+        async def _async_execution(span):
+            response = await original_method(*args, **kwargs)
+            self._capture_response_details(span, response, kwargs, system_name)
+            return response
+
+        def _sync_execution(span):
+            response = original_method(*args, **kwargs)
+            self._capture_response_details(span, response, kwargs, system_name)
+            return response
+
+        if self.tracer:
+            with self.tracer.start_as_current_span(
+                span_name, kind=SpanKind.CLIENT
+            ) as span:
+                self._setup_span_attributes(
+                    span, system_name, operation_name, model, kwargs
+                )
+                try:
+                    if inspect.iscoroutinefunction(original_method):
+                        return asyncio.run(_async_execution(span))
+                    else:
+                        return _sync_execution(span)
+                except Exception as e:
+                    span.set_status(Status(StatusCode.ERROR, str(e)))
+                    span.set_attribute("is_exception", True)
+                    raise
+        else:
             if inspect.iscoroutinefunction(original_method):
-                # Async Patched Method
-                async def patched_method(*args, **kwargs):
-                    return await _execute_with_tracing(
-                        original_method, method_name, args, kwargs
-                    )
-
+                return asyncio.run(original_method(*args, **kwargs))
             else:
-                # Sync Patched Method
-                def patched_method(*args, **kwargs):
-                    return _execute_with_tracing(
-                        original_method, method_name, args, kwargs
-                    )
+                return original_method(*args, **kwargs)
 
-            return patched_method
+    def _setup_span_attributes(self, span, system_name, operation_name, model, kwargs):
+        """Setup span attributes for tracing."""
+        span.set_attribute(gen_ai_attributes.GEN_AI_SYSTEM, system_name)
+        span.set_attribute(gen_ai_attributes.GEN_AI_OPERATION_NAME, operation_name)
+        span.set_attribute(gen_ai_attributes.GEN_AI_REQUEST_MODEL, model)
 
-        def _execute_with_tracing(original_method, method_name, args, kwargs):
-            model = kwargs.get("model")
+        # Request attributes
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS,
+            kwargs.get("max_completion_tokens")
+        )
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY,
+            kwargs.get("presence_penalty")
+        )
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY,
+            kwargs.get("frequency_penalty")
+        )
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_REQUEST_STOP_SEQUENCES,
+            json.dumps(kwargs.get("stop", [])) if kwargs.get("stop") else None
+        )
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE,
+            kwargs.get("temperature")
+        )
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_REQUEST_TOP_K, kwargs.get("top_k")
+        )
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_REQUEST_TOP_P, kwargs.get("top_p")
+        )
 
-            if model and hasattr(openai_client, "_custom_headers"):
-                openai_client._custom_headers["x-javelin-model"] = model
-
-            # Use well-known operation names, fallback to method_name if not mapped
-            operation_name = self.GEN_AI_OPERATION_MAPPING.get(method_name, method_name)
-            system_name = self.GEN_AI_SYSTEM_MAPPING.get(
-                provider_name, provider_name
-            )  # Fallback if provider is custom
-            span_name = f"{operation_name} {model}"
-
-            async def _async_execution(span):
-                response = await original_method(*args, **kwargs)
-                _capture_response_details(span, response, kwargs, system_name)
-                return response
-
-            def _sync_execution(span):
-                response = original_method(*args, **kwargs)
-                _capture_response_details(span, response, kwargs, system_name)
-                return response
-
-            # Only create spans if tracing is enabled
-            if self.tracer:
-                with self.tracer.start_as_current_span(
-                    span_name, kind=SpanKind.CLIENT
-                ) as span:
-                    span.set_attribute(gen_ai_attributes.GEN_AI_SYSTEM, system_name)
-                    span.set_attribute(
-                        gen_ai_attributes.GEN_AI_OPERATION_NAME, operation_name
-                    )
-                    span.set_attribute(gen_ai_attributes.GEN_AI_REQUEST_MODEL, model)
-
-                    # Request attributes
-                    JavelinClient.set_span_attribute_if_not_none(
-                        span,
-                        gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS,
-                        kwargs.get("max_completion_tokens"),
-                    )
-                    JavelinClient.set_span_attribute_if_not_none(
-                        span,
-                        gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY,
-                        kwargs.get("presence_penalty"),
-                    )
-                    JavelinClient.set_span_attribute_if_not_none(
-                        span,
-                        gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY,
-                        kwargs.get("frequency_penalty"),
-                    )
-                    JavelinClient.set_span_attribute_if_not_none(
-                        span,
-                        gen_ai_attributes.GEN_AI_REQUEST_STOP_SEQUENCES,
-                        (
-                            json.dumps(kwargs.get("stop", []))
-                            if kwargs.get("stop")
-                            else None
-                        ),
-                    )
-                    JavelinClient.set_span_attribute_if_not_none(
-                        span,
-                        gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE,
-                        kwargs.get("temperature"),
-                    )
-                    JavelinClient.set_span_attribute_if_not_none(
-                        span,
-                        gen_ai_attributes.GEN_AI_REQUEST_TOP_K,
-                        kwargs.get("top_k"),
-                    )
-                    JavelinClient.set_span_attribute_if_not_none(
-                        span,
-                        gen_ai_attributes.GEN_AI_REQUEST_TOP_P,
-                        kwargs.get("top_p"),
-                    )
-
-                    try:
-                        if inspect.iscoroutinefunction(original_method):
-                            return asyncio.run(_async_execution(span))
-                        else:
-                            return _sync_execution(span)
-                    except Exception as e:
-                        span.set_status(Status(StatusCode.ERROR, str(e)))
-                        span.set_attribute("is_exception", True)
-                        raise
-            else:
-                # Tracing is disabled
-                if inspect.iscoroutinefunction(original_method):
-                    return asyncio.run(original_method(*args, **kwargs))
-                else:
-                    return original_method(*args, **kwargs)
-
-        # Helper to capture response details
-        def _capture_response_details(span, response, kwargs, system_name):
-            try:
-                # print(f"type(response) = {type(response)}")
-                if hasattr(response, "to_dict"):
-                    # print("Response is a model object (has to_dict).")
-                    try:
-                        response_data = response.to_dict()
-                        if not response_data:
-                            response_data = None
-                    except Exception:
-                        response_data = None
-                elif hasattr(response, "model_dump"):
-                    try:
-                        response_data = response.model_dump()
-                    except Exception:
-                        response_data = None
-                elif hasattr(response, "dict"):
-                    try:
-                        response_data = response.dict()
-                    except Exception as e:
-                        print(f"dict() failed: {e}")
-                        response_data = None
-                elif isinstance(response, dict):
-                    # print("Response is already a dictionary.")
-                    response_data = response
-                elif hasattr(response, "__iter__") and not isinstance(
-                    response, (str, bytes, dict, list)
-                ):
-                    response_data = {
-                        "object": "thread.message.delta",
-                        "streamed_text": "",
-                    }
-
-                    # Iterate over chunks from the streaming response
-                    for index, chunk in enumerate(response):
-                        # print(f"DEBUG: Received chunk #{index}: {chunk}")
-
-                        # **Fix: Convert `ChatCompletionChunk` to a dictionary**
-                        if hasattr(chunk, "to_dict"):
-                            chunk = chunk.to_dict()  # Convert chunk to a dictionary
-
-                        if not isinstance(chunk, dict):
-                            # print("DEBUG: Chunk is still not a dict; skipping.")
-                            continue
-
-                        choices = chunk.get("choices", [])
-                        if not choices:
-                            # print("DEBUG: No 'choices' in chunk; skipping.")
-                            continue
-
-                        # Extract the delta
-                        delta_dict = choices[0].get("delta", {})
-                        # print(f"DEBUG: delta_dict = {delta_dict}")
-
-                        # Get streamed text content
-                        streamed_text = delta_dict.get("content", "")
-
-                        # Accumulate the streamed text
-                        response_data["streamed_text"] += streamed_text
-
-                        """
-                        # Fire OpenTelemetry event for each chunk
-                        JavelinClient.add_event_with_attributes(
-                            span,
-                            "gen_ai.streaming.delta",
-                            {
-                                "gen_ai.system": system_name,
-                                "streamed_content": streamed_text,
-                                "chunk_index": index,
-                            },
-                        )
-                        """
-
-                    # Store the final streamed text in the span
-                    final_text = response_data["streamed_text"]
-                    JavelinClient.set_span_attribute_if_not_none(
-                        span,
-                        gen_ai_attributes.GEN_AI_COMPLETION,
-                        final_text,
-                    )
-
-                    return  # Exit early since we've handled streaming
-
-                else:
-                    # print(f"Trying to parse JSON from response: {response}")
-                    try:
-                        response_data = json.loads(str(response))
-                    except (TypeError, ValueError):
-                        # print("Response is not valid JSON.")
-                        response_data = None
-
-                # If response_data is still None, set the raw response
-                if response_data is None:
-                    span.set_attribute("javelin.response.body", str(response))
-                    return
-
-                # Set basic response attributes
-                JavelinClient.set_span_attribute_if_not_none(
-                    span,
-                    gen_ai_attributes.GEN_AI_RESPONSE_MODEL,
-                    response_data.get("model"),
-                )
-                JavelinClient.set_span_attribute_if_not_none(
-                    span, gen_ai_attributes.GEN_AI_RESPONSE_ID, response_data.get("id")
-                )
-                JavelinClient.set_span_attribute_if_not_none(
-                    span,
-                    gen_ai_attributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER,
-                    response_data.get("service_tier"),
-                )
-                JavelinClient.set_span_attribute_if_not_none(
-                    span,
-                    gen_ai_attributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT,
-                    response_data.get("system_fingerprint"),
-                )
-
-                # Finish reasons for choices
-                finish_reasons = [
-                    choice.get("finish_reason")
-                    for choice in response_data.get("choices", [])
-                    if choice.get("finish_reason")
-                ]
-                JavelinClient.set_span_attribute_if_not_none(
-                    span,
-                    gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS,
-                    json.dumps(finish_reasons) if finish_reasons else None,
-                )
-
-                # Token usage
-                usage = response_data.get("usage", {})
-                JavelinClient.set_span_attribute_if_not_none(
-                    span,
-                    gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS,
-                    usage.get("prompt_tokens"),
-                )
-                JavelinClient.set_span_attribute_if_not_none(
-                    span,
-                    gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS,
-                    usage.get("completion_tokens"),
-                )
-
-                # System message event
-                system_message = next(
-                    (
-                        msg.get("content")
-                        for msg in kwargs.get("messages", [])
-                        if msg.get("role") == "system"
-                    ),
-                    None,
-                )
-                JavelinClient.add_event_with_attributes(
-                    span,
-                    "gen_ai.system.message",
-                    {"gen_ai.system": system_name, "content": system_message},
-                )
-
-                # User message event
-                user_message = next(
-                    (
-                        msg.get("content")
-                        for msg in kwargs.get("messages", [])
-                        if msg.get("role") == "user"
-                    ),
-                    None,
-                )
-                JavelinClient.add_event_with_attributes(
-                    span,
-                    "gen_ai.user.message",
-                    {"gen_ai.system": system_name, "content": user_message},
-                )
-
-                # Choice events
-                choices = response_data.get("choices", [])
-                for index, choice in enumerate(choices):
-                    choice_attributes = {"gen_ai.system": system_name, "index": index}
-                    message = choice.pop("message", {})
-                    choice.update(message)
-
-                    for key, value in choice.items():
-                        if isinstance(value, (dict, list)):
-                            value = json.dumps(value)
-                        choice_attributes[key] = value if value is not None else None
-
-                    JavelinClient.add_event_with_attributes(
-                        span,
-                        "gen_ai.choice",
-                        choice_attributes,
-                    )
-            except Exception as e:
+    def _capture_response_details(self, span, response, kwargs, system_name):
+        """Capture response details for tracing."""
+        try:
+            response_data = self._extract_response_data(response)
+            if response_data is None:
                 span.set_attribute("javelin.response.body", str(response))
-                span.set_attribute("javelin.error", str(e))
+                return
 
-        # Helper function to get nested attributes
+            self._set_basic_response_attributes(span, response_data)
+            self._set_usage_attributes(span, response_data)
+            self._add_message_events(span, kwargs, system_name)
+            self._add_choice_events(span, response_data, system_name)
+
+        except Exception as e:
+            span.set_attribute("javelin.response.body", str(response))
+            span.set_attribute("javelin.error", str(e))
+
+    def _extract_response_data(self, response):
+        """Extract response data from various response types."""
+        if hasattr(response, "to_dict"):
+            return self._extract_from_to_dict(response)
+        elif hasattr(response, "model_dump"):
+            return self._extract_from_model_dump(response)
+        elif hasattr(response, "dict"):
+            return self._extract_from_dict(response)
+        elif isinstance(response, dict):
+            return response
+        elif hasattr(response, "__iter__") and not isinstance(
+            response, (str, bytes, dict, list)
+        ):
+            return self._handle_streaming_response(response)
+        else:
+            return self._extract_from_json(response)
+
+    def _extract_from_to_dict(self, response):
+        """Extract data using to_dict method."""
+        try:
+            response_data = response.to_dict()
+            return response_data if response_data else None
+        except Exception:
+            return None
+
+    def _extract_from_model_dump(self, response):
+        """Extract data using model_dump method."""
+        try:
+            return response.model_dump()
+        except Exception:
+            return None
+
+    def _extract_from_dict(self, response):
+        """Extract data using dict method."""
+        try:
+            return response.dict()
+        except Exception:
+            return None
+
+    def _extract_from_json(self, response):
+        """Extract data by parsing JSON string."""
+        try:
+            return json.loads(str(response))
+        except (TypeError, ValueError):
+            return None
+
+    def _handle_streaming_response(self, response):
+        """Handle streaming response data."""
+        response_data = {
+            "object": "thread.message.delta",
+            "streamed_text": "",
+        }
+
+        for index, chunk in enumerate(response):
+            if hasattr(chunk, "to_dict"):
+                chunk = chunk.to_dict()
+
+            if not isinstance(chunk, dict):
+                continue
+
+            choices = chunk.get("choices", [])
+            if not choices:
+                continue
+
+            delta_dict = choices[0].get("delta", {})
+            streamed_text = delta_dict.get("content", "")
+            response_data["streamed_text"] += streamed_text
+
+        return response_data
+
+    def _set_basic_response_attributes(self, span, response_data):
+        """Set basic response attributes on span."""
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_RESPONSE_MODEL,
+            response_data.get("model")
+        )
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_RESPONSE_ID,
+            response_data.get("id")
+        )
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER,
+            response_data.get("service_tier")
+        )
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT,
+            response_data.get("system_fingerprint")
+        )
+
+        finish_reasons = [
+            choice.get("finish_reason")
+            for choice in response_data.get("choices", [])
+            if choice.get("finish_reason")
+        ]
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS,
+            json.dumps(finish_reasons) if finish_reasons else None
+        )
+
+    def _set_usage_attributes(self, span, response_data):
+        """Set usage attributes on span."""
+        usage = response_data.get("usage", {})
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS,
+            usage.get("prompt_tokens")
+        )
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS,
+            usage.get("completion_tokens")
+        )
+
+    def _add_message_events(self, span, kwargs, system_name):
+        """Add message events to span."""
+        messages = kwargs.get("messages", [])
+
+        system_message = next(
+            (msg.get("content") for msg in messages if msg.get("role") == "system"),
+            None
+        )
+        self.add_event_with_attributes(
+            span, "gen_ai.system.message",
+            {"gen_ai.system": system_name, "content": system_message}
+        )
+
+        user_message = next(
+            (msg.get("content") for msg in messages if msg.get("role") == "user"),
+            None
+        )
+        self.add_event_with_attributes(
+            span, "gen_ai.user.message",
+            {"gen_ai.system": system_name, "content": user_message}
+        )
+
+    def _add_choice_events(self, span, response_data, system_name):
+        """Add choice events to span."""
+        choices = response_data.get("choices", [])
+        for index, choice in enumerate(choices):
+            choice_attributes = {"gen_ai.system": system_name, "index": index}
+            message = choice.pop("message", {})
+            choice.update(message)
+
+            for key, value in choice.items():
+                if isinstance(value, (dict, list)):
+                    value = json.dumps(value)
+                choice_attributes[key] = value if value is not None else None
+
+            self.add_event_with_attributes(span, "gen_ai.choice", choice_attributes)
+
+    def _patch_methods(self, openai_client, provider_name):
+        """Patch client methods with tracing support."""
         def get_nested_attr(obj, attr_path):
             attrs = attr_path.split(".")
             for attr in attrs:
@@ -530,18 +528,41 @@ class JavelinClient:
             method_id = id(method_ref)
 
             if method_id in self.patched_methods:
-                continue  # Skip if already patched
+                continue
 
             original_method = self.original_methods[provider_name][
                 method_name.replace(".", "_")
             ]
-            patched_method = create_patched_method(method_name, original_method)
+            patched_method = self._create_patched_method(
+                method_name, original_method, openai_client
+            )
 
             parent_attr, method_attr = method_name.rsplit(".", 1)
             parent_obj = get_nested_attr(openai_client, parent_attr)
             setattr(parent_obj, method_attr, patched_method)
 
             self.patched_methods.add(method_id)
+
+    def register_provider(
+        self, openai_client: Any, provider_name: str, route_name: str = None
+    ) -> Any:
+        """
+        Generalized function to register OpenAI, Azure OpenAI, and Gemini clients.
+
+        Additionally sets:
+            - openai_client.base_url to self.base_url
+            - openai_client._custom_headers to include self._headers
+        """
+        client_id = id(openai_client)
+        if client_id in self.patched_clients:
+            return openai_client
+
+        self.patched_clients.add(client_id)
+        self.provider_name = provider_name  # Store for use in helper methods
+
+        self._setup_client_headers(openai_client, route_name)
+        self._store_original_methods(openai_client, provider_name)
+        self._patch_methods(openai_client, provider_name)
 
         return openai_client
 
@@ -750,13 +771,10 @@ class JavelinClient:
                 request.url = urlunparse(updated_url)
 
             except Exception as e:
-                print(f"Failed to override endpoint URL: {str(e)}")
-                pass
+                pass # Removed debug print
 
         def debug_before_send(*args, **kwargs):
-            print("DEBUG: debug_before_send was invoked!")
-            print("DEBUG: args =", args)
-            print("DEBUG: kwargs =", kwargs)
+            pass # Removed debug print
 
         # Helper function to create a new OTel span for each Bedrock invocation
         def bedrock_before_send(http_request, model, context, event_name, **kwargs):
@@ -784,17 +802,11 @@ class JavelinClient:
                 span,
             )
 
-            print(f"DEBUG: Bedrock span created: {span_name}")
-
         def debug_before_call(*args, **kwargs):
-            print("DEBUG: debug_before_call invoked!")
-            print("  args =", args)
-            print("  kwargs =", kwargs)
+            pass # Removed debug print
 
         def debug_after_call(*args, **kwargs):
-            print("DEBUG: debug_after_call invoked!")
-            print("  args =", args)
-            print("  kwargs =", kwargs)
+            pass # Removed debug print
 
         '''
         def bedrock_after_call(**kwargs):
@@ -860,7 +872,6 @@ class JavelinClient:
 
             context = kwargs.get("context")
             if context is None:
-                print("DEBUG: No context. Cannot store OTel span.")
                 return
 
             event_name = kwargs.get("event_name", "")
@@ -874,25 +885,20 @@ class JavelinClient:
             # Optionally wrap it in a JavelinRequestWrapper or something else
             context["javelin_request_wrapper"] = JavelinRequestWrapper(None, span)
 
-            print(f"DEBUG: Span created for {operation_name}")
-
         def bedrock_after_call(**kwargs):
             """
             End the OTel span by retrieving it from Botocore's context dict.
             """
             context = kwargs.get("context")
             if not context:
-                print("DEBUG: No context. Cannot retrieve OTel span.")
                 return
 
             wrapper = context.get("javelin_request_wrapper")
             if not wrapper:
-                print("DEBUG: No wrapped request object found in context.")
                 return
 
             span = getattr(wrapper, "span", None)
             if not span:
-                print("DEBUG: No span found in the wrapper.")
                 return
 
             # Optionally set status from the HTTP response
@@ -911,7 +917,6 @@ class JavelinClient:
                     )
 
             # End the span
-            print(f"DEBUG: Ending span: {span.name}")
             span.end()
 
         # Register header modification & URL override for specific operations
