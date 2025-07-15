@@ -3,7 +3,6 @@ import inspect
 import json
 import re
 import asyncio
-import trace
 from typing import Any, Coroutine, Dict, Optional, Union
 from urllib.parse import unquote, urljoin, urlparse, urlunparse
 
@@ -22,10 +21,6 @@ from javelin_sdk.services.template_service import TemplateService
 from javelin_sdk.services.trace_service import TraceService
 from javelin_sdk.services.guardrails_service import GuardrailsService
 from javelin_sdk.tracing_setup import configure_span_exporter
-import inspect
-from opentelemetry.trace import SpanKind
-from opentelemetry.trace import Status, StatusCode
-from opentelemetry.semconv._incubating.attributes import gen_ai_attributes
 
 API_BASEURL = "https://api-dev.javelin.live"
 API_BASE_PATH = "/v1"
@@ -34,9 +29,11 @@ API_TIMEOUT = 10
 
 class JavelinRequestWrapper:
     """A wrapper around Botocore's request object to store additional metadata."""
+
     def __init__(self, original_request, span):
         self.original_request = original_request
         self.span = span
+
 
 class JavelinClient:
     BEDROCK_RUNTIME_OPERATIONS = frozenset(
@@ -166,43 +163,49 @@ class JavelinClient:
         if filtered_attributes:  # Add event only if there are valid attributes
             span.add_event(name=event_name, attributes=filtered_attributes)
 
-    def register_provider(
-        self, openai_client: Any, provider_name: str, route_name: str = None
-    ) -> Any:
-        """
-        Generalized function to register OpenAI, Azure OpenAI, and Gemini clients.
+    def _setup_client_headers(self, openai_client, route_name):
+        """Setup client headers and base URL."""
 
-        Additionally sets:
-            - openai_client.base_url to self.base_url
-            - openai_client._custom_headers to include self._headers
-        """
-
-        client_id = id(openai_client)
-        if client_id in self.patched_clients:
-            print (f"Client {client_id} already patched")
-            return openai_client  # Skip if already patched
-
-        self.patched_clients.add(client_id)  # Mark as patched
-
-        # Store the OpenAI base URL
         self.openai_base_url = openai_client.base_url
 
-        # Point the OpenAI client to Javelin's base URL
         openai_client.base_url = f"{self.base_url}"
 
         if not hasattr(openai_client, "_custom_headers"):
             openai_client._custom_headers = {}
+        else:
+            pass
+
         openai_client._custom_headers.update(self._headers)
 
-        base_url_str = str(self.openai_base_url).rstrip(
-            "/"
-        )  # Remove trailing slash if present
-
-        # Update Javelin headers into the client's _custom_headers
+        base_url_str = str(self.openai_base_url).rstrip("/")
         openai_client._custom_headers["x-javelin-provider"] = base_url_str
-        openai_client._custom_headers["x-javelin-route"] = route_name
+        if route_name is not None:
+            openai_client._custom_headers["x-javelin-route"] = route_name
 
-        # Store the original methods only if not already stored
+        # Ensure the client uses the custom headers
+        if hasattr(openai_client, "default_headers"):
+            # Filter out None values and openai.Omit objects
+            filtered_headers = {}
+            for key, value in openai_client._custom_headers.items():
+                if value is not None and not (
+                    hasattr(value, "__class__") and value.__class__.__name__ == "Omit"
+                ):
+                    filtered_headers[key] = value
+            openai_client.default_headers.update(filtered_headers)
+        elif hasattr(openai_client, "_default_headers"):
+            # Filter out None values and openai.Omit objects
+            filtered_headers = {}
+            for key, value in openai_client._custom_headers.items():
+                if value is not None and not (
+                    hasattr(value, "__class__") and value.__class__.__name__ == "Omit"
+                ):
+                    filtered_headers[key] = value
+            openai_client._default_headers.update(filtered_headers)
+        else:
+            pass
+
+    def _store_original_methods(self, openai_client, provider_name):
+        """Store original methods for the provider if not already stored."""
         if provider_name not in self.original_methods:
             self.original_methods[provider_name] = {
                 "chat_completions_create": openai_client.chat.completions.create,
@@ -213,284 +216,344 @@ class JavelinClient:
                 "images_create_variation": openai_client.images.create_variation,
             }
 
-        # Patch methods with tracing and header updates
-        def create_patched_method(method_name, original_method):
-            # Check if the original method is asynchronous
-            if inspect.iscoroutinefunction(original_method):
-                # Async Patched Method
-                async def patched_method(*args, **kwargs):
-                    return await _execute_with_tracing(
-                        original_method, method_name, args, kwargs
-                    )
+    def _create_patched_method(self, method_name, original_method, openai_client):
+        """Create a patched method with tracing support."""
+        if inspect.iscoroutinefunction(original_method):
 
-            else:
-                # Sync Patched Method
-                def patched_method(*args, **kwargs):
-                    return _execute_with_tracing(
-                        original_method, method_name, args, kwargs
-                    )
+            async def async_patched_method(*args, **kwargs):
+                return await self._execute_with_tracing(
+                    original_method, method_name, args, kwargs, openai_client
+                )
 
-            return patched_method
+            return async_patched_method
+        else:
 
-        def _execute_with_tracing(original_method, method_name, args, kwargs):
-            model = kwargs.get("model")
+            def sync_patched_method(*args, **kwargs):
+                return self._execute_with_tracing(
+                    original_method, method_name, args, kwargs, openai_client
+                )
 
-            if model and hasattr(openai_client, "_custom_headers"):
-                openai_client._custom_headers["x-javelin-model"] = model
+            return sync_patched_method
 
-            # Use well-known operation names, fallback to method_name if not mapped
-            operation_name = self.GEN_AI_OPERATION_MAPPING.get(method_name, method_name)
-            system_name = self.GEN_AI_SYSTEM_MAPPING.get(
-                provider_name, provider_name
-            )  # Fallback if provider is custom
-            span_name = f"{operation_name} {model}"
+    def _execute_with_tracing(
+        self,
+        original_method,
+        method_name,
+        args,
+        kwargs,
+        openai_client,
+    ):
+        """Execute method with tracing support."""
+        model = kwargs.get("model")
 
-            async def _async_execution(span):
-                response = await original_method(*args, **kwargs)
-                _capture_response_details(span, response, kwargs, system_name)
-                return response
+        self._setup_custom_headers(openai_client, model)
 
-            def _sync_execution(span):
-                response = original_method(*args, **kwargs)
-                _capture_response_details(span, response, kwargs, system_name)
-                return response
+        operation_name = self.GEN_AI_OPERATION_MAPPING.get(method_name, method_name)
+        system_name = self.GEN_AI_SYSTEM_MAPPING.get(
+            self.provider_name, self.provider_name
+        )
+        span_name = f"{operation_name} {model}"
 
-            # Only create spans if tracing is enabled
-            if self.tracer:
-                with self.tracer.start_as_current_span(
-                    span_name, kind=SpanKind.CLIENT
-                ) as span:
-                    span.set_attribute(gen_ai_attributes.GEN_AI_SYSTEM, system_name)
-                    span.set_attribute(
-                        gen_ai_attributes.GEN_AI_OPERATION_NAME, operation_name
-                    )
-                    span.set_attribute(gen_ai_attributes.GEN_AI_REQUEST_MODEL, model)
+        if self.tracer:
+            return self._execute_with_tracer(
+                original_method,
+                args,
+                kwargs,
+                span_name,
+                system_name,
+                operation_name,
+                model,
+            )
+        else:
+            return self._execute_without_tracer(original_method, args, kwargs)
 
-                    # Request attributes
-                    JavelinClient.set_span_attribute_if_not_none(
-                        span,
-                        gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS,
-                        kwargs.get("max_completion_tokens"),
-                    )
-                    JavelinClient.set_span_attribute_if_not_none(
-                        span,
-                        gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY,
-                        kwargs.get("presence_penalty"),
-                    )
-                    JavelinClient.set_span_attribute_if_not_none(
-                        span,
-                        gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY,
-                        kwargs.get("frequency_penalty"),
-                    )
-                    JavelinClient.set_span_attribute_if_not_none(
-                        span,
-                        gen_ai_attributes.GEN_AI_REQUEST_STOP_SEQUENCES,
-                        (
-                            json.dumps(kwargs.get("stop", []))
-                            if kwargs.get("stop")
-                            else None
-                        ),
-                    )
-                    JavelinClient.set_span_attribute_if_not_none(
-                        span,
-                        gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE,
-                        kwargs.get("temperature"),
-                    )
-                    JavelinClient.set_span_attribute_if_not_none(
-                        span,
-                        gen_ai_attributes.GEN_AI_REQUEST_TOP_K,
-                        kwargs.get("top_k"),
-                    )
-                    JavelinClient.set_span_attribute_if_not_none(
-                        span,
-                        gen_ai_attributes.GEN_AI_REQUEST_TOP_P,
-                        kwargs.get("top_p"),
-                    )
+    def _setup_custom_headers(self, openai_client, model):
+        """Setup custom headers for the OpenAI client."""
+        if model and hasattr(openai_client, "_custom_headers"):
+            openai_client._custom_headers["x-javelin-model"] = model
 
-                    try:
-                        if inspect.iscoroutinefunction(original_method):
-                            return asyncio.run(_async_execution(span))
-                        else:
-                            return _sync_execution(span)
-                    except Exception as e:
-                        span.set_status(Status(StatusCode.ERROR, str(e)))
-                        span.set_attribute("is_exception", True)
-                        raise
-            else:
-                # Tracing is disabled
-                if inspect.iscoroutinefunction(original_method):
-                    return asyncio.run(original_method(*args, **kwargs))
-                else:
-                    return original_method(*args, **kwargs)
+        if not hasattr(openai_client, "_custom_headers"):
+            return
 
-        # Helper to capture response details
-        def _capture_response_details(span, response, kwargs, system_name):
+        filtered_headers = self._filter_custom_headers(openai_client._custom_headers)
+
+        if hasattr(openai_client, "default_headers"):
+            openai_client.default_headers.update(filtered_headers)
+        elif hasattr(openai_client, "_default_headers"):
+            openai_client._default_headers.update(filtered_headers)
+
+    def _filter_custom_headers(self, custom_headers):
+        """Filter out None values and openai.Omit objects from custom headers."""
+        filtered_headers = {}
+        for key, value in custom_headers.items():
+            if value is not None and not self._is_omit_object(value):
+                filtered_headers[key] = value
+        return filtered_headers
+
+    def _is_omit_object(self, value):
+        """Check if value is an openai.Omit object."""
+        return hasattr(value, "__class__") and value.__class__.__name__ == "Omit"
+
+    def _execute_with_tracer(
+        self,
+        original_method,
+        args,
+        kwargs,
+        span_name,
+        system_name,
+        operation_name,
+        model,
+    ):
+        """Execute method with tracer enabled."""
+        if self.tracer is None:
+            return self._execute_without_tracer(original_method, args, kwargs)
+
+        with self.tracer.start_as_current_span(span_name, kind=SpanKind.CLIENT) as span:
+            self._setup_span_attributes(
+                span, system_name, operation_name, model, kwargs
+            )
             try:
-                # print(f"type(response) = {type(response)}")
-                if hasattr(response, "to_dict"):
-                    # print("Response is a model object (has to_dict).")
-                    try:
-                        response_data = response.to_dict()
-                        # print(f"DEBUG: after to_dict(), response_data = {response_data}")
-                        if not response_data:
-                            # print("response.to_dict() returned None or empty. Fallback.")
-                            response_data = None
-                    except Exception as e:
-                        # print(f"to_dict() raised exception: {e}")
-                        response_data = None
-                elif hasattr(response, "model_dump"):
-                    # print("Response is likely Pydantic 2.x (has model_dump).")
-                    try:
-                        response_data = response.model_dump()
-                    except Exception as e:
-                        # print(f"model_dump() failed: {e}")
-                        response_data = None
-                elif hasattr(response, "dict"):
-                    # print("Response might be Pydantic 1.x (has .dict).")
-                    try:
-                        response_data = response.dict()
-                    except Exception as e:
-                        print(f"dict() failed: {e}")
-                        response_data = None
-                elif isinstance(response, dict):
-                    # print("Response is already a dictionary.")
-                    response_data = response
-                elif hasattr(response, "__iter__") and not isinstance(response, (str, bytes, dict, list)):
-                    # print("DEBUG: Response is a stream/iterator (likely streaming).")
-                    response_data = {"object": "thread.message.delta", "streamed_text": ""}
-
-                    # Iterate over chunks from the streaming response
-                    for index, chunk in enumerate(response):
-                        # print(f"DEBUG: Received chunk #{index}: {chunk}")
-
-                        # **Fix: Convert `ChatCompletionChunk` to a dictionary**
-                        if hasattr(chunk, "to_dict"):
-                            chunk = chunk.to_dict()  # Convert chunk to a dictionary
-
-                        if not isinstance(chunk, dict):
-                            # print("DEBUG: Chunk is still not a dict; skipping.")
-                            continue
-
-                        choices = chunk.get("choices", [])
-                        if not choices:
-                            # print("DEBUG: No 'choices' in chunk; skipping.")
-                            continue
-
-                        # Extract the delta
-                        delta_dict = choices[0].get("delta", {})
-                        # print(f"DEBUG: delta_dict = {delta_dict}")
-
-                        # Get streamed text content
-                        streamed_text = delta_dict.get("content", "")
-                        # print(f"DEBUG: streamed_text extracted = '{streamed_text}'")
-
-                        # Accumulate the streamed text
-                        response_data["streamed_text"] += streamed_text
-                        # print(f"DEBUG: accumulated streamed_text so far = '{response_data['streamed_text']}'")
-
-                        '''
-                        # Fire OpenTelemetry event for each chunk
-                        JavelinClient.add_event_with_attributes(
-                            span,
-                            "gen_ai.streaming.delta",
-                            {
-                                "gen_ai.system": system_name,
-                                "streamed_content": streamed_text,
-                                "chunk_index": index,
-                            },
-                        )
-                        '''
-
-                    # Store the final streamed text in the span
-                    final_text = response_data["streamed_text"]
-                    # print(f"DEBUG: Final accumulated streamed_text = '{final_text}'")
-                    JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_COMPLETION, final_text)
-
-                    return  # Exit early since we've handled streaming
-
+                if inspect.iscoroutinefunction(original_method):
+                    return asyncio.run(
+                        self._async_execution(span, original_method, args, kwargs)
+                    )
                 else:
-                    # print(f"Trying to parse JSON from response: {response}")
-                    try:
-                        response_data = json.loads(str(response))
-                    except (TypeError, ValueError):
-                        # print("Response is not valid JSON.")
-                        response_data = None
-
-                # If response_data is still None, set the raw response
-                if response_data is None:
-                    span.set_attribute("javelin.response.body", str(response))
-                    return
-
-                # Set basic response attributes
-                JavelinClient.set_span_attribute_if_not_none(
-                    span,
-                    gen_ai_attributes.GEN_AI_RESPONSE_MODEL,
-                    response_data.get("model"),
-                )
-                JavelinClient.set_span_attribute_if_not_none(
-                    span, gen_ai_attributes.GEN_AI_RESPONSE_ID, response_data.get("id")
-                )
-                JavelinClient.set_span_attribute_if_not_none(
-                    span,
-                    gen_ai_attributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER,
-                    response_data.get("service_tier"),
-                )
-                JavelinClient.set_span_attribute_if_not_none(
-                    span,
-                    gen_ai_attributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT,
-                    response_data.get("system_fingerprint"),
-                )
-
-                # Finish reasons for choices
-                finish_reasons = [
-                    choice.get('finish_reason')
-                    for choice in response_data.get('choices', [])
-                    if choice.get('finish_reason')
-                ]
-                JavelinClient.set_span_attribute_if_not_none(
-                    span,
-                    gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS,
-                    json.dumps(finish_reasons) if finish_reasons else None
-                )
-
-                # Token usage
-                usage = response_data.get('usage', {})
-                JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS, usage.get('prompt_tokens'))
-                JavelinClient.set_span_attribute_if_not_none(span, gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS, usage.get('completion_tokens'))
-
-                # System message event
-                system_message = next(
-                    (msg.get('content') for msg in kwargs.get('messages', []) if msg.get('role') == 'system'),
-                    None
-                )
-                JavelinClient.add_event_with_attributes(span, "gen_ai.system.message", {"gen_ai.system": system_name, "content": system_message})
-
-                # User message event
-                user_message = next(
-                    (msg.get('content') for msg in kwargs.get('messages', []) if msg.get('role') == 'user'),
-                    None
-                )
-                JavelinClient.add_event_with_attributes(span, "gen_ai.user.message", {"gen_ai.system": system_name, "content": user_message})
-
-                # Choice events
-                choices = response_data.get('choices', [])
-                for index, choice in enumerate(choices):
-                    choice_attributes = {"gen_ai.system": system_name, "index": index}
-                    message = choice.pop("message", {})
-                    choice.update(message)
-
-                    for key, value in choice.items():
-                        if isinstance(value, (dict, list)):
-                            value = json.dumps(value)
-                        choice_attributes[key] = value if value is not None else None
-
-                    JavelinClient.add_event_with_attributes(span, "gen_ai.choice", choice_attributes)
-
+                    return self._sync_execution(span, original_method, args, kwargs)
             except Exception as e:
-                span.set_attribute("javelin.response.body", str(response))
-                span.set_attribute("javelin.error", str(e))
+                span.set_status(Status(StatusCode.ERROR, str(e)))
+                span.set_attribute("is_exception", True)
+                raise
 
-        
+    def _execute_without_tracer(self, original_method, args, kwargs):
+        """Execute method without tracer."""
+        if inspect.iscoroutinefunction(original_method):
+            return asyncio.run(original_method(*args, **kwargs))
+        else:
+            return original_method(*args, **kwargs)
+
+    async def _async_execution(self, span, original_method, args, kwargs):
+        """Execute async method with response capture."""
+        response = await original_method(*args, **kwargs)
+        self._capture_response_details(span, response, kwargs, self.provider_name)
+        return response
+
+    def _sync_execution(self, span, original_method, args, kwargs):
+        """Execute sync method with response capture."""
+        response = original_method(*args, **kwargs)
+        self._capture_response_details(span, response, kwargs, self.provider_name)
+        return response
+
+    def _setup_span_attributes(self, span, system_name, operation_name, model, kwargs):
+        """Setup span attributes for tracing."""
+        span.set_attribute(gen_ai_attributes.GEN_AI_SYSTEM, system_name)
+        span.set_attribute(gen_ai_attributes.GEN_AI_OPERATION_NAME, operation_name)
+        span.set_attribute(gen_ai_attributes.GEN_AI_REQUEST_MODEL, model)
+
+        # Request attributes
+        self.set_span_attribute_if_not_none(
+            span,
+            gen_ai_attributes.GEN_AI_REQUEST_MAX_TOKENS,
+            kwargs.get("max_completion_tokens"),
+        )
+        self.set_span_attribute_if_not_none(
+            span,
+            gen_ai_attributes.GEN_AI_REQUEST_PRESENCE_PENALTY,
+            kwargs.get("presence_penalty"),
+        )
+        self.set_span_attribute_if_not_none(
+            span,
+            gen_ai_attributes.GEN_AI_REQUEST_FREQUENCY_PENALTY,
+            kwargs.get("frequency_penalty"),
+        )
+        self.set_span_attribute_if_not_none(
+            span,
+            gen_ai_attributes.GEN_AI_REQUEST_STOP_SEQUENCES,
+            json.dumps(kwargs.get("stop", [])) if kwargs.get("stop") else None,
+        )
+        self.set_span_attribute_if_not_none(
+            span,
+            gen_ai_attributes.GEN_AI_REQUEST_TEMPERATURE,
+            kwargs.get("temperature"),
+        )
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_REQUEST_TOP_K, kwargs.get("top_k")
+        )
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_REQUEST_TOP_P, kwargs.get("top_p")
+        )
+
+    def _capture_response_details(self, span, response, kwargs, system_name):
+        """Capture response details for tracing."""
+        try:
+            response_data = self._extract_response_data(response)
+            if response_data is None:
+                span.set_attribute("javelin.response.body", str(response))
+                return
+
+            self._set_basic_response_attributes(span, response_data)
+            self._set_usage_attributes(span, response_data)
+            self._add_message_events(span, kwargs, system_name)
+            self._add_choice_events(span, response_data, system_name)
+
+        except Exception as e:
+            span.set_attribute("javelin.response.body", str(response))
+            span.set_attribute("javelin.error", str(e))
+
+    def _extract_response_data(self, response):
+        """Extract response data from various response types."""
+        if hasattr(response, "to_dict"):
+            return self._extract_from_to_dict(response)
+        elif hasattr(response, "model_dump"):
+            return self._extract_from_model_dump(response)
+        elif hasattr(response, "dict"):
+            return self._extract_from_dict(response)
+        elif isinstance(response, dict):
+            return response
+        elif hasattr(response, "__iter__") and not isinstance(
+            response, (str, bytes, dict, list)
+        ):
+            return self._handle_streaming_response(response)
+        else:
+            return self._extract_from_json(response)
+
+    def _extract_from_to_dict(self, response):
+        """Extract data using to_dict method."""
+        try:
+            response_data = response.to_dict()
+            return response_data if response_data else None
+        except Exception:
+            return None
+
+    def _extract_from_model_dump(self, response):
+        """Extract data using model_dump method."""
+        try:
+            return response.model_dump()
+        except Exception:
+            return None
+
+    def _extract_from_dict(self, response):
+        """Extract data using dict method."""
+        try:
+            return response.dict()
+        except Exception:
+            return None
+
+    def _extract_from_json(self, response):
+        """Extract data by parsing JSON string."""
+        try:
+            return json.loads(str(response))
+        except (TypeError, ValueError):
+            return None
+
+    def _handle_streaming_response(self, response):
+        """Handle streaming response data."""
+        response_data = {
+            "object": "thread.message.delta",
+            "streamed_text": "",
+        }
+
+        for index, chunk in enumerate(response):
+            if hasattr(chunk, "to_dict"):
+                chunk = chunk.to_dict()
+
+            if not isinstance(chunk, dict):
+                continue
+
+            choices = chunk.get("choices", [])
+            if not choices:
+                continue
+
+            delta_dict = choices[0].get("delta", {})
+            streamed_text = delta_dict.get("content", "")
+            response_data["streamed_text"] += streamed_text
+
+        return response_data
+
+    def _set_basic_response_attributes(self, span, response_data):
+        """Set basic response attributes on span."""
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_RESPONSE_MODEL, response_data.get("model")
+        )
+        self.set_span_attribute_if_not_none(
+            span, gen_ai_attributes.GEN_AI_RESPONSE_ID, response_data.get("id")
+        )
+        self.set_span_attribute_if_not_none(
+            span,
+            gen_ai_attributes.GEN_AI_OPENAI_REQUEST_SERVICE_TIER,
+            response_data.get("service_tier"),
+        )
+        self.set_span_attribute_if_not_none(
+            span,
+            gen_ai_attributes.GEN_AI_OPENAI_RESPONSE_SYSTEM_FINGERPRINT,
+            response_data.get("system_fingerprint"),
+        )
+
+        finish_reasons = [
+            choice.get("finish_reason")
+            for choice in response_data.get("choices", [])
+            if choice.get("finish_reason")
+        ]
+        self.set_span_attribute_if_not_none(
+            span,
+            gen_ai_attributes.GEN_AI_RESPONSE_FINISH_REASONS,
+            json.dumps(finish_reasons) if finish_reasons else None,
+        )
+
+    def _set_usage_attributes(self, span, response_data):
+        """Set usage attributes on span."""
+        usage = response_data.get("usage", {})
+        self.set_span_attribute_if_not_none(
+            span,
+            gen_ai_attributes.GEN_AI_USAGE_INPUT_TOKENS,
+            usage.get("prompt_tokens"),
+        )
+        self.set_span_attribute_if_not_none(
+            span,
+            gen_ai_attributes.GEN_AI_USAGE_OUTPUT_TOKENS,
+            usage.get("completion_tokens"),
+        )
+
+    def _add_message_events(self, span, kwargs, system_name):
+        """Add message events to span."""
+        messages = kwargs.get("messages", [])
+
+        system_message = next(
+            (msg.get("content") for msg in messages if msg.get("role") == "system"),
+            None,
+        )
+        self.add_event_with_attributes(
+            span,
+            "gen_ai.system.message",
+            {"gen_ai.system": system_name, "content": system_message},
+        )
+
+        user_message = next(
+            (msg.get("content") for msg in messages if msg.get("role") == "user"), None
+        )
+        self.add_event_with_attributes(
+            span,
+            "gen_ai.user.message",
+            {"gen_ai.system": system_name, "content": user_message},
+        )
+
+    def _add_choice_events(self, span, response_data, system_name):
+        """Add choice events to span."""
+        choices = response_data.get("choices", [])
+        for index, choice in enumerate(choices):
+            choice_attributes = {"gen_ai.system": system_name, "index": index}
+            message = choice.pop("message", {})
+            choice.update(message)
+
+            for key, value in choice.items():
+                if isinstance(value, (dict, list)):
+                    value = json.dumps(value)
+                choice_attributes[key] = value if value is not None else None
+
+            self.add_event_with_attributes(span, "gen_ai.choice", choice_attributes)
+
+    def _patch_methods(self, openai_client, provider_name):
+        """Patch client methods with tracing support."""
+
         def get_nested_attr(obj, attr_path):
             attrs = attr_path.split(".")
             for attr in attrs:
@@ -506,18 +569,41 @@ class JavelinClient:
             method_id = id(method_ref)
 
             if method_id in self.patched_methods:
-                continue  # Skip if already patched
+                continue
 
             original_method = self.original_methods[provider_name][
                 method_name.replace(".", "_")
             ]
-            patched_method = create_patched_method(method_name, original_method)
+            patched_method = self._create_patched_method(
+                method_name, original_method, openai_client
+            )
 
             parent_attr, method_attr = method_name.rsplit(".", 1)
             parent_obj = get_nested_attr(openai_client, parent_attr)
             setattr(parent_obj, method_attr, patched_method)
 
             self.patched_methods.add(method_id)
+
+    def register_provider(
+        self, openai_client: Any, provider_name: str, route_name: str = None
+    ) -> Any:
+        """
+        Generalized function to register OpenAI, Azure OpenAI, and Gemini clients.
+
+        Additionally sets:
+            - openai_client.base_url to self.base_url
+            - openai_client._custom_headers to include self._headers
+        """
+        client_id = id(openai_client)
+        if client_id in self.patched_clients:
+            return openai_client
+
+        self.patched_clients.add(client_id)
+        self.provider_name = provider_name  # Store for use in helper methods
+
+        self._setup_client_headers(openai_client, route_name)
+        self._store_original_methods(openai_client, provider_name)
+        self._patch_methods(openai_client, provider_name)
 
         return openai_client
 
@@ -541,12 +627,269 @@ class JavelinClient:
             openai_client, provider_name="deepseek", route_name=route_name
         )
 
+    def _setup_bedrock_clients(
+        self, bedrock_runtime_client, bedrock_client, bedrock_session
+    ):
+        """Setup bedrock clients and validate the runtime client."""
+        if bedrock_session is not None:
+            self.bedrock_session = bedrock_session
+            self.bedrock_client = bedrock_session.client("bedrock")
+            self.bedrock_runtime_client = bedrock_session.client("bedrock-runtime")
+        else:
+            if bedrock_runtime_client is None:
+                raise AssertionError("Bedrock Runtime client cannot be None")
+
+        # Store the bedrock client
+        self.bedrock_client = bedrock_client
+        self.bedrock_session = bedrock_session
+        self.bedrock_runtime_client = bedrock_runtime_client
+
+        # Validate bedrock-runtime client type and attributes
+        if not all(
+            [
+                hasattr(bedrock_runtime_client, "meta"),
+                hasattr(bedrock_runtime_client.meta, "service_model"),
+                getattr(bedrock_runtime_client.meta.service_model, "service_name", None)
+                == "bedrock-runtime",
+            ]
+        ):
+            raise AssertionError(
+                "Invalid client type. Expected boto3 bedrock-runtime client, got: "
+                f"{type(bedrock_runtime_client).__name__}"
+            )
+
+    def _setup_bedrock_route(self, route_name):
+        """Setup the default bedrock route."""
+        if not route_name:
+            route_name = "awsbedrock"
+
+        # Store the default bedrock route
+        if route_name is not None:
+            self.use_default_bedrock_route = True
+            self.default_bedrock_route = route_name
+
+    def _create_bedrock_model_functions(self):
+        """Create cached functions for getting model information."""
+
+        @functools.lru_cache()
+        def get_inference_model(inference_profile_identifier: str) -> str | None:
+            try:
+                if self.bedrock_client is None:
+                    return None
+                # Get the inference profile response
+                response = self.bedrock_client.get_inference_profile(
+                    inferenceProfileIdentifier=inference_profile_identifier
+                )
+                model_identifier = response["models"][0]["modelArn"]
+
+                # Get the foundation model response
+                foundation_model_response = self.bedrock_client.get_foundation_model(
+                    modelIdentifier=model_identifier
+                )
+                model_id = foundation_model_response["modelDetails"]["modelId"]
+                return model_id
+            except Exception:
+                # Fail silently if the model is not found
+                return None
+
+        @functools.lru_cache()
+        def get_foundation_model(model_identifier: str) -> str | None:
+            try:
+                if self.bedrock_client is None:
+                    return None
+                response = self.bedrock_client.get_foundation_model(
+                    modelIdentifier=model_identifier
+                )
+                return response["modelDetails"]["modelId"]
+            except Exception:
+                # Fail silently if the model is not found
+                return None
+
+        return get_inference_model, get_foundation_model
+
+    def _extract_model_id_from_path(
+        self, path, get_inference_model, get_foundation_model
+    ):
+        """Extract model ID from the URL path."""
+        model_id = None
+
+        # Check for inference profile ARN
+        if re.match(self.PROFILE_ARN_PATTERN, path):
+            match = re.match(self.PROFILE_ARN_PATTERN, path)
+            if match:
+                model_id = get_inference_model(match.group(0).replace("/model/", ""))
+
+        # Check for model ARN
+        elif re.match(self.MODEL_ARN_PATTERN, path):
+            match = re.match(self.MODEL_ARN_PATTERN, path)
+            if match:
+                model_id = get_foundation_model(match.group(0).replace("/model/", ""))
+
+        # If the model ID is not found, try to extract it from the path
+        if model_id is None:
+            path = path.replace("/model/", "")
+            # Get the the last index of / in the path
+            end_index = path.rfind("/")
+            path = path[:end_index]
+            model_id = path.replace("/model/", "")
+
+        return model_id
+
+    def _create_bedrock_request_handlers(
+        self, get_inference_model, get_foundation_model
+    ):
+        """Create request handlers for bedrock operations."""
+
+        def add_custom_headers(request: Any, **kwargs) -> None:
+            """Add Javelin headers to each request."""
+            request.headers.update(self._headers)
+
+        def override_endpoint_url(request: Any, **kwargs) -> None:
+            """
+            Redirect Bedrock operations to the Javelin endpoint
+            while preserving path and query.
+            """
+            try:
+                original_url = urlparse(request.url)
+
+                # Construct the base URL (scheme + netloc)
+                base_url = f"{original_url.scheme}://{original_url.netloc}"
+
+                # Set the header
+                request.headers["x-javelin-provider"] = base_url
+
+                if self.use_default_bedrock_route and self.default_bedrock_route:
+                    request.headers["x-javelin-route"] = self.default_bedrock_route
+
+                path = original_url.path
+                path = unquote(path)
+
+                model_id = self._extract_model_id_from_path(
+                    path, get_inference_model, get_foundation_model
+                )
+
+                if model_id:
+                    model_id = re.sub(r"-\d{8}(?=-)", "", model_id)
+                    request.headers["x-javelin-model"] = model_id
+
+                # Update the request URL to use the Javelin endpoint.
+                parsed_base = urlparse(self.base_url)
+                updated_url = original_url._replace(
+                    scheme=parsed_base.scheme,
+                    netloc=parsed_base.netloc,
+                    path=f"/v1{original_url.path}",
+                )
+                request.url = urlunparse(updated_url)
+
+            except Exception:
+                pass
+
+        return add_custom_headers, override_endpoint_url
+
+    def _create_bedrock_tracing_handlers(self):
+        """Create tracing handlers for bedrock operations."""
+
+        def bedrock_before_call(**kwargs):
+            """
+            Start a new OTel span and store it in the Botocore context dict
+            so it can be retrieved in after-call.
+            """
+            if self.tracer is None:
+                return  # If no tracer, skip
+
+            context = kwargs.get("context")
+            if context is None:
+                return
+
+            event_name = kwargs.get("event_name", "")
+            # e.g., "before-call.bedrock-runtime.InvokeModel"
+            operation_name = event_name.split(".")[-1] if event_name else "Unknown"
+
+            # Create & start the OTel span
+            span = self.tracer.start_span(operation_name, kind=SpanKind.CLIENT)
+
+            # Store it in the context
+            context["javelin_request_wrapper"] = JavelinRequestWrapper(None, span)
+
+        def bedrock_after_call(**kwargs):
+            """
+            End the OTel span by retrieving it from Botocore's context dict.
+            """
+            context = kwargs.get("context")
+            if not context:
+                return
+
+            wrapper = context.get("javelin_request_wrapper")
+            if not wrapper:
+                return
+
+            span = getattr(wrapper, "span", None)
+            if not span:
+                return
+
+            # Optionally set status from the HTTP response
+            http_response = kwargs.get("http_response")
+            if http_response is not None and hasattr(http_response, "status_code"):
+                if http_response.status_code >= 400:
+                    span.set_status(
+                        Status(
+                            StatusCode.ERROR,
+                            "HTTP %d" % http_response.status_code,
+                        )
+                    )
+                else:
+                    span.set_status(
+                        Status(StatusCode.OK, "HTTP %d" % http_response.status_code)
+                    )
+
+            # End the span
+            span.end()
+
+        return bedrock_before_call, bedrock_after_call
+
+    def _register_bedrock_event_handlers(
+        self,
+        add_custom_headers,
+        override_endpoint_url,
+        bedrock_before_call,
+        bedrock_after_call,
+    ):
+        """Register event handlers for bedrock operations."""
+        if self.bedrock_runtime_client is None:
+            return
+
+        for op in self.BEDROCK_RUNTIME_OPERATIONS:
+            event_name_before_send = f"before-send.bedrock-runtime.{op}"
+            event_name_before_call = f"before-call.bedrock-runtime.{op}"
+            event_name_after_call = f"after-call.bedrock-runtime.{op}"
+            events_client = self.bedrock_runtime_client.meta.events
+
+            # Add headers + override endpoint
+            events_client.register(
+                event_name_before_send,
+                add_custom_headers,
+            )
+            events_client.register(
+                event_name_before_send,
+                override_endpoint_url,
+            )
+
+            # Add OTel instrumentation
+            events_client.register(
+                event_name_before_call,
+                bedrock_before_call,
+            )
+            events_client.register(
+                event_name_after_call,
+                bedrock_after_call,
+            )
+
     def register_bedrock(
         self,
         bedrock_runtime_client: Any,
         bedrock_client: Any = None,
         bedrock_session: Any = None,
-        route_name: str = None,
+        route_name: Optional[str] = None,
     ) -> None:
         """
         Register an AWS Bedrock Runtime client
@@ -569,331 +912,29 @@ class JavelinClient:
             >>> javelin_client.register_bedrock_client(bedrock)
             >>> bedrock.invoke_model(
         """
-        if bedrock_session is not None:
-            self.bedrock_session = bedrock_session
-            self.bedrock_client = bedrock_session.client("bedrock")
-            self.bedrock_runtime_client = bedrock_session.client("bedrock-runtime")
-        else:
-            if bedrock_runtime_client is None:
-                raise AssertionError("Bedrock Runtime client cannot be None")
+        self._setup_bedrock_clients(
+            bedrock_runtime_client, bedrock_client, bedrock_session
+        )
+        self._setup_bedrock_route(route_name)
 
-        # Store the bedrock client
-        self.bedrock_client = bedrock_client
-        self.bedrock_session = bedrock_session
-        self.bedrock_runtime_client = bedrock_runtime_client
-
-        if not route_name:
-            route_name = "awsbedrock"
-
-        # Store the default bedrock route
-        if route_name is not None:
-            self.use_default_bedrock_route = True
-            self.default_bedrock_route = route_name
-
-        # Validate bedrock-runtime client type and attributes
-        if not all(
-            [
-                hasattr(bedrock_runtime_client, "meta"),
-                hasattr(bedrock_runtime_client.meta, "service_model"),
-                getattr(bedrock_runtime_client.meta.service_model, "service_name", None)
-                == "bedrock-runtime",
-            ]
-        ):
-            raise AssertionError(
-                "Invalid client type. Expected boto3 bedrock-runtime client, got: "
-                f"{type(bedrock_runtime_client).__name__}"
+        get_inference_model, get_foundation_model = (
+            self._create_bedrock_model_functions()
+        )
+        add_custom_headers, override_endpoint_url = (
+            self._create_bedrock_request_handlers(
+                get_inference_model, get_foundation_model
             )
+        )
+        bedrock_before_call, bedrock_after_call = (
+            self._create_bedrock_tracing_handlers()
+        )
 
-        def add_custom_headers(request: Any, **kwargs) -> None:
-            """Add Javelin headers to each request."""
-            request.headers.update(self._headers)
-
-        """
-        We don't want to make a request to the bedrock client for each request.
-        So we cache the results of the inference profile and 
-        foundation model requests.
-        """
-
-        @functools.lru_cache()
-        def get_inference_model(inference_profile_identifier: str) -> str:
-            try:
-                # Get the inference profile response
-                response = self.bedrock_client.get_inference_profile(
-                    inferenceProfileIdentifier=inference_profile_identifier
-                )
-                model_identifier = response["models"][0]["modelArn"]
-
-                # Get the foundation model response
-                foundation_model_response = self.bedrock_client.get_foundation_model(
-                    modelIdentifier=model_identifier
-                )
-                model_id = foundation_model_response["modelDetails"]["modelId"]
-                return model_id
-            except Exception as e:
-                # Fail silently if the model is not found
-                return None
-
-        @functools.lru_cache()
-        def get_foundation_model(model_identifier: str) -> str:
-            try:
-                response = self.bedrock_client.get_foundation_model(
-                    modelIdentifier=model_identifier
-                )
-                return response["modelDetails"]["modelId"]
-            except Exception as e:
-                # Fail silently if the model is not found
-                return None
-
-        def override_endpoint_url(request: Any, **kwargs) -> None:
-            """
-            Redirect Bedrock operations to the Javelin endpoint while preserving path and query.
-
-            - If self.use_default_bedrock_route is True and self.default_bedrock_route is not None,
-            the header 'x-javelin-route' is set to self.default_bedrock_route.
-
-            - In all cases, the function extracts an identifier from the URL path (after '/model/').
-                a. First, by treating it as a profile ARN (via get_inference_profile) and then retrieving
-                the model ARN and foundation model details.
-                b. If that fails, by treating it directly as a model ARN and getting the foundation model detail
-
-            - If it fails to find a model ID, it will try to extract it the model id from the path
-
-            - Once the model ID is found, any date portion is removed, and the header
-            'x-javelin-model' is set with this model ID.
-
-            - Finally, the request URL is updated to point to the Javelin endpoint (using self.base_url)
-            with the original path prefixed by '/v1'.
-
-            Raises:
-                ValueError: If any part of the process fails.
-            """
-            try:
-
-                original_url = urlparse(request.url)
-
-                # Construct the base URL (scheme + netloc)
-                base_url = f"{original_url.scheme}://{original_url.netloc}"
-
-                # Set the header
-                request.headers["x-javelin-provider"] = base_url
-
-                # If default routing is enabled and a default route is provided, set the x-javelin-route header.
-                if self.use_default_bedrock_route and self.default_bedrock_route:
-                    request.headers["x-javelin-route"] = self.default_bedrock_route
-
-                path = original_url.path
-                path = unquote(path)
-
-                model_id = None
-
-                # Check for inference profile ARN
-                if re.match(self.PROFILE_ARN_PATTERN, path):
-                    match = re.match(self.PROFILE_ARN_PATTERN, path)
-                    model_id = get_inference_model(
-                        match.group(0).replace("/model/", "")
-                    )
-
-                # Check for model ARN
-                elif re.match(self.MODEL_ARN_PATTERN, path):
-                    match = re.match(self.MODEL_ARN_PATTERN, path)
-                    model_id = get_foundation_model(
-                        match.group(0).replace("/model/", "")
-                    )
-
-                # If the model ID is not found, try to extract it from the path
-                if model_id is None:
-                    path = path.replace("/model/", "")
-                    # Get the the last index of / in the path
-                    end_index = path.rfind("/")
-                    path = path[:end_index]
-                    model_id = path.replace("/model/", "")
-
-                if model_id:
-                    # Remove the date portion if present (e.g., transform "anthropic.claude-3-haiku-20240307-v1:0"
-                    # to "anthropic.claude-3-haiku-v1:0").
-                    model_id = re.sub(r"-\d{8}(?=-)", "", model_id)
-                    request.headers["x-javelin-model"] = model_id
-
-                # Update the request URL to use the Javelin endpoint.
-                parsed_base = urlparse(self.base_url)
-                updated_url = original_url._replace(
-                    scheme=parsed_base.scheme,
-                    netloc=parsed_base.netloc,
-                    path=f"/v1{original_url.path}",
-                )
-                request.url = urlunparse(updated_url)
-
-            except Exception as e:
-                print(f"Failed to override endpoint URL: {str(e)}")
-                pass
-
-        def debug_before_send(*args, **kwargs):
-            print("DEBUG: debug_before_send was invoked!")
-            print("DEBUG: args =", args)
-            print("DEBUG: kwargs =", kwargs)
-    
-        def bedrock_before_send(http_request, model, context, event_name, **kwargs):
-            """Creates a new OTel span for each Bedrock invocation."""
-
-            if self.tracer is None:
-                return  # If no tracer, skip
-
-            operation_name = kwargs.get("operation_name", "InvokeModel")
-            system_name = "aws.bedrock"
-            model = http_request.headers.get("x-javelin-model", "unknown-model")
-            span_name = f"{operation_name} {model}"
-
-            # Start the span
-            span = self.tracer.start_span(span_name, kind=trace.SpanKind.CLIENT)
-
-            # Set semantic attributes
-            span.set_attribute(gen_ai_attributes.GEN_AI_SYSTEM, system_name)
-            span.set_attribute(gen_ai_attributes.GEN_AI_OPERATION_NAME, operation_name)
-            span.set_attribute(gen_ai_attributes.GEN_AI_REQUEST_MODEL, model)
-
-            # Store in the BOTOCORE context dictionary
-            context["javelin_request_wrapper"] = JavelinRequestWrapper(http_request, span)
-
-            print(f"DEBUG: Bedrock span created: {span_name}")
-
-        def debug_before_call(*args, **kwargs):
-            print("DEBUG: debug_before_call invoked!")
-            print("  args =", args)
-            print("  kwargs =", kwargs)
-
-        def debug_after_call(*args, **kwargs):
-            print("DEBUG: debug_after_call invoked!")
-            print("  args =", args)
-            print("  kwargs =", kwargs)
-    
-        '''
-        def bedrock_after_call(**kwargs):
-            """Ends the OTel span after the Bedrock request completes."""
-
-            # (1) Pull from kwargs:
-            http_response = kwargs.get("http_response")
-            parsed = kwargs.get("parsed")
-            model = kwargs.get("model")
-            context = kwargs.get("context")
-            event_name = kwargs.get("event_name")  # e.g., "after-call.bedrock-runtime.InvokeModel"
-
-            # (2) If you want to parse the operation name, you can do:
-            #     operation_name = op_string.split(".")[-1]  # "InvokeModel", etc.
-            # from event_name = "after-call.bedrock-runtime.InvokeModel"
-            if event_name and event_name.startswith("after-call.bedrock-runtime."):
-                operation_name = event_name.split(".")[-1]
-            else:
-                operation_name = "UnknownOperation"
-
-            # (3) If you need a reference to the request object to retrieve attached spans,
-            #     you'll notice it's NOT in kwargs by default for Bedrock. 
-            #     Instead, you can do your OTel instrumentation purely via context:
-            wrapper = context.get("javelin_request_wrapper")
-            if not wrapper:
-                print("DEBUG: No wrapped request object found in context.")
-                return
-
-            span = getattr(wrapper, "span", None)
-            if not span:
-                print("DEBUG: No span found for the request.")
-                return
-
-            try:
-                http_status = getattr(http_response, "status_code", None)
-                if http_status is not None:
-                    if http_status >= 400:
-                        span.set_status(Status(StatusCode.ERROR, f"HTTP {http_status}"))
-                    else:
-                        span.set_status(Status(StatusCode.OK, f"HTTP {http_status}"))
-
-                    span.add_event(
-                        name="bedrock.response",
-                        attributes={
-                            "http.status_code": http_status,
-                            "parsed_response": str(parsed)[:500],
-                        },
-                    )
-            finally:
-                print(f"DEBUG: Bedrock span ended: {span.name}")
-                span.end()
-        '''
-
-        def bedrock_before_call(**kwargs):
-            """
-            Start a new OTel span and store it in the Botocore context dict
-            so it can be retrieved in after-call.
-            """
-
-            if self.tracer is None:
-                return  # If no tracer, skip
-
-            context = kwargs.get("context")
-            if context is None:
-                print("DEBUG: No context. Cannot store OTel span.")
-                return
-
-            event_name = kwargs.get("event_name", "")
-            # e.g., "before-call.bedrock-runtime.InvokeModel"
-            operation_name = event_name.split(".")[-1] if event_name else "Unknown"
-
-            # Create & start the OTel span
-            span = self.tracer.start_span(operation_name, kind=trace.SpanKind.CLIENT)
-
-            # Store it in the context
-            # Optionally wrap it in a JavelinRequestWrapper or something else
-            context["javelin_request_wrapper"] = JavelinRequestWrapper(None, span)
-
-            print(f"DEBUG: Span created for {operation_name}")
-
-        def bedrock_after_call(**kwargs):
-            """
-            End the OTel span by retrieving it from Botocore's context dict.
-            """
-            context = kwargs.get("context")
-            if not context:
-                print("DEBUG: No context. Cannot retrieve OTel span.")
-                return
-
-            wrapper = context.get("javelin_request_wrapper")
-            if not wrapper:
-                print("DEBUG: No wrapped request object found in context.")
-                return
-
-            span = getattr(wrapper, "span", None)
-            if not span:
-                print("DEBUG: No span found in the wrapper.")
-                return
-
-            # Optionally set status from the HTTP response
-            http_response = kwargs.get("http_response")
-            if http_response is not None and hasattr(http_response, "status_code"):
-                if http_response.status_code >= 400:
-                    span.set_status(Status(StatusCode.ERROR, "HTTP %d" % http_response.status_code))
-                else:
-                    span.set_status(Status(StatusCode.OK, "HTTP %d" % http_response.status_code))
-
-            # End the span
-            print(f"DEBUG: Ending span: {span.name}")
-            span.end()
-
-
-        # Register header modification & URL override for specific operations
-        for op in self.BEDROCK_RUNTIME_OPERATIONS:
-            event_name_before_send = f"before-send.bedrock-runtime.{op}"
-            event_name_before_call = f"before-call.bedrock-runtime.{op}"
-            event_name_after_call = f"after-call.bedrock-runtime.{op}"
-
-            # Add headers + override endpoint just like your existing code
-            self.bedrock_runtime_client.meta.events.register(event_name_before_send, add_custom_headers)
-            self.bedrock_runtime_client.meta.events.register(event_name_before_send, override_endpoint_url)
-
-            # Add OTel instrumentation
-            # self.bedrock_runtime_client.meta.events.register(event_name_before_send, bedrock_before_send)
-            self.bedrock_runtime_client.meta.events.register(event_name_before_call, bedrock_before_call)
-            self.bedrock_runtime_client.meta.events.register(event_name_after_call, bedrock_after_call)
-            # self.bedrock_runtime_client.meta.events.register(event_name_before_call, debug_before_call)
-            # self.bedrock_runtime_client.meta.events.register(event_name_after_call, debug_after_call)
-
+        self._register_bedrock_event_handlers(
+            add_custom_headers,
+            override_endpoint_url,
+            bedrock_before_call,
+            bedrock_after_call,
+        )
 
     def _prepare_request(self, request: Request) -> tuple:
         url = self._construct_url(
@@ -957,66 +998,37 @@ class JavelinClient:
     ) -> str:
         url_parts = [self.base_url]
 
-        if is_model_specs:
-            url_parts.extend(["admin", "modelspec"])
-        elif query:
-            url_parts.append("query")
-            if route_name is not None:
-                url_parts.append(route_name)
-        elif gateway_name:
-            url_parts.extend(["admin", "gateways"])
-            if gateway_name != "###":
-                url_parts.append(gateway_name)
-        elif provider_name and not secret_name:
-            if is_reload:
-                url_parts.extend(["providers"])
-            else:
-                url_parts.extend(["admin", "providers"])
-            if provider_name != "###":
-                url_parts.append(provider_name)
-            if is_transformation_rules:
-                url_parts.append("transformation-rules")
-        elif route_name:
-            if is_reload:
-                url_parts.extend(["routes"])
-            else:
-                url_parts.extend(["admin", "routes"])
-            if route_name != "###":
-                url_parts.append(route_name)
-        elif secret_name:
-            if is_reload:
-                url_parts.extend(["secrets"])
-            else:
-                url_parts.extend(["admin", "providers"])
-            if provider_name != "###":
-                url_parts.append(provider_name)
-            url_parts.append("keyvault")
-            if secret_name != "###":
-                url_parts.append(secret_name)
-            else:
-                url_parts.append("keys")
-        elif template_name:
-            if is_reload:
-                url_parts.extend(["processors", "dp", "templates"])
-            else:
-                url_parts.extend(["admin", "processors", "dp", "templates"])
-            if template_name != "###":
-                url_parts.append(template_name)
-        elif trace:
-            url_parts.extend(["admin", "traces"])
-        elif archive:
-            url_parts.extend(["admin", "archives"])
-            if archive != "###":
-                url_parts.append(archive)
-        elif guardrail:
-            if guardrail == "all":
-                url_parts.extend(["guardrails", "apply"])
-            else:
-                url_parts.extend(["guardrail", guardrail, "apply"])
-        elif list_guardrails:
-            url_parts.extend(["guardrails", "list"])
-        else:
-            url_parts.extend(["admin", "routes"])
+        # Determine the main URL path based on the primary resource type
+        main_path = self._get_main_url_path(
+            gateway_name=gateway_name,
+            provider_name=provider_name,
+            route_name=route_name,
+            secret_name=secret_name,
+            template_name=template_name,
+            trace=trace,
+            query=query,
+            archive=archive,
+            is_transformation_rules=is_transformation_rules,
+            is_model_specs=is_model_specs,
+            is_reload=is_reload,
+            guardrail=guardrail,
+            list_guardrails=list_guardrails,
+        )
+        url_parts.extend(main_path)
+
+        # Add resource-specific path segments
+        resource_path = self._get_resource_path(
+            gateway_name=gateway_name,
+            provider_name=provider_name,
+            route_name=route_name,
+            secret_name=secret_name,
+            template_name=template_name,
+            archive=archive,
+            guardrail=guardrail,
+            query=query,
+        )
+        if resource_path:
+            url_parts.extend(resource_path)
 
         url = "/".join(url_parts)
 
@@ -1030,208 +1042,413 @@ class JavelinClient:
 
         return url
 
+    def _get_main_url_path(
+        self,
+        gateway_name: Optional[str] = "",
+        provider_name: Optional[str] = "",
+        route_name: Optional[str] = "",
+        secret_name: Optional[str] = "",
+        template_name: Optional[str] = "",
+        trace: Optional[str] = "",
+        query: bool = False,
+        archive: Optional[str] = "",
+        is_transformation_rules: bool = False,
+        is_model_specs: bool = False,
+        is_reload: bool = False,
+        guardrail: Optional[str] = None,
+        list_guardrails: bool = False,
+    ) -> list:
+        """Determine the main URL path based on the primary resource type."""
+        # Define path strategies based on resource type
+        path_strategies = [
+            (is_model_specs, self._get_model_specs_path),
+            (query, self._get_query_path),
+            (gateway_name, self._get_gateway_path),
+            (
+                provider_name and not secret_name,
+                lambda: self._get_provider_path(is_reload, is_transformation_rules),
+            ),
+            (route_name, lambda: self._get_route_path(is_reload)),
+            (secret_name, lambda: self._get_secret_main_path(is_reload)),
+            (template_name, lambda: self._get_template_path(is_reload)),
+            (trace, self._get_trace_path),
+            (archive, self._get_archive_path),
+            (guardrail, lambda: self._get_guardrail_path(guardrail)),
+            (list_guardrails, self._get_list_guardrails_path),
+        ]
+
+        # Find the first matching strategy and execute it
+        for condition, strategy in path_strategies:
+            if condition:
+                return strategy()
+
+        # Default fallback
+        return ["admin", "routes"]
+
+    def _get_model_specs_path(self) -> list:
+        """Get path for model specs."""
+        return ["admin", "modelspec"]
+
+    def _get_query_path(self) -> list:
+        """Get path for queries."""
+        return ["query"]
+
+    def _get_gateway_path(self) -> list:
+        """Get path for gateways."""
+        return ["admin", "gateways"]
+
+    def _get_provider_path(
+        self, is_reload: bool, is_transformation_rules: bool
+    ) -> list:
+        """Get path for providers."""
+        base_path = ["providers"] if is_reload else ["admin", "providers"]
+        if is_transformation_rules:
+            base_path.append("transformation-rules")
+        return base_path
+
+    def _get_route_path(self, is_reload: bool) -> list:
+        """Get path for routes."""
+        return ["routes"] if is_reload else ["admin", "routes"]
+
+    def _get_secret_main_path(self, is_reload: bool) -> list:
+        """Get main path for secrets."""
+        return ["secrets"] if is_reload else ["admin", "providers"]
+
+    def _get_template_path(self, is_reload: bool) -> list:
+        """Get path for templates."""
+        return (
+            ["processors", "dp", "templates"]
+            if is_reload
+            else ["admin", "processors", "dp", "templates"]
+        )
+
+    def _get_trace_path(self) -> list:
+        """Get path for traces."""
+        return ["admin", "traces"]
+
+    def _get_archive_path(self) -> list:
+        """Get path for archives."""
+        return ["admin", "archives"]
+
+    def _get_guardrail_path(self, guardrail: Optional[str]) -> list:
+        """Get path for guardrails."""
+        if guardrail == "all":
+            return ["guardrails", "apply"]
+        else:
+            return ["guardrail", guardrail, "apply"]
+
+    def _get_list_guardrails_path(self) -> list:
+        """Get path for listing guardrails."""
+        return ["guardrails", "list"]
+
+    def _get_resource_path(
+        self,
+        gateway_name: Optional[str] = "",
+        provider_name: Optional[str] = "",
+        route_name: Optional[str] = "",
+        secret_name: Optional[str] = "",
+        template_name: Optional[str] = "",
+        archive: Optional[str] = "",
+        guardrail: Optional[str] = None,
+        query: bool = False,
+    ) -> list:
+        """Get the resource-specific path segments."""
+        if query and route_name is not None:
+            return [route_name]
+        elif gateway_name and gateway_name != "###":
+            return [gateway_name]
+        elif provider_name and provider_name != "###" and not secret_name:
+            return [provider_name]
+        elif route_name and route_name != "###":
+            return [route_name]
+        elif secret_name:
+            return self._get_secret_path(provider_name, secret_name)
+        elif template_name and template_name != "###":
+            return [template_name]
+        elif archive and archive != "###":
+            return [archive]
+        elif guardrail and guardrail != "all":
+            return []  # Already handled in main path
+        else:
+            return []
+
+    def _get_secret_path(self, provider_name: Optional[str], secret_name: str) -> list:
+        """Get the path for secret-related operations."""
+        path = []
+        if provider_name and provider_name != "###":
+            path.append(provider_name)
+        path.append("keyvault")
+        if secret_name != "###":
+            path.append(secret_name)
+        else:
+            path.append("keys")
+        return path
+
     # Gateway methods
-    create_gateway = lambda self, gateway: self.gateway_service.create_gateway(gateway)
-    acreate_gateway = lambda self, gateway: self.gateway_service.acreate_gateway(
-        gateway
-    )
-    get_gateway = lambda self, gateway_name: self.gateway_service.get_gateway(
-        gateway_name
-    )
-    aget_gateway = lambda self, gateway_name: self.gateway_service.aget_gateway(
-        gateway_name
-    )
-    list_gateways = lambda self: self.gateway_service.list_gateways()
-    alist_gateways = lambda self: self.gateway_service.alist_gateways()
-    update_gateway = lambda self, gateway: self.gateway_service.update_gateway(gateway)
-    aupdate_gateway = lambda self, gateway: self.gateway_service.aupdate_gateway(
-        gateway
-    )
-    delete_gateway = lambda self, gateway_name: self.gateway_service.delete_gateway(
-        gateway_name
-    )
-    adelete_gateway = lambda self, gateway_name: self.gateway_service.adelete_gateway(
-        gateway_name
-    )
+    def create_gateway(self, gateway):
+        return self.gateway_service.create_gateway(gateway)
+
+    def acreate_gateway(self, gateway):
+        return self.gateway_service.acreate_gateway(gateway)
+
+    def get_gateway(self, gateway_name):
+        return self.gateway_service.get_gateway(gateway_name)
+
+    def aget_gateway(self, gateway_name):
+        return self.gateway_service.aget_gateway(gateway_name)
+
+    def list_gateways(self):
+        return self.gateway_service.list_gateways()
+
+    def alist_gateways(self):
+        return self.gateway_service.alist_gateways()
+
+    def update_gateway(self, gateway):
+        return self.gateway_service.update_gateway(gateway)
+
+    def aupdate_gateway(self, gateway):
+        return self.gateway_service.aupdate_gateway(gateway)
+
+    def delete_gateway(self, gateway_name):
+        return self.gateway_service.delete_gateway(gateway_name)
+
+    def adelete_gateway(self, gateway_name):
+        return self.gateway_service.adelete_gateway(gateway_name)
 
     # Provider methods
-    create_provider = lambda self, provider: self.provider_service.create_provider(
-        provider
-    )
-    acreate_provider = lambda self, provider: self.provider_service.acreate_provider(
-        provider
-    )
-    get_provider = lambda self, provider_name: self.provider_service.get_provider(
-        provider_name
-    )
-    aget_provider = lambda self, provider_name: self.provider_service.aget_provider(
-        provider_name
-    )
-    list_providers = lambda self: self.provider_service.list_providers()
-    alist_providers = lambda self: self.provider_service.alist_providers()
-    update_provider = lambda self, provider: self.provider_service.update_provider(
-        provider
-    )
-    aupdate_provider = lambda self, provider: self.provider_service.aupdate_provider(
-        provider
-    )
-    delete_provider = lambda self, provider_name: self.provider_service.delete_provider(
-        provider_name
-    )
-    adelete_provider = (
-        lambda self, provider_name: self.provider_service.adelete_provider(
-            provider_name
+    def create_provider(self, provider):
+        return self.provider_service.create_provider(provider)
+
+    def acreate_provider(self, provider):
+        return self.provider_service.acreate_provider(provider)
+
+    def get_provider(self, provider_name):
+        return self.provider_service.get_provider(provider_name)
+
+    def aget_provider(self, provider_name):
+        return self.provider_service.aget_provider(provider_name)
+
+    def list_providers(self):
+        return self.provider_service.list_providers()
+
+    def alist_providers(self):
+        return self.provider_service.alist_providers()
+
+    def update_provider(self, provider):
+        return self.provider_service.update_provider(provider)
+
+    def aupdate_provider(self, provider):
+        return self.provider_service.aupdate_provider(provider)
+
+    def delete_provider(self, provider_name):
+        return self.provider_service.delete_provider(provider_name)
+
+    def adelete_provider(self, provider_name):
+        return self.provider_service.adelete_provider(provider_name)
+
+    def alist_provider_secrets(self, provider_name):
+        return self.provider_service.alist_provider_secrets(provider_name)
+
+    def get_transformation_rules(self, provider_name, model_name, endpoint):
+        return self.provider_service.get_transformation_rules(
+            provider_name, model_name, endpoint
         )
-    )
-    alist_provider_secrets = (
-        lambda self, provider_name: self.provider_service.alialist_provider_secrets(
-            provider_name
+
+    def aget_transformation_rules(self, provider_name, model_name, endpoint):
+        return self.provider_service.aget_transformation_rules(
+            provider_name, model_name, endpoint
         )
-    )
-    get_transformation_rules = lambda self, provider_name, model_name, endpoint: self.provider_service.get_transformation_rules(
-        provider_name, model_name, endpoint
-    )
-    aget_transformation_rules = lambda self, provider_name, model_name, endpoint: self.provider_service.aget_transformation_rules(
-        provider_name, model_name, endpoint
-    )
-    get_model_specs = (
-        lambda self, provider_url, model_name: self.modelspec_service.get_model_specs(
-            provider_url, model_name
-        )
-    )
-    aget_model_specs = (
-        lambda self, provider_url, model_name: self.modelspec_service.aget_model_specs(
-            provider_url, model_name
-        )
-    )
+
+    def get_model_specs(self, provider_url, model_name):
+        return self.modelspec_service.get_model_specs(provider_url, model_name)
+
+    def aget_model_specs(self, provider_url, model_name):
+        return self.modelspec_service.aget_model_specs(provider_url, model_name)
 
     # Route methods
-    create_route = lambda self, route: self.route_service.create_route(route)
-    acreate_route = lambda self, route: self.route_service.acreate_route(route)
-    get_route = lambda self, route_name: self.route_service.get_route(route_name)
-    aget_route = lambda self, route_name: self.route_service.aget_route(route_name)
-    list_routes = lambda self: self.route_service.list_routes()
-    alist_routes = lambda self: self.route_service.alist_routes()
-    update_route = lambda self, route: self.route_service.update_route(route)
-    aupdate_route = lambda self, route: self.route_service.aupdate_route(route)
-    delete_route = lambda self, route_name: self.route_service.delete_route(route_name)
-    adelete_route = lambda self, route_name: self.route_service.adelete_route(
-        route_name
-    )
-    query_route = lambda self, route_name, query_body, headers=None, stream=False, stream_response_path=None: self.route_service.query_route(
-        route_name=route_name,
-        query_body=query_body,
-        headers=headers,
-        stream=stream,
-        stream_response_path=stream_response_path,
-    )
-    aquery_route = lambda self, route_name, query_body, headers=None, stream=False, stream_response_path=None: self.route_service.aquery_route(
-        route_name, query_body, headers, stream, stream_response_path
-    )
-    query_llama = lambda self, route_name, query_body: self.route_service.query_llama(
-        route_name, query_body
-    )
-    aquery_llama = lambda self, route_name, query_body: self.route_service.aquery_llama(
-        route_name, query_body
-    )
-    query_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None, stream_response_path=None: self.route_service.query_unified_endpoint(
+    def create_route(self, route):
+        return self.route_service.create_route(route)
+
+    def acreate_route(self, route):
+        return self.route_service.acreate_route(route)
+
+    def get_route(self, route_name):
+        return self.route_service.get_route(route_name)
+
+    def aget_route(self, route_name):
+        return self.route_service.aget_route(route_name)
+
+    def list_routes(self):
+        return self.route_service.list_routes()
+
+    def alist_routes(self):
+        return self.route_service.alist_routes()
+
+    def update_route(self, route):
+        return self.route_service.update_route(route)
+
+    def delete_route(self, route_name):
+        return self.route_service.delete_route(route_name)
+
+    def adelete_route(self, route_name):
+        return self.route_service.adelete_route(route_name)
+
+    def query_route(
+        self,
+        route_name,
+        query_body,
+        headers=None,
+        stream=False,
+        stream_response_path=None,
+    ):
+        return self.route_service.query_route(
+            route_name=route_name,
+            query_body=query_body,
+            headers=headers,
+            stream=stream,
+            stream_response_path=stream_response_path,
+        )
+
+    def aquery_route(
+        self,
+        route_name,
+        query_body,
+        headers=None,
+        stream=False,
+        stream_response_path=None,
+    ):
+        return self.route_service.aquery_route(
+            route_name, query_body, headers, stream, stream_response_path
+        )
+
+    def query_unified_endpoint(
+        self,
         provider_name,
         endpoint_type,
         query_body,
-        headers,
-        query_params,
-        deployment,
-        model_id,
-        stream_response_path,
-    )
-    aquery_unified_endpoint = lambda self, provider_name, endpoint_type, query_body, headers=None, query_params=None, deployment=None, model_id=None, stream_response_path=None: self.route_service.aquery_unified_endpoint(
+        headers=None,
+        query_params=None,
+        deployment=None,
+        model_id=None,
+        stream_response_path=None,
+    ):
+        return self.route_service.query_unified_endpoint(
+            provider_name,
+            endpoint_type,
+            query_body,
+            headers,
+            query_params,
+            deployment,
+            model_id,
+            stream_response_path,
+        )
+
+    def aquery_unified_endpoint(
+        self,
         provider_name,
         endpoint_type,
         query_body,
-        headers,
-        query_params,
-        deployment,
-        model_id,
-        stream_response_path,
-    )
+        headers=None,
+        query_params=None,
+        deployment=None,
+        model_id=None,
+        stream_response_path=None,
+    ):
+        return self.route_service.aquery_unified_endpoint(
+            provider_name,
+            endpoint_type,
+            query_body,
+            headers,
+            query_params,
+            deployment,
+            model_id,
+            stream_response_path,
+        )
 
     # Secret methods
-    create_secret = lambda self, secret: self.secret_service.create_secret(secret)
-    acreate_secret = lambda self, secret: self.secret_service.acreate_secret(secret)
-    get_secret = (
-        lambda self, secret_name, provider_name: self.secret_service.get_secret(
-            secret_name, provider_name
-        )
-    )
-    aget_secret = (
-        lambda self, secret_name, provider_name: self.secret_service.aget_secret(
-            secret_name, provider_name
-        )
-    )
-    list_secrets = lambda self: self.secret_service.list_secrets()
-    alist_secrets = lambda self: self.secret_service.alist_secrets()
-    update_secret = lambda self, secret: self.secret_service.update_secret(secret)
-    aupdate_secret = lambda self, secret: self.secret_service.aupdate_secret(secret)
-    delete_secret = (
-        lambda self, secret_name, provider_name: self.secret_service.delete_secret(
-            secret_name, provider_name
-        )
-    )
-    adelete_secret = (
-        lambda self, secret_name, provider_name: self.secret_service.adelete_secret(
-            secret_name, provider_name
-        )
-    )
+    def create_secret(self, secret):
+        return self.secret_service.create_secret(secret)
+
+    def acreate_secret(self, secret):
+        return self.secret_service.acreate_secret(secret)
+
+    def get_secret(self, secret_name, provider_name):
+        return self.secret_service.get_secret(secret_name, provider_name)
+
+    def aget_secret(self, secret_name, provider_name):
+        return self.secret_service.aget_secret(secret_name, provider_name)
+
+    def list_secrets(self):
+        return self.secret_service.list_secrets()
+
+    def alist_secrets(self):
+        return self.secret_service.alist_secrets()
+
+    def update_secret(self, secret):
+        return self.secret_service.update_secret(secret)
+
+    def aupdate_secret(self, secret):
+        return self.secret_service.aupdate_secret(secret)
+
+    def delete_secret(self, secret_name, provider_name):
+        return self.secret_service.delete_secret(secret_name, provider_name)
+
+    def adelete_secret(self, secret_name, provider_name):
+        return self.secret_service.adelete_secret(secret_name, provider_name)
 
     # Template methods
-    create_template = lambda self, template: self.template_service.create_template(
-        template
-    )
-    acreate_template = lambda self, template: self.template_service.acreate_template(
-        template
-    )
-    get_template = lambda self, template_name: self.template_service.get_template(
-        template_name
-    )
-    aget_template = lambda self, template_name: self.template_service.aget_template(
-        template_name
-    )
-    list_templates = lambda self: self.template_service.list_templates()
-    alist_templates = lambda self: self.template_service.alist_templates()
-    update_template = lambda self, template: self.template_service.update_template(
-        template
-    )
-    aupdate_template = lambda self, template: self.template_service.aupdate_template(
-        template
-    )
-    delete_template = lambda self, template_name: self.template_service.delete_template(
-        template_name
-    )
-    adelete_template = (
-        lambda self, template_name: self.template_service.adelete_template(
-            template_name
-        )
-    )
-    reload_data_protection = (
-        lambda self, strategy_name: self.template_service.reload_data_protection(
-            strategy_name
-        )
-    )
-    areload_data_protection = (
-        lambda self, strategy_name: self.template_service.areload_data_protection(
-            strategy_name
-        )
-    )
+    def create_template(self, template):
+        return self.template_service.create_template(template)
+
+    def acreate_template(self, template):
+        return self.template_service.acreate_template(template)
+
+    def get_template(self, template_name):
+        return self.template_service.get_template(template_name)
+
+    def aget_template(self, template_name):
+        return self.template_service.aget_template(template_name)
+
+    def list_templates(self):
+        return self.template_service.list_templates()
+
+    def alist_templates(self):
+        return self.template_service.alist_templates()
+
+    def update_template(self, template):
+        return self.template_service.update_template(template)
+
+    def aupdate_template(self, template):
+        return self.template_service.aupdate_template(template)
+
+    def delete_template(self, template_name):
+        return self.template_service.delete_template(template_name)
+
+    def adelete_template(self, template_name):
+        return self.template_service.adelete_template(template_name)
+
+    def reload_data_protection(self, strategy_name):
+        return self.template_service.reload_data_protection(strategy_name)
+
+    def areload_data_protection(self, strategy_name):
+        return self.template_service.areload_data_protection(strategy_name)
 
     # Guardrails methods
-    apply_trustsafety = lambda self, text, config=None: self.guardrails_service.apply_trustsafety(text, config)
-    apply_promptinjectiondetection = lambda self, text, config=None: self.guardrails_service.apply_promptinjectiondetection(text, config)
-    apply_guardrails = lambda self, text, guardrails: self.guardrails_service.apply_guardrails(text, guardrails)
-    list_guardrails = lambda self: self.guardrails_service.list_guardrails()
+    def apply_trustsafety(self, text, config=None):
+        return self.guardrails_service.apply_trustsafety(text, config)
 
-    ## Traces methods
-    get_traces = lambda self: self.trace_service.get_traces()
-    aget_traces = lambda self: self.trace_service.aget_traces()
+    def apply_promptinjectiondetection(self, text, config=None):
+        return self.guardrails_service.apply_promptinjectiondetection(text, config)
+
+    def apply_guardrails(self, text, guardrails):
+        return self.guardrails_service.apply_guardrails(text, guardrails)
+
+    def list_guardrails(self):
+        return self.guardrails_service.list_guardrails()
+
+    # Traces methods
+    def get_traces(self):
+        return self.trace_service.get_traces()
 
     # Archive methods
     def get_last_n_chronicle_records(self, archive_name: str, n: int) -> Dict[str, Any]:
@@ -1254,57 +1471,124 @@ class JavelinClient:
         response = await self._send_request_async(request)
         return response
 
+    def _construct_azure_openai_endpoint(
+        self,
+        base_url: str,
+        provider_name: str,
+        deployment: str,
+        endpoint_type: Optional[str],
+    ) -> str:
+        """Construct Azure OpenAI endpoint URL."""
+        if not endpoint_type:
+            raise ValueError("Endpoint type is required for Azure OpenAI")
+
+        azure_deployment_url = f"{base_url}/{provider_name}/deployments/{deployment}"
+
+        endpoint_mapping = {
+            "chat": f"{azure_deployment_url}/chat/completions",
+            "completion": f"{azure_deployment_url}/completions",
+            "embeddings": f"{azure_deployment_url}/embeddings",
+        }
+
+        if endpoint_type not in endpoint_mapping:
+            raise ValueError(f"Invalid Azure OpenAI endpoint type: {endpoint_type}")
+
+        return endpoint_mapping[endpoint_type]
+
+    def _construct_bedrock_endpoint(
+        self, base_url: str, model_id: str, endpoint_type: Optional[str]
+    ) -> str:
+        """Construct Bedrock endpoint URL."""
+        if not endpoint_type:
+            raise ValueError("Endpoint type is required for Bedrock")
+
+        endpoint_mapping = {
+            "invoke": f"{base_url}/model/{model_id}/invoke",
+            "converse": f"{base_url}/model/{model_id}/converse",
+            "invoke_stream": f"{base_url}/model/{model_id}/invoke-with-response-stream",
+            "converse_stream": f"{base_url}/model/{model_id}/converse-stream",
+        }
+
+        if endpoint_type not in endpoint_mapping:
+            raise ValueError(f"Invalid Bedrock endpoint type: {endpoint_type}")
+
+        return endpoint_mapping[endpoint_type]
+
+    def _construct_anthropic_endpoint(
+        self, base_url: str, endpoint_type: Optional[str]
+    ) -> str:
+        """Construct Anthropic endpoint URL."""
+        if not endpoint_type:
+            raise ValueError("Endpoint type is required for Anthropic")
+
+        endpoint_mapping = {
+            "messages": f"{base_url}/model/messages",
+            "complete": f"{base_url}/model/complete",
+        }
+
+        if endpoint_type not in endpoint_mapping:
+            raise ValueError(f"Invalid Anthropic endpoint type: {endpoint_type}")
+
+        return endpoint_mapping[endpoint_type]
+
+    def _construct_openai_compatible_endpoint(
+        self, base_url: str, provider_name: str, endpoint_type: Optional[str]
+    ) -> str:
+        """Construct OpenAI compatible endpoint URL."""
+        if not endpoint_type:
+            raise ValueError(
+                "Endpoint type is required for OpenAI compatible endpoints"
+            )
+
+        endpoint_mapping = {
+            "chat": f"{base_url}/{provider_name}/chat/completions",
+            "completion": f"{base_url}/{provider_name}/completions",
+            "embeddings": f"{base_url}/{provider_name}/embeddings",
+        }
+
+        if endpoint_type not in endpoint_mapping:
+            raise ValueError(
+                f"Invalid OpenAI compatible endpoint type: {endpoint_type}"
+            )
+
+        return endpoint_mapping[endpoint_type]
+
     def construct_endpoint_url(self, request_model: Dict[str, Any]) -> str:
         """
         Constructs the endpoint URL based on the request model.
 
-        :param base_url: The base URL for the API.
         :param request_model: The request model containing endpoint details.
         :return: The constructed endpoint URL.
         """
-        base_url = self.base_url
         provider_name = request_model.get("provider_name")
         endpoint_type = request_model.get("endpoint_type")
         deployment = request_model.get("deployment")
         model_id = request_model.get("model_id")
+
         if not provider_name:
             raise ValueError("Provider name is not specified in the request model.")
 
-        if provider_name == "azureopenai" and deployment:
-            # Handle Azure OpenAI endpoints
-            if endpoint_type == "chat":
-                return f"{base_url}/{provider_name}/deployments/{deployment}/chat/completions"
-            elif endpoint_type == "completion":
-                return (
-                    f"{base_url}/{provider_name}/deployments/{deployment}/completions"
-                )
-            elif endpoint_type == "embeddings":
-                return f"{base_url}/{provider_name}/deployments/{deployment}/embeddings"
-        elif provider_name == "bedrock" and model_id:
-            # Handle Bedrock endpoints
-            if endpoint_type == "invoke":
-                return f"{base_url}/model/{model_id}/invoke"
-            elif endpoint_type == "converse":
-                return f"{base_url}/model/{model_id}/converse"
-            elif endpoint_type == "invoke_stream":
-                return f"{base_url}/model/{model_id}/invoke-with-response-stream"
-            elif endpoint_type == "converse_stream":
-                return f"{base_url}/model/{model_id}/converse-stream"
-        elif provider_name == "anthropic":
-            if endpoint_type == "messages":
-                return f"{base_url}/model/messages"
-            elif endpoint_type == "complete":
-                return f"{base_url}/model/complete"
-        else:
-            # Handle OpenAI compatible endpoints
-            if endpoint_type == "chat":
-                return f"{base_url}/{provider_name}/chat/completions"
-            elif endpoint_type == "completion":
-                return f"{base_url}/{provider_name}/completions"
-            elif endpoint_type == "embeddings":
-                return f"{base_url}/{provider_name}/embeddings"
+        base_url = self.base_url
 
-        raise ValueError("Invalid request model configuration")
+        # Handle Azure OpenAI endpoints
+        if provider_name == "azureopenai" and deployment:
+            return self._construct_azure_openai_endpoint(
+                base_url, provider_name, deployment, endpoint_type
+            )
+
+        # Handle Bedrock endpoints
+        elif provider_name == "bedrock" and model_id:
+            return self._construct_bedrock_endpoint(base_url, model_id, endpoint_type)
+
+        # Handle Anthropic endpoints
+        elif provider_name == "anthropic":
+            return self._construct_anthropic_endpoint(base_url, endpoint_type)
+
+        # Handle OpenAI compatible endpoints
+        else:
+            return self._construct_openai_compatible_endpoint(
+                base_url, provider_name, endpoint_type
+            )
 
     def set_headers(self, headers: Dict[str, str]) -> None:
         """
@@ -1314,9 +1598,3 @@ class JavelinClient:
             headers (Dict[str, str]): A dictionary of headers to set or update.
         """
         self._headers.update(headers)
-
-    # Guardrails methods
-    apply_trustsafety = lambda self, text, config=None: self.guardrails_service.apply_trustsafety(text, config)
-    apply_promptinjectiondetection = lambda self, text, config=None: self.guardrails_service.apply_promptinjectiondetection(text, config)
-    apply_guardrails = lambda self, text, guardrails: self.guardrails_service.apply_guardrails(text, guardrails)
-    list_guardrails = lambda self: self.guardrails_service.list_guardrails()

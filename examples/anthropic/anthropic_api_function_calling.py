@@ -16,10 +16,10 @@ client = JavelinClient(config)
 # Headers
 headers = {
     "Content-Type": "application/json",
-    "x-javelin-route": "anthropic_univ", # add your universal route
-    "x-javelin-model": "claude-3-5-sonnet-20240620", # add any supported model
+    "x-javelin-route": "anthropic_univ",  # add your universal route
+    "x-javelin-model": "claude-3-5-sonnet-20240620",  # add any supported model
     "x-javelin-provider": "https://api.anthropic.com/v1",
-    "x-api-key": os.getenv("ANTHROPIC_API_KEY"), 
+    "x-api-key": os.getenv("ANTHROPIC_API_KEY"),
     "anthropic-version": "2023-06-01",
 }
 client.set_headers(headers)
@@ -44,7 +44,9 @@ functions = [
 messages = [
     {
         "role": "user",
-        "content": [{"type": "text", "text": "What's the weather like in Mumbai in celsius?"}],
+        "content": [
+            {"type": "text", "text": "What's the weather like in Mumbai in celsius?"}
+        ],
     }
 ]
 

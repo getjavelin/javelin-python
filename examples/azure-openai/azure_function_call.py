@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import os
-import json
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 from javelin_sdk import JavelinClient, JavelinConfig
 
 load_dotenv()
+
 
 def init_azure_client_with_javelin():
     azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
@@ -18,7 +18,7 @@ def init_azure_client_with_javelin():
     azure_client = AzureOpenAI(
         api_version="2023-07-01-preview",
         azure_endpoint="https://javelinpreview.openai.azure.com",
-        api_key=azure_api_key
+        api_key=azure_api_key,
     )
 
     # Register with Javelin
@@ -27,6 +27,7 @@ def init_azure_client_with_javelin():
     client.register_azureopenai(azure_client, route_name="azureopenai_univ")
 
     return azure_client
+
 
 def run_function_call_test(azure_client):
     print("\n==== Azure OpenAI Function Calling via Javelin ====")
@@ -46,19 +47,20 @@ def run_function_call_test(azure_client):
                             "unit": {
                                 "type": "string",
                                 "enum": ["celsius", "fahrenheit"],
-                                "description": "Temperature unit"
-                            }
+                                "description": "Temperature unit",
+                            },
                         },
-                        "required": ["city"]
-                    }
+                        "required": ["city"],
+                    },
                 }
             ],
-            function_call="auto"
+            function_call="auto",
         )
         print("Function Call Output:")
         print(response.to_json(indent=2))
     except Exception as e:
         print("Azure Function Calling Error:", e)
+
 
 def run_tool_call_test(azure_client):
     print("\n==== Azure OpenAI Tool Calling via Javelin ====")
@@ -76,24 +78,29 @@ def run_tool_call_test(azure_client):
                         "parameters": {
                             "type": "object",
                             "properties": {
-                                "category": {"type": "string", "description": "e.g. success, life"}
+                                "category": {
+                                    "type": "string",
+                                    "description": "e.g. success, life",
+                                }
                             },
-                            "required": []
-                        }
-                    }
+                            "required": [],
+                        },
+                    },
                 }
             ],
-            tool_choice="auto"
+            tool_choice="auto",
         )
         print("Tool Call Output:")
         print(response.to_json(indent=2))
     except Exception as e:
         print("Azure Tool Calling Error:", e)
 
+
 def main():
     client = init_azure_client_with_javelin()
     run_function_call_test(client)
     run_tool_call_test(client)
+
 
 if __name__ == "__main__":
     main()

@@ -146,7 +146,7 @@ class RouteService:
             Request(method=HttpMethod.DELETE, route=route_name)
         )
 
-        ## Reload the route
+        # Reload the route
         self.reload_route(route_name=route_name)
         return self._process_route_response_ok(response)
 
@@ -155,57 +155,78 @@ class RouteService:
             Request(method=HttpMethod.DELETE, route=route_name)
         )
 
-        ## Reload the route
+        # Reload the route
         self.areload_route(route_name=route_name)
         return self._process_route_response_ok(response)
+
+    def _extract_json_from_line(self, line_str: str) -> Optional[Dict[str, Any]]:
+        """Extract JSON data from a line string."""
+        try:
+            json_start = line_str.find("{")
+            json_end = line_str.rfind("}") + 1
+            if json_start != -1 and json_end != -1:
+                json_str = line_str[json_start:json_end]
+                return json.loads(json_str)
+        except Exception:
+            pass
+        return None
+
+    def _process_bytes_message(
+        self, data: Dict[str, Any], jsonpath_expr
+    ) -> Optional[str]:
+        """Process a message with bytes data."""
+        try:
+            if "bytes" in data:
+                import base64
+
+                bytes_data = base64.b64decode(data["bytes"])
+                decoded_data = json.loads(bytes_data)
+                matches = jsonpath_expr.find(decoded_data)
+                if matches and matches[0].value:
+                    return matches[0].value
+        except Exception:
+            pass
+        return None
+
+    def _process_delta_message(self, data: Dict[str, Any]) -> Optional[str]:
+        """Process a message with delta data."""
+        try:
+            if "delta" in data and "text" in data["delta"]:
+                return data["delta"]["text"]
+        except Exception:
+            pass
+        return None
+
+    def _process_sse_data(self, line_str: str, jsonpath_expr) -> Optional[str]:
+        """Process Server-Sent Events (SSE) data format."""
+        try:
+            if line_str.strip() != "data: [DONE]":
+                json_str = line_str.replace("data: ", "")
+                data = json.loads(json_str)
+                matches = jsonpath_expr.find(data)
+                if matches and matches[0].value:
+                    return matches[0].value
+        except Exception:
+            pass
+        return None
 
     def _process_stream_line(
         self, line_str: str, jsonpath_expr, is_bedrock: bool = False
     ) -> Optional[str]:
-        """Process a single line from the stream response and extract text if available."""
+        """Process a single line from the stream response
+        and extract text if available."""
         try:
             if "message-type" in line_str:
-                if "bytes" in line_str:
-                    try:
-                        json_start = line_str.find("{")
-                        json_end = line_str.rfind("}") + 1
-                        if json_start != -1 and json_end != -1:
-                            json_str = line_str[json_start:json_end]
-                            data = json.loads(json_str)
-
-                            if "bytes" in data:
-                                import base64
-
-                                bytes_data = base64.b64decode(data["bytes"])
-                                decoded_data = json.loads(bytes_data)
-                                matches = jsonpath_expr.find(decoded_data)
-                                if matches and matches[0].value:
-                                    return matches[0].value
-                    except Exception:
-                        pass
-                else:
-                    try:
-                        json_start = line_str.find("{")
-                        json_end = line_str.rfind("}") + 1
-                        if json_start != -1 and json_end != -1:
-                            json_str = line_str[json_start:json_end]
-                            data = json.loads(json_str)
-                            if "delta" in data and "text" in data["delta"]:
-                                return data["delta"]["text"]
-                    except Exception:
-                        pass
+                data = self._extract_json_from_line(line_str)
+                if data:
+                    if "bytes" in line_str:
+                        return self._process_bytes_message(data, jsonpath_expr)
+                    else:
+                        return self._process_delta_message(data)
 
             # Handle SSE data format
             elif line_str.startswith("data: "):
-                try:
-                    if line_str.strip() != "data: [DONE]":
-                        json_str = line_str.replace("data: ", "")
-                        data = json.loads(json_str)
-                        matches = jsonpath_expr.find(data)
-                        if matches and matches[0].value:
-                            return matches[0].value
-                except Exception:
-                    pass
+                return self._process_sse_data(line_str, jsonpath_expr)
 
         except Exception:
             pass

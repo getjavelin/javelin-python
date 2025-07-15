@@ -88,10 +88,13 @@ def generate_model_code(model_name: str, properties: Dict[str, Any]) -> str:
     for prop, details in properties.items():
         field_type = get_python_type(details.get("type"), details.get("items"))
         description = details.get("description", "").replace('"', '\\"')
-        default = "None" if details.get("required") != True else "..."
+        default = "None" if details.get("required") is not True else "..."
         if default == "None":
             field_type = f"Optional[{field_type}]"
-        model_code += f'    {prop}: {field_type} = Field(default={default}, description="{description}")\n'
+        model_code += (
+            f"    {prop}: {field_type} = Field(default={default}, "
+            f'description="{description}")\n'
+        )
     return model_code
 
 
@@ -118,14 +121,34 @@ def update_models_file(new_models: Dict[str, Dict[str, Any]]):
             new_fields = set(properties.keys()) - existing_fields
 
             if new_fields:
-                new_field_code = "\n".join(
-                    f"    {prop}: {'Optional[' if properties[prop].get('required') != True else ''}"
-                    f"{get_python_type(properties[prop].get('type'), properties[prop].get('items'))}"
-                    f"{']' if properties[prop].get('required') != True else ''} = "
-                    f"Field(default={'None' if properties[prop].get('required') != True else '...'}, "
-                    f"description={repr(properties[prop].get('description', ''))})"
-                    for prop in new_fields
-                )
+                field_lines = []
+                for prop in new_fields:
+                    optional = (
+                        "Optional["
+                        if properties[prop].get("required") is not True
+                        else ""
+                    )
+                    py_type = get_python_type(
+                        properties[prop].get("type"),
+                        properties[prop].get("items"),
+                    )
+                    optional_end = (
+                        "]" if properties[prop].get("required") is not True else ""
+                    )
+                    default_val = (
+                        "None"
+                        if properties[prop].get("required") is not True
+                        else "..."
+                    )
+                    description = repr(properties[prop].get("description", ""))
+                    field_line = (
+                        f"{prop}: {optional}{py_type}{optional_end} = Field(\n"
+                        f"    default={default_val},\n"
+                        f"    description={description}\n"
+                        f")"
+                    )
+                    field_lines.append(field_line)
+                new_field_code = "\n".join(field_lines)
 
                 updated_model = existing_model + "\n" + new_field_code
                 updated_content = updated_content.replace(existing_model, updated_model)
@@ -193,7 +216,8 @@ def modify_and_convert_swagger(input_file, output_file):
         print(f"OpenAPI 3.0 specification has been created and saved to {output_file}")
     else:
         print(
-            f"Error converting to OpenAPI 3.0: {response.status_code} - {response.text}"
+            f"Error converting to OpenAPI 3.0: {response.status_code} - "
+            f"{response.text}"
         )
 
 

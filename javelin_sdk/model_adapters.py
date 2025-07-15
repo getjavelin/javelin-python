@@ -3,14 +3,15 @@ from typing import Any, Dict, List, Optional
 
 import jmespath
 
-from .models import ArrayHandling, EndpointType, ModelSpec, TransformRule, TypeHint
+from .models import ArrayHandling, ModelSpec, TransformRule, TypeHint
 
 logger = logging.getLogger(__name__)
 
 
 class TransformationRuleManager:
     def __init__(self, client):
-        """Initialize the transformation rule manager with both local and remote capabilities"""
+        """Initialize the transformation rule manager with both
+        local and remote capabilities"""
         self.client = client
         self.cache = {}
         self.cache_ttl = 3600
@@ -82,53 +83,73 @@ class ModelTransformer:
 
         for rule in rules:
             try:
-                # Add additional data if specified
-                if rule.additional_data:
-                    result.update(rule.additional_data)
-                    continue
-
-                # Skip passthrough rules
-                if rule.type_hint == TypeHint.PASSTHROUGH:
-                    continue
-
-                # Check conditions
-                if rule.conditions and not self._check_conditions(
-                    rule.conditions, data
-                ):
-                    continue
-
-                # Get value using source path
-                value = self._get_value(rule.source_path, data)
-                if value is None:
-                    value = rule.default_value
-                    if value is None:
-                        continue
-
-                # Apply transformation if specified
-                if value is not None and rule.transform_function:
-                    transform_method = getattr(self, rule.transform_function, None)
-                    if transform_method:
-                        value = transform_method(value)
-
-                # Handle array operations
-                if rule.array_handling and isinstance(value, (list, tuple)):
-                    value = self._handle_array(value, rule.array_handling)
-
-                # Apply type conversion
-                if rule.type_hint and value is not None:
-                    value = self._convert_type(value, rule.type_hint)
-
-                # Set nested value
-                if value is not None:
-                    self._set_nested_value(result, rule.target_path, value)
-
+                processed_value = self._process_rule(rule, data)
+                if processed_value is not None:
+                    if isinstance(processed_value, dict):
+                        result.update(processed_value)
+                    else:
+                        self._set_nested_value(
+                            result, rule.target_path, processed_value
+                        )
             except Exception as e:
                 logger.error(
-                    f"Error processing rule {rule.source_path} -> {rule.target_path}: {str(e)}"
+                    f"Error processing rule {rule.source_path} -> "
+                    f"{rule.target_path}: {str(e)}"
                 )
                 continue
 
         return result
+
+    def _process_rule(self, rule: TransformRule, data: Dict[str, Any]) -> Any:
+        """Process a single transformation rule"""
+        # Handle additional data
+        if rule.additional_data:
+            return rule.additional_data
+
+        # Skip passthrough rules
+        if rule.type_hint == TypeHint.PASSTHROUGH:
+            return None
+
+        # Check conditions
+        if rule.conditions and not self._check_conditions(rule.conditions, data):
+            return None
+
+        # Get value using source path
+        value = self._get_value(rule.source_path, data)
+        if value is None:
+            value = rule.default_value
+            if value is None:
+                return None
+
+        # Apply transformations
+        value = self._apply_transformations(value, rule)
+
+        return value
+
+    def _apply_transformations(self, value: Any, rule: TransformRule) -> Any:
+        """Apply all transformations to a value"""
+        if value is None:
+            return value
+
+        # Apply transformation function
+        if rule.transform_function:
+            transform_method = getattr(self, rule.transform_function, None)
+            if transform_method:
+                value = transform_method(value)
+
+        # Handle array operations
+        if rule.array_handling and isinstance(value, (list, tuple)):
+            if isinstance(value, list):
+                value = self._handle_array(value, rule.array_handling)
+            else:
+                # Convert tuple to list for processing
+                value = self._handle_array(list(value), rule.array_handling)
+
+        # Apply type conversion
+        if rule.type_hint and value is not None:
+            value = self._convert_type(value, rule.type_hint)
+
+        return value
 
     def _check_conditions(self, conditions: List[str], data: Dict[str, Any]) -> bool:
         """Check if all conditions are met"""
