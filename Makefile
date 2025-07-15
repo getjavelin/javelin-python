@@ -10,7 +10,6 @@ coverage:
 
 format:
 	poetry run black .
-	poetry run ruff --select I --fix .
 
 lint:
 	poetry run black .
