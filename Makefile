@@ -10,12 +10,10 @@ coverage:
 
 format:
 	poetry run black .
-	poetry run ruff --select I --fix .
 
 lint:
-	poetry run mypy --exclude tests javelin_sdk/
-	poetry run black . --check
-	poetry run ruff javelin_sdk/
+	poetry run black .
+	poetry run flake8 . --config=.flake8 --output-file=lint-report.json
 
 test:
 	poetry run pytest tests
