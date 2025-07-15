@@ -2,6 +2,51 @@
 ## [Unreleased]
 
 
+<a name="v0.2.38"></a>
+## [v0.2.38] - 2025-07-14
+### Bug Fixes
+- lint issues ([#204](https://github.com/getjavelin/javelin-python/issues/204))
+- Update README.md
+
+### DevOps
+- Update WEEKLY-CHANGELOG for v0.0.3-weekly
+- Update WEEKLY-CHANGELOG for v0.0.2-weekly
+- Update WEEKLY-CHANGELOG for v0.0.1-weekly
+- Adding the new pipeline for weekly changelog cron
+- Fixing the pipeline trigger issue
+
+### Pull Requests
+- Merge pull request [#201](https://github.com/getjavelin/javelin-python/issues/201) from getjavelin/cicd-patch
+- Merge pull request [#200](https://github.com/getjavelin/javelin-python/issues/200) from getjavelin/ankumar-patch-1
+- Merge pull request [#199](https://github.com/getjavelin/javelin-python/issues/199) from getjavelin/cicd-patch
+
+
+<a name="v0.2.37"></a>
+## [v0.2.37] - 2025-05-30
+### Bug Fixes
+- update route models ([#198](https://github.com/getjavelin/javelin-python/issues/198))
+
+### DevOps
+- Patching the cicd and release pipeline
+
+### Pull Requests
+- Merge pull request [#197](https://github.com/getjavelin/javelin-python/issues/197) from getjavelin/cicd-patch
+
+
+<a name="v0.2.36"></a>
+## [v0.2.36] - 2025-05-28
+### DevOps
+- disabling the edited option in the PR checks
+- Update CHANGELOG for v0.2.35
+
+### Features
+- update universal endpoint scripts ([#195](https://github.com/getjavelin/javelin-python/issues/195))
+
+### Pull Requests
+- Merge pull request [#190](https://github.com/getjavelin/javelin-python/issues/190) from getjavelin/cicd-changelog
+- Merge pull request [#194](https://github.com/getjavelin/javelin-python/issues/194) from getjavelin/cicd-patch
+
+
 <a name="v0.2.35"></a>
 ## [v0.2.35] - 2025-05-08
 ### Bug Fixes
@@ -528,7 +573,10 @@
 <a name="v0.1.5"></a>
 ## v0.1.5 - 2023-09-04
 
-[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.35...HEAD
+[Unreleased]: https://github.com/getjavelin/javelin-python/compare/v0.2.38...HEAD
+[v0.2.38]: https://github.com/getjavelin/javelin-python/compare/v0.2.37...v0.2.38
+[v0.2.37]: https://github.com/getjavelin/javelin-python/compare/v0.2.36...v0.2.37
+[v0.2.36]: https://github.com/getjavelin/javelin-python/compare/v0.2.35...v0.2.36
 [v0.2.35]: https://github.com/getjavelin/javelin-python/compare/v0.2.34...v0.2.35
 [v0.2.34]: https://github.com/getjavelin/javelin-python/compare/v0.2.33...v0.2.34
 [v0.2.33]: https://github.com/getjavelin/javelin-python/compare/v0.2.32...v0.2.33
