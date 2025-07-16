@@ -1,11 +1,16 @@
-name: CICD Trivy Scan - Javelin Python
+name: PR Trivy Scan - Javelin Python
 
 on:
-  push:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
     branches:
       - "main"
-    paths-ignore:
-      - "**/*CHANGELOG.md"
+  merge_group:
+    types:
+      - checks_requested
 
 jobs:
   reusable-workflow:
