@@ -1,4 +1,4 @@
-name: CICD Trivy Scan - Javelin Python
+name: PR Trivy Scan - Javelin Python
 
 on:
   pull_request:
