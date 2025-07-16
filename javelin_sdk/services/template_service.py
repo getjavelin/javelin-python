@@ -44,7 +44,9 @@ class TemplateService:
             template = Template.model_validate(template)
         response = self.client._send_request_sync(
             Request(
-                method=HttpMethod.POST, template=template.name, data=template.dict()
+                method=HttpMethod.POST,
+                template=template.name,
+                data=template.dict(exclude_none=True),
             )
         )
         if template.name:
@@ -56,7 +58,9 @@ class TemplateService:
             template = Template.model_validate(template)
         response = await self.client._send_request_async(
             Request(
-                method=HttpMethod.POST, template=template.name, data=template.dict()
+                method=HttpMethod.POST,
+                template=template.name,
+                data=template.dict(exclude_none=True),
             )
         )
         if template.name:
@@ -105,7 +109,11 @@ class TemplateService:
         if not isinstance(template, Template):
             template = Template.model_validate(template)
         response = self.client._send_request_sync(
-            Request(method=HttpMethod.PUT, template=template.name, data=template.dict())
+            Request(
+                method=HttpMethod.PUT,
+                template=template.name,
+                data=template.dict(exclude_none=True),
+            )
         )
         if template.name:
             self.reload_data_protection(template.name)
@@ -115,7 +123,11 @@ class TemplateService:
         if not isinstance(template, Template):
             template = Template.model_validate(template)
         response = await self.client._send_request_async(
-            Request(method=HttpMethod.PUT, template=template.name, data=template.dict())
+            Request(
+                method=HttpMethod.PUT,
+                template=template.name,
+                data=template.dict(exclude_none=True),
+            )
         )
         if template.name:
             await self.areload_data_protection(template.name)

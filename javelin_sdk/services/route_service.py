@@ -67,7 +67,11 @@ class RouteService:
             route = Route.model_validate(route)
         self._validate_route_name(route.name)
         response = self.client._send_request_sync(
-            Request(method=HttpMethod.POST, route=route.name, data=route.dict())
+            Request(
+                method=HttpMethod.POST,
+                route=route.name,
+                data=route.dict(exclude_none=True),
+            )
         )
         return self._process_route_response_ok(response)
 
@@ -76,7 +80,11 @@ class RouteService:
             route = Route.model_validate(route)
         self._validate_route_name(route.name)
         response = await self.client._send_request_async(
-            Request(method=HttpMethod.POST, route=route.name, data=route.dict())
+            Request(
+                method=HttpMethod.POST,
+                route=route.name,
+                data=route.dict(exclude_none=True),
+            )
         )
         return self._process_route_response_ok(response)
 

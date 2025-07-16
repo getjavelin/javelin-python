@@ -53,7 +53,11 @@ class GatewayService:
         if gateway.name:
             self._validate_gateway_name(gateway.name)
         response = self.client._send_request_sync(
-            Request(method=HttpMethod.POST, gateway=gateway.name, data=gateway.dict())
+            Request(
+                method=HttpMethod.POST,
+                gateway=gateway.name,
+                data=gateway.dict(exclude_none=True),
+            )
         )
         return self._process_gateway_response_ok(response)
 
@@ -61,7 +65,11 @@ class GatewayService:
         if gateway.name:
             self._validate_gateway_name(gateway.name)
         response = await self.client._send_request_async(
-            Request(method=HttpMethod.POST, gateway=gateway.name, data=gateway.dict())
+            Request(
+                method=HttpMethod.POST,
+                gateway=gateway.name,
+                data=gateway.dict(exclude_none=True),
+            )
         )
         return self._process_gateway_response_ok(response)
 
