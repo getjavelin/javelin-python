@@ -13,9 +13,12 @@ load_dotenv()
 # ---------------------------
 # OpenAI – Unified Endpoint Examples
 # ---------------------------
+
+
 def init_openai_client():
     api_key = os.getenv("OPENAI_API_KEY")
     return OpenAI(api_key=api_key)
+
 
 def init_javelin_client(openai_client, route_name="openai_univ"):
     javelin_api_key = os.getenv("JAVELIN_API_KEY")
@@ -23,6 +26,7 @@ def init_javelin_client(openai_client, route_name="openai_univ"):
     client = JavelinClient(config)
     client.register_openai(openai_client, route_name=route_name)
     return client
+
 
 def openai_function_call_non_stream():
     print("\n==== Running OpenAI Non-Streaming Function Calling Example ====")
@@ -42,21 +46,19 @@ def openai_function_call_non_stream():
                     "properties": {
                         "location": {
                             "type": "string",
-                            "description": "City and state (e.g., New York, NY)"
+                            "description": "City and state (e.g., New York, NY)",
                         },
-                        "unit": {
-                            "type": "string",
-                            "enum": ["celsius", "fahrenheit"]
-                        }
+                        "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
                     },
-                    "required": ["location"]
-                }
+                    "required": ["location"],
+                },
             }
         ],
-        function_call="auto"
+        function_call="auto",
     )
     print("OpenAI Non-Streaming Response:")
     print(response.model_dump_json(indent=2))
+
 
 def openai_function_call_stream():
     print("\n==== Running OpenAI Streaming Function Calling Example ====")
@@ -76,15 +78,15 @@ def openai_function_call_stream():
                     "properties": {
                         "fact": {
                             "type": "string",
-                            "description": "A fun fact about the topic"
+                            "description": "A fun fact about the topic",
                         }
                     },
-                    "required": ["fact"]
-                }
+                    "required": ["fact"],
+                },
             }
         ],
         function_call="auto",
-        stream=True
+        stream=True,
     )
     collected = []
     print("OpenAI Streaming Response:")
@@ -95,6 +97,7 @@ def openai_function_call_stream():
             collected.append(delta.content)
     print("".join(collected))
 
+
 def openai_structured_output_call_generic():
     print("\n==== Running OpenAI Structured Output Function Calling Example ====")
     openai_client = init_openai_client()
@@ -102,32 +105,36 @@ def openai_structured_output_call_generic():
     messages = [
         {
             "role": "system",
-            "content": "You are an assistant that always responds in valid JSON format without any additional text."
+            "content": (
+                "You are an assistant that always responds in valid JSON format "
+                "without any additional text."
+            ),
         },
         {
             "role": "user",
             "content": (
                 "Provide a generic example of structured data output in JSON format. "
                 "The JSON should include the keys: 'id', 'name', 'description', "
-                "and 'attributes' (which should be a nested object with arbitrary key-value pairs)."
-            )
-        }
+                "and 'attributes' (which should be a nested object with arbitrary "
+                "key-value pairs)."
+            ),
+        },
     ]
-    
+
     response = openai_client.chat.completions.create(
         model="o3-mini",  # can use o1 model as well
         messages=messages,
     )
-    
+
     print("Structured Output (JSON) Response:")
     print(response.model_dump_json(indent=2))
-    
+
     try:
         reply_content = response.choices[0].message.content
     except (IndexError, AttributeError) as e:
         print("Error extracting message content:", e)
         reply_content = ""
-    
+
     try:
         json_output = json.loads(reply_content)
         print("\nParsed JSON Output:")
@@ -136,16 +143,20 @@ def openai_structured_output_call_generic():
         print("\nFailed to parse JSON output. Error:", e)
         print("Raw content:", reply_content)
 
+
 # ---------------------------
 # Azure OpenAI – Unified Endpoint Examples
 # ---------------------------
+
+
 def init_azure_client():
     azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
     return AzureOpenAI(
         api_version="2023-07-01-preview",
         azure_endpoint="https://javelinpreview.openai.azure.com",
-        api_key=azure_api_key
+        api_key=azure_api_key,
     )
+
 
 def init_javelin_client_azure(azure_client, route_name="azureopenai_univ"):
     javelin_api_key = os.getenv("JAVELIN_API_KEY")
@@ -154,15 +165,14 @@ def init_javelin_client_azure(azure_client, route_name="azureopenai_univ"):
     client.register_azureopenai(azure_client, route_name=route_name)
     return client
 
+
 def azure_function_call_non_stream():
     print("\n==== Running Azure OpenAI Non-Streaming Function Calling Example ====")
     azure_client = init_azure_client()
     init_javelin_client_azure(azure_client)
     response = azure_client.chat.completions.create(
         model="gpt-4o",
-        messages=[
-            {"role": "user", "content": "Schedule a meeting at 10 AM tomorrow."}
-        ],
+        messages=[{"role": "user", "content": "Schedule a meeting at 10 AM tomorrow."}],
         functions=[
             {
                 "name": "schedule_meeting",
@@ -170,17 +180,24 @@ def azure_function_call_non_stream():
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "time": {"type": "string", "description": "Meeting time (ISO format)"},
-                        "date": {"type": "string", "description": "Meeting date (YYYY-MM-DD)"}
+                        "time": {
+                            "type": "string",
+                            "description": "Meeting time (ISO format)",
+                        },
+                        "date": {
+                            "type": "string",
+                            "description": "Meeting date (YYYY-MM-DD)",
+                        },
                     },
-                    "required": ["time", "date"]
-                }
+                    "required": ["time", "date"],
+                },
             }
         ],
-        function_call="auto"
+        function_call="auto",
     )
     print("Azure OpenAI Non-Streaming Response:")
     print(response.to_json())
+
 
 def azure_function_call_stream():
     print("\n==== Running Azure OpenAI Streaming Function Calling Example ====")
@@ -188,9 +205,7 @@ def azure_function_call_stream():
     init_javelin_client_azure(azure_client)
     stream = azure_client.chat.completions.create(
         model="gpt-4o",
-        messages=[
-            {"role": "user", "content": "Schedule a meeting at 10 AM tomorrow."}
-        ],
+        messages=[{"role": "user", "content": "Schedule a meeting at 10 AM tomorrow."}],
         functions=[
             {
                 "name": "schedule_meeting",
@@ -198,19 +213,26 @@ def azure_function_call_stream():
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "time": {"type": "string", "description": "Meeting time (ISO format)"},
-                        "date": {"type": "string", "description": "Meeting date (YYYY-MM-DD)"}
+                        "time": {
+                            "type": "string",
+                            "description": "Meeting time (ISO format)",
+                        },
+                        "date": {
+                            "type": "string",
+                            "description": "Meeting date (YYYY-MM-DD)",
+                        },
                     },
-                    "required": ["time", "date"]
-                }
+                    "required": ["time", "date"],
+                },
             }
         ],
         function_call="auto",
-        stream=True
+        stream=True,
     )
     print("Azure OpenAI Streaming Response:")
     for chunk in stream:
         print(chunk)
+
 
 def extract_json_from_markdown(text: str) -> str:
     """
@@ -222,33 +244,38 @@ def extract_json_from_markdown(text: str) -> str:
         return match.group(1)
     return text.strip()
 
+
 def azure_structured_output_call():
-    print("\n==== Running Azure OpenAI Structured Output Function Calling Example ====")
+    print(
+        "\n==== Running Azure OpenAI Structured Output Function " "Calling Example ===="
+    )
     azure_client = init_azure_client()
     init_javelin_client_azure(azure_client)
     messages = [
         {
             "role": "system",
-            "content": "You are an assistant that always responds in valid JSON format without any additional text."
+            "content": (
+                "You are an assistant that always responds in valid JSON format "
+                "without any additional text."
+            ),
         },
         {
             "role": "user",
             "content": (
                 "Provide structured data in JSON format. "
-                "The JSON should contain the following keys: 'id' (integer), 'title' (string), "
-                "'description' (string), and 'metadata' (a nested object with arbitrary key-value pairs)."
-            )
-        }
+                "The JSON should contain the following keys: 'id' (integer), "
+                "'title' (string), 'description' (string), and 'metadata' "
+                "(a nested object with arbitrary key-value pairs)."
+            ),
+        },
     ]
-    
-    response = azure_client.chat.completions.create(
-        model="gpt-4o",
-        messages=messages
-    )
-    
+
+    response = azure_client.chat.completions.create(model="gpt-4o", messages=messages)
+
+    print("Structured Output (JSON) Response:")
     print("Structured Output (JSON) Response:")
     print(response.to_json())
-    
+
     try:
         reply_content = response.choices[0].message.content
         reply_content_clean = extract_json_from_markdown(reply_content)
@@ -259,12 +286,18 @@ def azure_structured_output_call():
         print("\nFailed to parse JSON output. Error:", e)
         print("Raw content:", reply_content)
 
+
 # ---------------------------
 # OpenAI – Regular Route Endpoint Examples
 # ---------------------------
+
+
 def openai_regular_non_stream():
-    print("\n==== Running OpenAI Regular Route Non-Streaming Function Calling Example ====")
-    javelin_api_key = os.getenv('JAVELIN_API_KEY')
+    print(
+        "\n==== Running OpenAI Regular Route Non-Streaming Function "
+        "Calling Example ===="
+    )
+    javelin_api_key = os.getenv("JAVELIN_API_KEY")
     llm_api_key = os.getenv("OPENAI_API_KEY")
     if not javelin_api_key or not llm_api_key:
         raise ValueError("Both JAVELIN_API_KEY and OPENAI_API_KEY must be set.")
@@ -276,14 +309,24 @@ def openai_regular_non_stream():
     )
     client = JavelinClient(config)
     print("Successfully connected to Javelin Client for OpenAI")
-    
+
     query_data = {
         "messages": [
-            {"role": "system", "content": "You are a helpful assistant that translates English to French."},
-            {"role": "user", "content": "AI has the power to transform humanity and make the world a better place."},
+            {
+                "role": "system",
+                "content": "You are a helpful assistant \
+                that translates English to French.",
+            },
+            {
+                "role": "user",
+                "content": (
+                    "AI has the power to transform humanity and make the world a "
+                    "better place."
+                ),
+            },
         ]
     }
-    
+
     try:
         response = client.query_route("openai", query_data)
         print("Response from OpenAI Regular Endpoint:")
@@ -293,9 +336,12 @@ def openai_regular_non_stream():
     except Exception as e:
         print("Error querying OpenAI endpoint:", e)
 
+
 def openai_regular_stream():
-    print("\n==== Running OpenAI Regular Route Streaming Function Calling Example ====")
-    javelin_api_key = os.getenv('JAVELIN_API_KEY')
+    print(
+        "\n==== Running OpenAI Regular Route Streaming Function " "Calling Example ===="
+    )
+    javelin_api_key = os.getenv("JAVELIN_API_KEY")
     llm_api_key = os.getenv("OPENAI_API_KEY")
     if not javelin_api_key or not llm_api_key:
         raise ValueError("Both JAVELIN_API_KEY and OPENAI_API_KEY must be set.")
@@ -306,11 +352,21 @@ def openai_regular_stream():
     )
     client = JavelinClient(config)
     print("Successfully connected to Javelin Client for OpenAI")
-    
+
     query_data = {
         "messages": [
-            {"role": "system", "content": "You are a helpful assistant that translates English to French."},
-            {"role": "user", "content": "AI has the power to transform humanity and make the world a better place."},
+            {
+                "role": "system",
+                "content": "You are a helpful assistant \
+                that translates English to French.",
+            },
+            {
+                "role": "user",
+                "content": (
+                    "AI has the power to transform humanity and make the world a "
+                    "better place."
+                ),
+            },
         ],
         "functions": [
             {
@@ -319,19 +375,16 @@ def openai_regular_stream():
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "text": {
-                            "type": "string",
-                            "description": "Text to translate"
-                        }
+                        "text": {"type": "string", "description": "Text to translate"}
                     },
-                    "required": ["text"]
-                }
+                    "required": ["text"],
+                },
             }
         ],
         "function_call": "auto",
-        "stream": True
+        "stream": True,
     }
-    
+
     try:
         response = client.query_route("openai", query_data)
         print("Response from OpenAI Regular Endpoint (Streaming):")
@@ -356,11 +409,17 @@ def main():
         type=str,
         default="all",
         choices=[
-            "all", "openai_non_stream", "openai_stream", "openai_structured",
-            "azure_non_stream", "azure_stream", "azure_structured",
-            "openai_regular_non_stream", "openai_regular_stream"
+            "all",
+            "openai_non_stream",
+            "openai_stream",
+            "openai_structured",
+            "azure_non_stream",
+            "azure_stream",
+            "azure_structured",
+            "openai_regular_non_stream",
+            "openai_regular_stream",
         ],
-        help="The example to run (or 'all' to run every example)"
+        help="The example to run (or 'all' to run every example)",
     )
     args = parser.parse_args()
 
@@ -389,6 +448,7 @@ def main():
         openai_regular_non_stream()
     elif args.example == "openai_regular_stream":
         openai_regular_stream()
+
 
 if __name__ == "__main__":
     main()

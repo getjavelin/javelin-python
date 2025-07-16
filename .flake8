@@ -1,4 +1,4 @@
 [flake8]
 max-line-length = 88
-exclude = .git,.github,.chglog,__pycache__,docs,venv
+exclude = .git,.github,.chglog,__pycache__,docs,venv,env,mypy_cache
 max-complexity = 10
