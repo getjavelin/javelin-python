@@ -65,7 +65,9 @@ class ProviderService:
             self._validate_provider_name(provider.name)
         response = self.client._send_request_sync(
             Request(
-                method=HttpMethod.POST, provider=provider.name, data=provider.dict()
+                method=HttpMethod.POST,
+                provider=provider.name,
+                data=provider.dict(exclude_none=True),
             )
         )
         return self._process_provider_response_ok(response)
@@ -78,7 +80,9 @@ class ProviderService:
             self._validate_provider_name(provider.name)
         response = await self.client._send_request_async(
             Request(
-                method=HttpMethod.POST, provider=provider.name, data=provider.dict()
+                method=HttpMethod.POST,
+                provider=provider.name,
+                data=provider.dict(exclude_none=True),
             )
         )
         return self._process_provider_response_ok(response)
