@@ -133,7 +133,7 @@ class SecretService:
             Request(
                 method=HttpMethod.PUT,
                 secret=secret.api_key,
-                data=secret.dict(),
+                data=secret.dict(exclude_none=True),
                 provider=secret.provider_name,
             )
         )
@@ -172,7 +172,7 @@ class SecretService:
             Request(
                 method=HttpMethod.PUT,
                 secret=secret.api_key,
-                data=secret.dict(),
+                data=secret.dict(exclude_none=True),
                 provider=secret.provider_name,
             )
         )
