@@ -2,7 +2,7 @@ name: Cron Weekly Changelog - Javelin Python
 
 on:
   schedule:
-    - cron: '30 8 * * 1'  # Every Monday at 8:30 AM UTC = 2:00 PM IST
+    - cron: '30 9 * * 1'  # Every Monday at 9:30 AM UTC = 3:00 PM IST
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -16,5 +16,6 @@ jobs:
       pull-requests: 'write'
     uses: getjavelin/javelin-workflow/.github/workflows/workflow-cron-weekly-changelog.yml@main
     secrets:
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
       DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
       DEVOPS_PR_TOKEN: ${{ secrets.DEVOPS_PR_TOKEN }}
