@@ -12,12 +12,68 @@ on:
     types:
       - checks_requested
 
+env:
+  PY_LINT_CFG: ".flake8"
+  LINT_REPORT_FILE: "lint-report"
+  PY_VER: 3.11.8
+  PR_CHECK_PREFIX: "feat:|fix:|devops:|Merge|Revert|build\\(deps\\)|\\[Snyk\\]|Bump"
+
 jobs:
-  reusable-workflow:
+  javelin-commit-check:
     permissions:
       contents: 'read'
-      id-token: 'write'
-    uses: getjavelin/javelin-workflow/.github/workflows/workflow-pr-check.yml@main
-    secrets:
-      DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
-      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Get the last commit message
+        id: commit_message
+        run: |
+          COMMIT_MESSAGE=$(git show -s --format=%s)
+          echo "message=${COMMIT_MESSAGE}" >> ${GITHUB_OUTPUT}
+
+      - name: Commit Message Check
+        shell: bash
+        env:
+          COMMIT_MESSAGE: "${{ steps.commit_message.outputs.message }}"
+        run: |-
+          CLEAN_COMMIT_MESSAGE=$(echo '${{ env.COMMIT_MESSAGE }}' | sed "s|\"||g")
+          if [[ "${CLEAN_COMMIT_MESSAGE}" =~ ^(${{ env.PR_CHECK_PREFIX }}) ]]; then
+            echo "Commit message is valid....!"
+          else
+            echo "Commit message does not contain required keywords....!"
+            exit 1
+          fi
+
+  javelin-lint-check:
+    permissions:
+      contents: 'read'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Python Version
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PY_VER }}
+          cache: 'pip'
+
+      - name: Python Lint Check
+        shell: bash
+        run: |-
+          pip install flake8
+          flake8 . --config=${{ env.PY_LINT_CFG }} --output-file=${{ env.LINT_REPORT_FILE }}.json
+
+      - name: Upload Lint Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.LINT_REPORT_FILE }}
+          path: ${{ env.LINT_REPORT_FILE }}.json
+          retention-days: 1
