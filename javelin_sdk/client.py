@@ -177,8 +177,6 @@ class JavelinClient:
 
         openai_client._custom_headers.update(self._headers)
 
-        base_url_str = str(self.openai_base_url).rstrip("/")
-        openai_client._custom_headers["x-javelin-provider"] = base_url_str
         if route_name is not None:
             openai_client._custom_headers["x-javelin-route"] = route_name
 
@@ -600,6 +598,12 @@ class JavelinClient:
 
         self.patched_clients.add(client_id)
         self.provider_name = provider_name  # Store for use in helper methods
+        if provider_name == "azureopenai":
+            print(f"[DEBUG] self.base_url: {self.base_url}")
+            # Add /v1/openai to the base_url if not already present
+            base_url = self.base_url.rstrip("/")
+            if not base_url.endswith("openai"):
+                self.base_url = f"{base_url}/openai"
 
         self._setup_client_headers(openai_client, route_name)
         self._store_original_methods(openai_client, provider_name)
