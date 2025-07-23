@@ -599,7 +599,6 @@ class JavelinClient:
         self.patched_clients.add(client_id)
         self.provider_name = provider_name  # Store for use in helper methods
         if provider_name == "azureopenai":
-            print(f"[DEBUG] self.base_url: {self.base_url}")
             # Add /v1/openai to the base_url if not already present
             base_url = self.base_url.rstrip("/")
             if not base_url.endswith("openai"):
