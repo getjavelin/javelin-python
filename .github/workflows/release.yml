@@ -6,46 +6,55 @@ on:
       - published
 
 env:
-  env_var: ${{ vars.ENV_CONTEXT_VAR }}
-  DEVOPS_REPO: "javelin-cloud"
-  DEVOPS_BRANCH: "main"
   PY_VER: 3.11.8
-  PIPELINE_ROLE: "release"
+  RELEASE_BRANCH: "release"
+  REGEX_PATTERN: "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+  RELEASE_NAME: ${{ github.event.release.name }}
 
 jobs:
-  reusable-vars:
+  javelin-validate:
+    permissions:
+      contents: 'read'
     runs-on: ubuntu-24.04
     steps:
-      - name: reusable variables
-        run: echo "Exposing env vars"
-    outputs:
-      PIPELINE_ROLE: ${{ env.PIPELINE_ROLE }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
 
-  reusable-workflow-env:
-    needs:
-      - reusable-vars
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-    uses: getjavelin/javelin-workflow/.github/workflows/workflow-release-env.yml@main
-    with:
-      PIPELINE_ROLE: ${{ needs.reusable-vars.outputs.PIPELINE_ROLE }}
-    secrets:
-      DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+      - name: Validate Release Branch
+        id: validate_branch
+        shell: bash
+        run: |-
+          export TAG_COMMIT=$(git rev-list -n 1 ${{ github.ref_name }})
+          export TAG_BRANCH=$(git branch -r --contains ${TAG_COMMIT} | grep -v HEAD | head -n 1 | sed 's/origin\///' | sed 's/^[ \t]*//')
+          if [[ "${TAG_BRANCH}" == "${{ env.RELEASE_BRANCH }}" ]] ; then
+            echo "Valid Branch for Release : ${TAG_BRANCH}"
+            echo "enable_branch_build=true" >> ${GITHUB_OUTPUT}
+          else
+            echo "Invalid Branch for Release : ${TAG_BRANCH}"
+            echo "enable_branch_build=false" >> ${GITHUB_OUTPUT}
+            exit 1
+          fi
 
-  reusable-workflow-validate:
-    needs:
-      - reusable-vars
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-    uses: getjavelin/javelin-workflow/.github/workflows/workflow-release-validate.yml@main
-    with:
-      RELEASE_BRANCH: "main"
+      - name: Validate Release Tag
+        if: ${{ steps.validate_branch.outputs.enable_branch_build == 'true' }}
+        id: validate_tag
+        shell: bash
+        run: |-
+          if [[ "${{ env.RELEASE_NAME }}" =~ ${{ env.REGEX_PATTERN }} ]] ; then
+            echo "Valid version format: ${{ env.RELEASE_NAME }}"
+            echo "enable_tag_build=true" >> ${GITHUB_OUTPUT}
+          else
+            echo "Invalid version format: ${{ env.RELEASE_NAME }}"
+            echo "enable_tag_build=false" >> ${GITHUB_OUTPUT}
+            exit 1
+          fi
 
   javelin-package:
     needs:
-      - reusable-workflow-validate
+      - javelin-validate
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -93,39 +102,3 @@ jobs:
         # with:
         #   user: __token__
         #   password: ${{ secrets.PYPI_API_TOKEN }}
-
-  reusable-workflow-notify:
-    needs:
-      - reusable-vars
-      - reusable-workflow-env
-      - reusable-workflow-validate
-      - javelin-package
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-    if: failure()
-    uses: getjavelin/javelin-workflow/.github/workflows/workflow-package-notify.yml@main
-    with:
-      SVC_NAME: ${{ needs.reusable-workflow-env.outputs.lc_repository }}
-      JOB_STATUS: ${{ needs.javelin-package.result }}
-      JOB_STATUS_MARK: ":x:"
-      RELEASE_AUTHOR: ${{ github.event.release.author.login }}
-      TAG_NAME: ${{ github.event.release.tag_name }}
-      BUILD_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-    secrets:
-      DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
-      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-
-  reusable-workflow-changelog:
-    needs:
-      - reusable-workflow-validate
-      - javelin-package
-    permissions:
-      contents: 'write'
-      id-token: 'write'
-      pull-requests: 'write'
-    uses: getjavelin/javelin-workflow/.github/workflows/workflow-release-changelog.yml@main
-    secrets:
-      DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
-      DEVOPS_PR_TOKEN: ${{ secrets.DEVOPS_PR_TOKEN }}
-      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
