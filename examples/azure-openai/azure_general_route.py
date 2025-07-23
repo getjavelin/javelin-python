@@ -22,7 +22,7 @@ def init_azure_client_sync():
                 "AZURE_OPENAI_API_KEY and JAVELIN_API_KEY must be set in "
                 "your .env file."
             )
-        javelin_headers = {"x-api-key": javelin_api_key}
+        javelin_headers = {"x-javelin-apikey": javelin_api_key}
         client = AzureOpenAI(
             api_key=llm_api_key,
             base_url=f"{os.getenv('JAVELIN_BASE_URL')}/v1/query/azure-openai",
@@ -45,7 +45,7 @@ def init_azure_embeddings_client_sync():
                 "AZURE_OPENAI_API_KEY and JAVELIN_API_KEY must be set in "
                 "your .env file."
             )
-        javelin_headers = {"x-api-key": javelin_api_key}
+        javelin_headers = {"x-javelin-apikey": javelin_api_key}
         client = AzureOpenAI(
             api_key=llm_api_key,
             base_url=("https://api-dev.javelin.live/v1/query/azure_ada_embeddings"),
@@ -140,7 +140,7 @@ async def init_async_azure_client():
                 "AZURE_OPENAI_API_KEY and JAVELIN_API_KEY must be set in "
                 "your .env file."
             )
-        javelin_headers = {"x-api-key": javelin_api_key}
+        javelin_headers = {"x-javelin-apikey": javelin_api_key}
         # Include the API version in the base URL for the async client.
         client = AsyncOpenAI(
             api_key=llm_api_key,

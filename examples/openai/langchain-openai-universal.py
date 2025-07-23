@@ -31,7 +31,7 @@ def init_chat_llm_non_streaming():
         openai_api_key=OPENAI_API_KEY,
         openai_api_base=f"{BASE_URL}/v1/openai",
         default_headers={
-            "x-api-key": JAVELIN_API_KEY,
+            "x-javelin-apikey": JAVELIN_API_KEY,
             "x-javelin-route": ROUTE_NAME,
             "x-javelin-provider": "https://api.openai.com/v1",
             "x-javelin-model": MODEL_NAME_CHAT,
@@ -48,7 +48,7 @@ def init_chat_llm_streaming():
         openai_api_key=OPENAI_API_KEY,
         openai_api_base=f"{BASE_URL}/v1/openai",
         default_headers={
-            "x-api-key": JAVELIN_API_KEY,
+            "x-javelin-apikey": JAVELIN_API_KEY,
             "x-javelin-route": ROUTE_NAME,
             "x-javelin-provider": "https://api.openai.com/v1",
             "x-javelin-model": MODEL_NAME_CHAT,
@@ -65,7 +65,7 @@ def init_embeddings_llm():
         openai_api_key=OPENAI_API_KEY,
         openai_api_base=f"{BASE_URL}/v1/openai",
         default_headers={
-            "x-api-key": JAVELIN_API_KEY,
+            "x-javelin-apikey": JAVELIN_API_KEY,
             "x-javelin-route": ROUTE_NAME,
             "x-javelin-provider": "https://api.openai.com/v1",
             "x-javelin-model": MODEL_NAME_EMBED,

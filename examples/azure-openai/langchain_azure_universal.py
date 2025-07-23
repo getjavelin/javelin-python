@@ -38,7 +38,7 @@ llm_non_streaming = AzureChatOpenAI(
     validate_base_url=False,
     verbose=True,
     default_headers={
-        "x-api-key": javelin_api_key,
+        "x-javelin-apikey": javelin_api_key,
         "x-javelin-route": route_name,
         "x-javelin-model": model_choice,
         "x-javelin-provider": "https://javelinpreview.openai.azure.com/openai",
@@ -96,7 +96,7 @@ def invoke_streaming(question: str) -> str:
         validate_base_url=False,
         verbose=True,
         default_headers={
-            "x-api-key": javelin_api_key,
+            "x-javelin-apikey": javelin_api_key,
             "x-javelin-route": route_name,
             "x-javelin-model": model_choice,
             "x-javelin-provider": "https://javelinpreview.openai.azure.com/openai",

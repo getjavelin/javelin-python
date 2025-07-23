@@ -16,7 +16,7 @@ def init_sync_openai_client():
     try:
         openai_api_key = os.getenv("OPENAI_API_KEY")
         javelin_api_key = os.getenv("JAVELIN_API_KEY")
-        javelin_headers = {"x-api-key": javelin_api_key}
+        javelin_headers = {"x-javelin-apikey": javelin_api_key}
         print(f"[DEBUG] Synchronous OpenAI client key: {openai_api_key}")
         # This client is configured for chat completions.
         return OpenAI(
@@ -33,7 +33,7 @@ def init_async_openai_client():
     try:
         openai_api_key = os.getenv("OPENAI_API_KEY")
         javelin_api_key = os.getenv("JAVELIN_API_KEY")
-        javelin_headers = {"x-api-key": javelin_api_key}
+        javelin_headers = {"x-javelin-apikey": javelin_api_key}
         return AsyncOpenAI(
             api_key=openai_api_key,
             base_url="https://api-dev.javelin.live/v1/query/openai",
@@ -97,7 +97,7 @@ def sync_openai_embeddings(_):
     try:
         openai_api_key = os.getenv("OPENAI_API_KEY")
         javelin_api_key = os.getenv("JAVELIN_API_KEY")
-        javelin_headers = {"x-api-key": javelin_api_key}
+        javelin_headers = {"x-javelin-apikey": javelin_api_key}
         # Create a new client instance for embeddings.
         embeddings_client = OpenAI(
             api_key=openai_api_key,
