@@ -58,7 +58,10 @@ def get_bedrock_client():
         aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY", "YOUR_SECRET_KEY")
         bedrock_api_key = os.getenv("JAVELIN_API_KEY", "YOUR_BEDROCK_API_KEY")
 
-        custom_headers = {"x-javelin-apikey": bedrock_api_key, "x-javelin-route": "amazon"}
+        custom_headers = {
+            "x-javelin-apikey": bedrock_api_key,
+            "x-javelin-route": "amazon",
+        }
 
         client = boto3.client(
             service_name="bedrock-runtime",
