@@ -58,7 +58,10 @@ def get_bedrock_client():
         aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY", "YOUR_SECRET_KEY")
         bedrock_api_key = os.getenv("JAVELIN_API_KEY", "YOUR_BEDROCK_API_KEY")
 
-        custom_headers = {"x-api-key": bedrock_api_key}
+        custom_headers = {
+            "x-javelin-apikey": bedrock_api_key,
+            "x-javelin-route": "amazon",
+        }
 
         client = boto3.client(
             service_name="bedrock-runtime",
@@ -115,7 +118,7 @@ def call_bedrock_model_invoke(client, route_name, input_text):
 # -------------------------------
 
 
-def call_bedrock_model_converse(client, route_name, user_topic):
+def call_bedrock_model_converse(client, model_id, user_topic):
     """
     Non-streaming call.
     Roles must be 'user' or 'assistant'. The user role includes the required
@@ -123,7 +126,7 @@ def call_bedrock_model_converse(client, route_name, user_topic):
     """
     try:
         response = client.converse(
-            modelId=route_name,
+            modelId=model_id,
             messages=[
                 {
                     "role": "user",
@@ -167,10 +170,10 @@ def main():
     # 2) Invoke (non-streaming)
     print("\n--- Bedrock: Invoke (non-streaming) ---")
     try:
-        route_invoke = "claude_haiku_invoke"  # Adjust if your route name differs
+        model_id = "anthropic.claude-v2"  # Adjust if your route name differs
         input_text_invoke = "sunset on a winter evening"
         raw_invoke_output = call_bedrock_model_invoke(
-            bedrock_client, route_invoke, input_text_invoke
+            bedrock_client, model_id, input_text_invoke
         )
         final_invoke_text = extract_final_text(raw_invoke_output)
         print(final_invoke_text)
@@ -180,10 +183,10 @@ def main():
     # 3) Converse (non-streaming)
     print("\n--- Bedrock: Converse (non-streaming) ---")
     try:
-        route_converse = "claude_haiku_converse"  # Adjust if your route name differs
+        model_id = "anthropic.claude-v2"  # Adjust if your route name differs
         user_topic = "a tranquil mountain pond"
         raw_converse_output = call_bedrock_model_converse(
-            bedrock_client, route_converse, user_topic
+            bedrock_client, model_id, user_topic
         )
         final_converse_text = extract_final_text(raw_converse_output)
         print(final_converse_text)
