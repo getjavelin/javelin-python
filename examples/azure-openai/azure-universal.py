@@ -30,7 +30,7 @@ def initialize_client():
         print("AZURE_OPENAI_API_KEY found.")
 
     # Create the Azure client
-    azure_client = AzureOpenAI(api_version="2023-09-15-preview")
+    azure_client = AzureOpenAI(api_version="2023-09-15-preview", base_url="")
 
     # Initialize the Javelin client and register the Azure client
     config = JavelinConfig(javelin_api_key=javelin_api_key)
