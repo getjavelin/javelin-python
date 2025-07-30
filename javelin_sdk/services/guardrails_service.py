@@ -56,7 +56,9 @@ class GuardrailsService:
         self._handle_guardrails_response(response)
         return response.json()
 
-    def apply_guardrails(self, text: str, guardrails: list, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def apply_guardrails(
+        self, text: str, guardrails: list, config: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         data: Dict[str, Any] = {"input": {"text": text}, "guardrails": guardrails}
         if config:
             data["config"] = config
