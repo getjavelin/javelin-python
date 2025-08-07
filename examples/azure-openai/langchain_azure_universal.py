@@ -15,10 +15,10 @@ azure_openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
 javelin_api_key = os.getenv("JAVELIN_API_KEY")
 base_url = os.getenv("JAVELIN_BASE_URL")
 
-# The name of your Azure deployment (e.g., "gpt-4")
+# The name of your Azure deployment (e.g., "gpt35")
 # or whatever you’ve set in Azure. Must also match x-javelin-model if
 # Javelin expects that.
-model_choice = "gpt-4"
+model_choice = "gpt35"
 
 # Javelin route name, as registered in your javelin route dashboard
 route_name = "azureopenai_univ"
@@ -34,14 +34,14 @@ llm_non_streaming = AzureChatOpenAI(
     # Provide your actual API version
     api_version="2024-08-01-preview",
     # The base_url is Javelin’s universal route
-    base_url=f"{base_url}/v1/azureopenai/deployments/gpt-4/",
+    base_url=f"{base_url}/v1/openai/deployments/gpt35/",
     validate_base_url=False,
     verbose=True,
     default_headers={
         "x-javelin-apikey": javelin_api_key,
         "x-javelin-route": route_name,
         "x-javelin-model": model_choice,
-        "x-javelin-provider": "https://javelinpreview.openai.azure.com/openai",
+        "x-javelin-provider": "https://javelinpreview.openai.azure.com",
     },
     streaming=False,  # Non-streaming
 )
@@ -92,7 +92,7 @@ def invoke_streaming(question: str) -> str:
     llm_streaming = AzureChatOpenAI(
         openai_api_key=azure_openai_api_key,
         api_version="2024-08-01-preview",
-        base_url=f"{base_url}/v1/azureopenai/deployments/gpt-4/",
+        base_url=f"{base_url}/v1/azureopenai/deployments/gpt35/",
         validate_base_url=False,
         verbose=True,
         default_headers={
