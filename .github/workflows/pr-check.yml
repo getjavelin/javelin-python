@@ -150,3 +150,35 @@ jobs:
         run: |-
           echo "Vulnerabilities Found.....!"
           exit 1
+  
+  javelin-build-check:
+    needs:
+      - reusable-workflow-env
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PY_VER }}
+          cache: 'pip'
+
+      - name: Install Dependencies
+        shell: bash
+        run: |-
+          pip install build
+
+      - name: Build Package
+        shell: bash
+        run: |-
+          python -m build
+     
+
+     
