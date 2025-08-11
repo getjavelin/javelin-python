@@ -152,8 +152,6 @@ jobs:
           exit 1
   
   javelin-build-check:
-    needs:
-      - reusable-workflow-env
     permissions:
       contents: 'read'
       id-token: 'write'
