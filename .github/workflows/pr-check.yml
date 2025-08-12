@@ -150,3 +150,46 @@ jobs:
         run: |-
           echo "Vulnerabilities Found.....!"
           exit 1
+  
+  javelin-build-check:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setting up the Package Version
+        env:
+          PY_VER_FILE: "pyproject.toml"
+          RELEASE_NAME: "v1.1.1"
+        shell: bash
+        run: |-
+          export RELEASE_VERSION=$(echo ${{ env.RELEASE_NAME }} | sed 's|^v||g')
+          if cat ${{ env.PY_VER_FILE }} | grep 'version = "RELEASE_VERSION"' ; then
+            sed -i "s|^version = \"RELEASE_VERSION\"|version = \"${RELEASE_VERSION}\"|g" ${{ env.PY_VER_FILE }}
+            cat ${file}
+          else
+            echo "Version entry format is wrong in the ${{ env.PY_VER_FILE }} file...!"
+            cat ${file}
+            exit 1
+          fi
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PY_VER }}
+          cache: 'pip'
+
+      - name: Install Dependencies
+        shell: bash
+        run: |-
+          pip install build
+
+      - name: Build Package
+        shell: bash
+        run: |-
+          python -m build
