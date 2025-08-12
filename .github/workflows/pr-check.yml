@@ -165,7 +165,7 @@ jobs:
       - name: Setting up the Package Version
         env:
           PY_VER_FILE: "pyproject.toml"
-          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_NAME: "v1.1.1"
         shell: bash
         run: |-
           export RELEASE_VERSION=$(echo ${{ env.RELEASE_NAME }} | sed 's|^v||g')
@@ -189,11 +189,7 @@ jobs:
         run: |-
           pip install build
 
-
       - name: Build Package
         shell: bash
         run: |-
           python -m build
-     
-
-     
